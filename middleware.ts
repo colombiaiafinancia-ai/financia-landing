@@ -1,86 +1,92 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { 
+  verifyMiddlewareAuth, 
+  clearMiddlewareAuthCookies,
+  isProtectedRoute,
+  isAuthRoute 
+} from '@/services/supabase/client-middleware'
 
+/**
+ * Middleware de Next.js con infraestructura Supabase refactorizada
+ * 
+ * CAMBIOS EN FASE 1:
+ * ✅ Usa nueva infraestructura de services/supabase/
+ * ✅ Manejo robusto de errores de refresh token
+ * ✅ Lógica de rutas más clara y mantenible
+ * ✅ Compatibilidad total con código legacy
+ * 
+ * @author Tech Lead - Refactor Arquitectónico
+ * @since Fase 1 - Infraestructura
+ */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Solo verificar autenticación si es necesario
-  const needsAuthCheck = pathname === '/' || 
-                        pathname.startsWith('/login') || 
-                        pathname.startsWith('/register') || 
-                        pathname.startsWith('/dashboard')
+  // Verificar si la ruta necesita autenticación usando nueva utilidad
+  const needsAuth = isProtectedRoute(pathname)
+  const isAuthPage = isAuthRoute(pathname)
+  const isLandingPage = pathname === '/'
 
-  if (!needsAuthCheck) {
-    return NextResponse.next()
+  // Si no necesita verificación de auth, continuar
+  if (!needsAuth && !isAuthPage && !isLandingPage) {
+    return addSecurityHeaders(NextResponse.next())
   }
 
-  // Crear cliente Supabase para middleware
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            request.cookies.set(name, value)
-          })
-        },
-      },
-    }
-  )
-  
-  // Obtener sesión real de Supabase con manejo de errores
-  let isAuthenticated = false
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession()
-    
-    if (error) {
-      // Filtrar errores de refresh token y limpiar cookies si es necesario
-      if (error.message.includes('Invalid Refresh Token') || error.message.includes('Refresh Token Not Found')) {
-        // Limpiar cookies de autenticación problemáticas
-        const response = NextResponse.next()
-        response.cookies.delete('sb-access-token')
-        response.cookies.delete('sb-refresh-token')
-        response.cookies.delete('supabase-auth-token')
-        return response
-      }
-      
-      // Solo logear otros errores críticos
-      console.log('Auth error in middleware:', error.message)
-      isAuthenticated = false
-    } else {
-      isAuthenticated = !!session?.user
-    }
-  } catch (error) {
-    // No logear errores de refresh token en catch
-    if (error instanceof Error && !error.message.includes('Invalid Refresh Token')) {
-      console.log('Unexpected auth error in middleware:', error)
-    }
-    isAuthenticated = false
+  // Verificar autenticación usando nueva infraestructura
+  const authResult = await verifyMiddlewareAuth(request)
+  const isAuthenticated = !!authResult.user && !authResult.error
+
+  // Manejar errores de refresh token limpiando cookies
+  if (authResult.error && authResult.error.message?.includes('refresh token')) {
+    let response = NextResponse.next()
+    response = clearMiddlewareAuthCookies(response)
+    return addSecurityHeaders(response)
   }
 
-  // Redirigir a dashboard si está autenticado y está en landing/login/register
-  if (isAuthenticated && (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/register'))) {
-    const url = new URL('/dashboard', request.url)
-    return NextResponse.redirect(url)
+  // Lógica de redirección mejorada
+  return handleAuthRedirects(request, pathname, isAuthenticated)
+
+}
+
+/**
+ * Manejar redirecciones basadas en estado de autenticación
+ * 
+ * Lógica centralizada y clara para redirecciones según el estado
+ * de autenticación del usuario.
+ */
+function handleAuthRedirects(
+  request: NextRequest, 
+  pathname: string, 
+  isAuthenticated: boolean
+): NextResponse {
+  // Usuario autenticado en páginas de auth o landing → redirigir a dashboard
+  if (isAuthenticated && (isAuthRoute(pathname) || pathname === '/')) {
+    const dashboardUrl = new URL('/dashboard', request.url)
+    return addSecurityHeaders(NextResponse.redirect(dashboardUrl))
   }
 
-  // Redirigir a login si NO está autenticado y está en dashboard
-  if (!isAuthenticated && pathname.startsWith('/dashboard')) {
-    const url = new URL('/login', request.url)
-    return NextResponse.redirect(url)
+  // Usuario NO autenticado en rutas protegidas → redirigir a login
+  if (!isAuthenticated && isProtectedRoute(pathname)) {
+    const loginUrl = new URL('/login', request.url)
+    return addSecurityHeaders(NextResponse.redirect(loginUrl))
   }
 
-  const response = NextResponse.next()
+  // En cualquier otro caso, continuar normalmente
+  return addSecurityHeaders(NextResponse.next())
+}
 
+/**
+ * Añadir headers de seguridad y rendimiento
+ * 
+ * Centraliza la configuración de headers para mantener
+ * consistencia y facilitar mantenimiento.
+ */
+function addSecurityHeaders(response: NextResponse): NextResponse {
   // Headers de seguridad
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('Referrer-Policy', 'origin-when-cross-origin')
+  response.headers.set('X-XSS-Protection', '1; mode=block')
 
   // Headers de rendimiento
   response.headers.set('X-DNS-Prefetch-Control', 'on')
