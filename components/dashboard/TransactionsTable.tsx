@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Trash2, Edit3, DollarSign, TrendingUp, TrendingDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { createSupabaseClient } from '@/utils/supabase/client'
+// ✅ Ya no necesitamos acceso directo a Supabase - se maneja en los hooks
 import { UnifiedTransaction } from '@/hooks/useTransactionsUnified'
 
 interface TransactionsTableProps {
@@ -24,7 +24,7 @@ export const TransactionsTable = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [transactionToDelete, setTransactionToDelete] = useState<UnifiedTransaction | null>(null)
 
-  const supabase = createSupabaseClient()
+  // ✅ Ya no necesitamos cliente Supabase directo
 
   const handleDeleteClick = (transaction: UnifiedTransaction) => {
     setTransactionToDelete(transaction)

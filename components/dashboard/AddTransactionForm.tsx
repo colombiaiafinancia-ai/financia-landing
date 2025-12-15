@@ -63,10 +63,10 @@ export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormPro
       
       // Usar el método createTransaction del hook que ya incluye refetch automático
       await createTransaction({
-        valor: valorNumerico,
-        categoria: categoria,
-        tipo: tipo,
-        descripcion: descripcion || undefined
+        amount: valorNumerico,
+        category: categoria,
+        type: tipo,
+        description: descripcion || undefined
       })
 
       console.log('✅ TRANSACTION - Transacción creada exitosamente')

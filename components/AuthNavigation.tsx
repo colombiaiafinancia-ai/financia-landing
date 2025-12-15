@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { createSupabaseClient } from '@/utils/supabase/client'
+import { getBrowserSupabaseClient } from '@/services/supabase'
 import { logOut } from '@/actions/auth'
 import { User } from '@supabase/supabase-js'
 
@@ -11,7 +11,7 @@ export const AuthNavigation = () => {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const supabase = createSupabaseClient()
+    const supabase = getBrowserSupabaseClient()
     
     // Obtener el usuario actual
     supabase.auth.getUser().then(({ data: { user } }) => {

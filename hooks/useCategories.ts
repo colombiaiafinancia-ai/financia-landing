@@ -1,54 +1,87 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { CategoryService, type Category } from '@/features/categories'
+import { useState, useEffect, useCallback } from 'react'
+import { CategoryService, CategoryDTOMapper, type CategoryDTO, type CategoriesByTypeDTO } from '@/features/categories'
+import { AsyncState, AsyncStateUtils } from '@/types/asyncState'
+import { ErrorHandler } from '@/types/errors'
 
 /**
- * Hook refactorizado para categorías - Solo maneja UI state
+ * Hook refactorizado para categorías - Usa AsyncState y DTOs
  * 
- * La lógica de negocio y acceso a datos se delegó a CategoryService
+ * ✅ Solo maneja UI state
+ * ✅ Usa DTOs en lugar de entidades directas
+ * ✅ Sigue el contrato AsyncState estándar
+ * ✅ Manejo de errores estandarizado
  */
-export const useCategories = () => {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export const useCategories = (): AsyncState<CategoriesByTypeDTO> & {
+  allCategories: CategoryDTO[]
+  gastoCategories: CategoryDTO[]
+  ingresoCategories: CategoryDTO[]
+  categories: CategoryDTO[] // Alias de compatibilidad
+  loading: boolean // Alias de compatibilidad
+  error: string | null // Alias de compatibilidad
+  refetch: () => Promise<void> // Alias de compatibilidad
+} => {
+  const [state, setState] = useState<AsyncState<CategoriesByTypeDTO>>(
+    AsyncStateUtils.createInitial<CategoriesByTypeDTO>()
+  )
+  
+  const [allCategories, setAllCategories] = useState<CategoryDTO[]>([])
 
-  const fetchCategories = async () => {
+  const errorHandler = ErrorHandler
+
+  const fetchCategories = useCallback(async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setState(AsyncStateUtils.createLoading(fetchCategories))
       
       console.log('🏷️ HOOK - Loading categories...')
       
       // ✅ Usar caso de uso en lugar de acceso directo a Supabase
-      const data = await CategoryService.getAll()
+      const categoriesByType = await CategoryService.getByType()
       
-      console.log('✅ HOOK - Categories loaded:', data.length)
-      setCategories(data)
+      // ✅ Convertir a DTOs usando mapper
+      const dto = CategoryDTOMapper.groupedToDTO(categoriesByType)
+      
+      // Mantener lista completa para compatibilidad
+      const allCategoriesArray = [...dto.gastos, ...dto.ingresos]
+      setAllCategories(allCategoriesArray)
+      
+      console.log('✅ HOOK - Categories loaded:', {
+        gastos: dto.gastos.length,
+        ingresos: dto.ingresos.length,
+        total: allCategoriesArray.length
+      })
+      
+      setState(AsyncStateUtils.createWithData(dto, fetchCategories))
     } catch (err) {
       console.error('❌ HOOK - Error loading categories:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Error al cargar categorías'
-      setError(errorMessage)
-      setCategories([])
-    } finally {
-      setLoading(false)
+      const errorMessage = errorHandler.handle(err, 'categories', { action: 'fetch' })
+      setState(AsyncStateUtils.createWithError(errorMessage, fetchCategories))
+      setAllCategories([])
     }
-  }
+  }, [errorHandler])
 
   useEffect(() => {
     fetchCategories()
-  }, [])
-
-  // ✅ Usar lógica de dominio para filtrar (sin lógica en el hook)
-  const gastoCategories = categories.filter(cat => cat.tipo === 'Gasto')
-  const ingresoCategories = categories.filter(cat => cat.tipo === 'Ingreso')
+  }, [fetchCategories])
 
   return {
-    categories,
-    gastoCategories,
-    ingresoCategories,
-    loading,
-    error,
-    refetch: fetchCategories
+    ...state,
+    allCategories,
+    gastoCategories: state.data?.gastos || [],
+    ingresoCategories: state.data?.ingresos || [],
+    // Alias para compatibilidad con código existente
+    categories: allCategories,
+    loading: state.isLoading,
+    error: state.error,
+    refetch: state.refetch
+  } as AsyncState<CategoriesByTypeDTO> & {
+    allCategories: CategoryDTO[]
+    gastoCategories: CategoryDTO[]
+    ingresoCategories: CategoryDTO[]
+    categories: CategoryDTO[] // Alias de compatibilidad
+    loading: boolean // Alias de compatibilidad
+    error: string | null // Alias de compatibilidad
+    refetch: () => Promise<void> // Alias de compatibilidad
   }
 }

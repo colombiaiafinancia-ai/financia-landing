@@ -1,446 +1,324 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Plus, Edit3, DollarSign, TrendingUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createSupabaseClient } from '@/utils/supabase/client'
 import { useCategories } from '@/hooks/useCategories'
+import { useCategoryBudget } from '@/hooks/useCategoryBudget'
 
 interface BudgetByCategoryProps {
   userId: string
   onBudgetUpdate: () => void
 }
 
-interface CategoryBudget {
-  id: string
-  categorias: string  // Nombre de la columna en Supabase
-  valor: number
-  mes: string
-}
-
+/**
+ * Componente refactorizado para presupuestos por categoría
+ * 
+ * ✅ Usa hooks refactorizados
+ * ✅ No accede directamente a Supabase
+ * ✅ Manejo de errores estandarizado
+ */
 export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryProps) => {
-  const [budgets, setBudgets] = useState<CategoryBudget[]>([])
-  const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
-  const [editingBudget, setEditingBudget] = useState<CategoryBudget | null>(null)
+  const [editingBudget, setEditingBudget] = useState<{id: string, categorias: string, valor: number} | null>(null)
   const [selectedCategory, setSelectedCategory] = useState('')
   const [budgetValue, setBudgetValue] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const { gastoCategories } = useCategories()
-  const supabase = createSupabaseClient()
+  // ✅ Usar hooks refactorizados
+  const { gastoCategories, loading: categoriesLoading } = useCategories()
+  const { 
+    budgetSummary, 
+    loading: budgetsLoading, 
+    error, 
+    saveCategoryBudget, 
+    deleteCategoryBudget 
+  } = useCategoryBudget(userId)
 
-  // Cargar presupuestos por categoría
-  const loadBudgets = async () => {
-    if (!userId) {
-      console.log('⚠️ BUDGET - No hay userId para cargar presupuestos')
-      setLoading(false)
-      return
-    }
+  const loading = categoriesLoading || budgetsLoading
 
-    try {
-      const now = new Date()
-      const currentMonth = now.getMonth() + 1
-      const currentYear = now.getFullYear()
-      const monthStart = new Date(currentYear, currentMonth - 1, 1)
-      const monthEnd = new Date(currentYear, currentMonth, 0)
-
-      console.log('🔍 BUDGET - Cargando presupuestos por categoría:', {
-        userId,
-        mes: currentMonth,
-        año: currentYear,
-        monthStart: monthStart.toISOString().split('T')[0],
-        monthEnd: monthEnd.toISOString().split('T')[0]
-      })
-
-      const { data, error } = await supabase
-        .from('presupuestos')
-        .select('*')
-        .eq('usuario_id', userId)
-        .gte('mes', monthStart.toISOString().split('T')[0])
-        .lte('mes', monthEnd.toISOString().split('T')[0])
-        .order('categorias')
-
-      if (error) {
-        console.error('❌ BUDGET - Error cargando presupuestos por categoría:', error)
-        return
-      }
-
-      console.log('✅ BUDGET - Presupuestos cargados:', data?.length || 0, 'categorías')
-      if (data && data.length > 0) {
-        console.log('✅ BUDGET - Primer presupuesto:', data[0])
-        console.log('✅ BUDGET - Estructura:', Object.keys(data[0]))
-        data.forEach((budget, index) => {
-          console.log(`   Presupuesto ${index + 1}: ${budget.categorias} - $${budget.valor}`)
-        })
-      } else {
-        console.log('📋 BUDGET - No hay presupuestos para este mes')
-      }
-      setBudgets(data || [])
-    } catch (error) {
-      console.error('💥 BUDGET - Error inesperado cargando presupuestos:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadBudgets()
-  }, [userId])
-
-  // Calcular total de presupuestos
-  const totalBudget = budgets.reduce((sum, budget) => sum + Number(budget.valor), 0)
-
-  // Guardar presupuesto por categoría
-  const handleSaveBudget = async () => {
+  // Guardar presupuesto
+  const handleSave = async () => {
     if (!selectedCategory || !budgetValue || !userId) {
-      alert('Faltan datos requeridos para guardar el presupuesto')
+      alert('Por favor completa todos los campos')
       return
     }
 
-    setSaving(true)
+    const valorNumerico = parseFloat(budgetValue.replace(/[^0-9.-]/g, ''))
+    
+    if (isNaN(valorNumerico) || valorNumerico <= 0) {
+      alert('Por favor ingresa un valor válido')
+      return
+    }
+
     try {
-      const now = new Date()
-      const currentMonth = now.getMonth() + 1
-      const currentYear = now.getFullYear()
-      const monthDate = new Date(currentYear, currentMonth - 1, 1)
-
-      console.log('💾 BUDGET - Información de fecha:', {
-        now: now.toISOString(),
-        currentMonth,
-        currentYear,
-        monthDate: monthDate.toISOString(),
-        monthDateString: monthDate.toISOString().split('T')[0]
-      })
-
-      console.log('💾 BUDGET - Guardando presupuesto:', {
-        usuario_id: userId,
-        mes: monthDate.toISOString().split('T')[0],
-        categorias: selectedCategory,
-        valor: parseFloat(budgetValue)
-      })
-
-      // Verificar que el usuario esté autenticado
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      if (authError || !user) {
-        console.error('Error de autenticación:', authError)
-        alert('Error de autenticación. Por favor, inicia sesión nuevamente.')
-        return
-      }
-
-      if (user.id !== userId) {
-        console.error('ID de usuario no coincide')
-        alert('Error de autenticación. ID de usuario no coincide.')
-        return
-      }
-
-      // Primero verificar si ya existe un presupuesto para esta categoría en este mes
-      const { data: existingBudget, error: checkError } = await supabase
-        .from('presupuestos')
-        .select('id')
-        .eq('usuario_id', userId)
-        .eq('categorias', selectedCategory)
-        .eq('mes', monthDate.toISOString().split('T')[0])
-        .maybeSingle()
-
-      if (checkError) {
-        console.error('Error verificando presupuesto existente:', checkError)
-        alert(`Error al verificar presupuesto existente: ${checkError.message}`)
-        return
-      }
-
-      let result
-      if (existingBudget) {
-        // Actualizar presupuesto existente
-        console.log('📝 Actualizando presupuesto existente:', existingBudget.id)
-        result = await supabase
-          .from('presupuestos')
-          .update({
-            valor: parseFloat(budgetValue)
-          })
-          .eq('id', existingBudget.id)
-      } else {
-        // Crear nuevo presupuesto
-        console.log('📝 Creando nuevo presupuesto')
-        result = await supabase
-          .from('presupuestos')
-          .insert({
-            usuario_id: userId,
-            mes: monthDate.toISOString().split('T')[0],
-            categorias: selectedCategory,
-            valor: parseFloat(budgetValue)
-          })
-      }
-
-      if (result.error) {
-        console.error('❌ BUDGET - Error guardando presupuesto:', result.error)
-        console.error('❌ BUDGET - Detalles del error:', {
-          message: result.error.message,
-          details: result.error.details,
-          hint: result.error.hint,
-          code: result.error.code
-        })
-        alert(`Error al guardar el presupuesto: ${result.error.message}`)
-        return
-      }
-
-      console.log('✅ BUDGET - Presupuesto guardado exitosamente')
-      console.log('✅ BUDGET - Resultado:', result)
-
-      // Recargar presupuestos
-      await loadBudgets()
-      onBudgetUpdate()
+      setSaving(true)
       
-      // Limpiar formulario
+      console.log('💰 COMPONENT - Saving category budget:', { 
+        categoria: selectedCategory, 
+        valor: valorNumerico 
+      })
+
+      // ✅ Usar hook refactorizado
+      await saveCategoryBudget(selectedCategory, valorNumerico)
+      
+      console.log('✅ COMPONENT - Category budget saved successfully')
+      
+      // Limpiar formulario y cerrar modal
       setSelectedCategory('')
       setBudgetValue('')
       setShowAddModal(false)
       setEditingBudget(null)
-
+      
+      // Notificar al componente padre
+      onBudgetUpdate()
+      
     } catch (error) {
-      console.error('Error inesperado:', error)
-      alert(`Error inesperado al guardar el presupuesto: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+      console.error('❌ COMPONENT - Error saving category budget:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Error al guardar el presupuesto'
+      alert(errorMessage)
     } finally {
       setSaving(false)
     }
   }
 
   // Eliminar presupuesto
-  const handleDeleteBudget = async (budgetId: string) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este presupuesto?')) return
+  const handleDelete = async (categoria: string) => {
+    if (!confirm(`¿Estás seguro de que quieres eliminar el presupuesto de ${categoria}?`)) {
+      return
+    }
 
     try {
-      console.log('🗑️ BUDGET - Eliminando presupuesto:', budgetId)
+      console.log('🗑️ COMPONENT - Deleting category budget:', categoria)
 
-      // Verificar que el usuario esté autenticado
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      if (authError || !user) {
-        console.error('❌ BUDGET - Error de autenticación:', authError)
-        alert('Error de autenticación. Por favor, inicia sesión nuevamente.')
-        return
-      }
-
-      const { error } = await supabase
-        .from('presupuestos')
-        .delete()
-        .eq('id', budgetId)
-
-      if (error) {
-        console.error('❌ BUDGET - Error eliminando presupuesto:', error)
-        console.error('❌ BUDGET - Detalles del error:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        })
-        alert(`Error al eliminar el presupuesto: ${error.message}`)
-        return
-      }
-
-      console.log('✅ BUDGET - Presupuesto eliminado exitosamente')
-      await loadBudgets()
+      // ✅ Usar hook refactorizado
+      await deleteCategoryBudget(categoria)
+      
+      console.log('✅ COMPONENT - Category budget deleted successfully')
+      
+      // Notificar al componente padre
       onBudgetUpdate()
+      
     } catch (error) {
-      console.error('💥 BUDGET - Error inesperado:', error)
-      alert(`Error inesperado al eliminar el presupuesto: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+      console.error('❌ COMPONENT - Error deleting category budget:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Error al eliminar el presupuesto'
+      alert(errorMessage)
     }
   }
 
-  // Editar presupuesto
-  const handleEditBudget = (budget: CategoryBudget) => {
-    setEditingBudget(budget)
-    setSelectedCategory(budget.categorias)
-    setBudgetValue(budget.valor.toString())
+  // Iniciar edición
+  const handleEdit = (budget: {categoria: string, presupuestado: number}) => {
+    setEditingBudget({
+      id: budget.categoria, // Usar categoría como ID temporal
+      categorias: budget.categoria,
+      valor: budget.presupuestado
+    })
+    setSelectedCategory(budget.categoria)
+    setBudgetValue(budget.presupuestado.toString())
     setShowAddModal(true)
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
+  // Cancelar edición
+  const handleCancel = () => {
+    setSelectedCategory('')
+    setBudgetValue('')
+    setShowAddModal(false)
+    setEditingBudget(null)
   }
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/20 shadow-2xl">
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#5ce1e6]"></div>
-          <span className="ml-3 text-white/70">Cargando presupuestos...</span>
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+            <DollarSign className="mr-2 h-5 w-5" />
+            Presupuesto por Categorías
+          </h3>
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg animate-pulse">
+              <div className="h-4 bg-gray-300 rounded w-24"></div>
+              <div className="h-4 bg-gray-300 rounded w-16"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+            <DollarSign className="mr-2 h-5 w-5" />
+            Presupuesto por Categorías
+          </h3>
+        </div>
+        <div className="text-center py-8">
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button 
+            onClick={() => window.location.reload()} 
+            variant="outline"
+            size="sm"
+          >
+            Reintentar
+          </Button>
         </div>
       </div>
     )
   }
 
   return (
-    <>
-      <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/20 shadow-2xl">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-[#5ce1e6] to-[#4dd0e1] rounded-xl flex items-center justify-center">
-              <DollarSign className="h-5 w-5 text-[#0D1D35]" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">Presupuesto por Categorías</h2>
-              <p className="text-white/70 text-sm">
-                Total: {formatCurrency(totalBudget)}
-              </p>
-            </div>
-          </div>
-          
-          <Button
-            onClick={() => setShowAddModal(true)}
-            className="bg-gradient-to-r from-[#5ce1e6] to-[#4dd0e1] text-[#0D1D35] hover:opacity-90"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Agregar
-          </Button>
-        </div>
-
-        {budgets.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <TrendingUp className="h-6 w-6 text-white/50" />
-            </div>
-            <h3 className="text-lg font-semibold text-white mb-2">Sin presupuestos</h3>
-            <p className="text-white/70 text-sm mb-4">
-              Configura presupuestos por categoría para mejor control
-            </p>
-            <Button
-              onClick={() => setShowAddModal(true)}
-              className="bg-gradient-to-r from-[#5ce1e6] to-[#4dd0e1] text-[#0D1D35] hover:opacity-90"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Crear Primer Presupuesto
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+          <DollarSign className="mr-2 h-5 w-5" />
+          Presupuesto por Categorías
+        </h3>
+        
+        <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+          <DialogTrigger asChild>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="mr-2 h-4 w-4" />
+              Agregar
             </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {budgets.map((budget) => (
-              <div
-                key={budget.id}
-                className="bg-white/5 rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-all duration-200"
-              >
+          </DialogTrigger>
+          
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingBudget ? 'Editar Presupuesto' : 'Agregar Presupuesto por Categoría'}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="category">Categoría</Label>
+                <select
+                  id="category"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full p-2 border rounded-md"
+                  disabled={!!editingBudget}
+                >
+                  <option value="">Seleccionar categoría</option>
+                  {gastoCategories.map((cat) => (
+                    <option key={cat.id} value={cat.nombre}>
+                      {cat.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <Label htmlFor="budget">Presupuesto</Label>
+                <Input
+                  id="budget"
+                  type="number"
+                  value={budgetValue}
+                  onChange={(e) => setBudgetValue(e.target.value)}
+                  placeholder="Ej: 500000"
+                />
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleCancel}
+                  disabled={saving}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  onClick={handleSave}
+                  disabled={saving || !selectedCategory || !budgetValue}
+                >
+                  {saving ? 'Guardando...' : (editingBudget ? 'Actualizar' : 'Guardar')}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {budgetSummary.length === 0 ? (
+        <div className="text-center py-8">
+          <TrendingUp className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+          <p className="text-gray-600 mb-4">No tienes presupuestos configurados por categoría</p>
+          <p className="text-sm text-gray-500">
+            Agrega presupuestos específicos para cada categoría de gasto
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {budgetSummary.map((budget) => (
+            <div
+              key={budget.categoria}
+              className="flex justify-between items-center p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <div className="flex-1">
                 <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-semibold text-white text-lg">
-                        {budget.categorias}
-                      </span>
-                      <span className="text-[#5ce1e6] font-bold text-lg">
-                        {formatCurrency(budget.valor)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-white/50">
-                      {new Date(budget.mes).toLocaleDateString('es-CO', { 
-                        month: 'long', 
-                        year: 'numeric' 
-                      })}
-                    </div>
+                  <span className="font-medium text-gray-800">{budget.categoria}</span>
+                  <span className="text-lg font-bold text-green-600">
+                    ${budget.presupuestado.toLocaleString('es-CO')}
+                  </span>
+                </div>
+                
+                <div className="mt-2">
+                  <div className="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>Gastado: ${budget.actual.toLocaleString('es-CO')}</span>
+                    <span className={budget.excedente >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {budget.excedente >= 0 ? 'Disponible' : 'Excedido'}: ${Math.abs(budget.excedente).toLocaleString('es-CO')}
+                    </span>
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditBudget(budget)}
-                      className="border-white/20 text-white hover:bg-white/10"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </Button>
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteBudget(budget.id)}
-                      className="border-red-500/20 text-red-400 hover:bg-red-500/10"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        budget.porcentajeUsado >= 100 
+                          ? 'bg-red-500' 
+                          : budget.porcentajeUsado >= 80 
+                          ? 'bg-yellow-500' 
+                          : 'bg-green-500'
+                      }`}
+                      style={{ width: `${Math.min(budget.porcentajeUsado, 100)}%` }}
+                    ></div>
+                  </div>
+                  
+                  <div className="text-xs text-gray-500 mt-1">
+                    {budget.porcentajeUsado.toFixed(1)}% utilizado
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Modal para agregar/editar presupuesto */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="bg-[#0D1D35] border-white/20 text-white max-w-md mx-auto">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-center">
-              {editingBudget ? 'Editar Presupuesto' : 'Nuevo Presupuesto'}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="categoria" className="text-white/80">
-                Categoría
-              </Label>
-              <select
-                id="categoria"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#5ce1e6]"
-                required
-              >
-                <option value="" className="bg-[#0D1D35]">Selecciona una categoría</option>
-                {gastoCategories.map(cat => (
-                  <option key={cat.nombre} value={cat.nombre} className="bg-[#0D1D35]">
-                    {cat.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="valor" className="text-white/80">
-                Valor
-              </Label>
-              <Input
-                id="valor"
-                type="number"
-                value={budgetValue}
-                onChange={(e) => setBudgetValue(e.target.value)}
-                placeholder="0"
-                className="bg-white/10 border-white/20 text-white placeholder-white/40"
-                required
-              />
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowAddModal(false)
-                  setEditingBudget(null)
-                  setSelectedCategory('')
-                  setBudgetValue('')
-                }}
-                className="flex-1 border-white/20 text-white hover:bg-white/10"
-                disabled={saving}
-              >
-                Cancelar
-              </Button>
               
-              <Button
-                onClick={handleSaveBudget}
-                disabled={saving || !selectedCategory || !budgetValue}
-                className="flex-1 bg-gradient-to-r from-[#5ce1e6] to-[#4dd0e1] text-[#0D1D35] hover:opacity-90 disabled:opacity-50"
-              >
-                {saving ? 'Guardando...' : (editingBudget ? 'Actualizar' : 'Guardar')}
-              </Button>
+              <div className="flex items-center space-x-2 ml-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleEdit(budget)}
+                  className="text-blue-600 hover:text-blue-800"
+                >
+                  <Edit3 className="h-4 w-4" />
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDelete(budget.categoria)}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }

@@ -5,6 +5,17 @@
  * Exporta únicamente lo necesario para el resto de la aplicación.
  */
 
+// DTOs (contratos para la UI)
+export type { 
+  CategoryDTO,
+  CategoryStatsDTO,
+  CategoryFiltersDTO,
+  CreateCategoryDTO,
+  UpdateCategoryDTO,
+  CategoriesByTypeDTO
+} from './dto/categoryDTO'
+export { CategoryDTOMapper } from './dto/categoryDTO'
+
 // Domain types and logic (solo tipos y funciones puras)
 export type { Category, CategoryType } from './domain/categoryLogic'
 export { 

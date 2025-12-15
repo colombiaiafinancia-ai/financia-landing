@@ -5,6 +5,20 @@
  * Exporta únicamente lo necesario para el resto de la aplicación.
  */
 
+// DTOs (contratos para la UI)
+export type {
+  TransactionDTO,
+  TransactionSummaryDTO,
+  CategoryExpenseDTO,
+  WeeklyDataDTO,
+  TransactionStatsDTO,
+  CreateTransactionDTO,
+  UpdateTransactionDTO,
+  TransactionFiltersDTO,
+  TransactionPeriodDTO
+} from './dto/transactionDTO'
+export { TransactionDTOMapper } from './dto/transactionDTO'
+
 // Domain types and logic (solo tipos y funciones puras)
 export type { 
   Transaction,

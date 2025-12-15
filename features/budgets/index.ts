@@ -5,8 +5,23 @@
  * manteniendo la separación de capas interna.
  * 
  * @author Tech Lead - Refactor Arquitectónico
- * @since Fase 1 - Separación de Capas
+ * @since Fase 3 - DTOs y Contratos
  */
+
+// DTOs (contratos para la UI)
+export type {
+  BudgetDTO,
+  CategoryBudgetDTO,
+  CategoryBudgetSummaryDTO,
+  BudgetStatsDTO,
+  BudgetPeriodDTO,
+  BudgetSummaryDTO,
+  CreateBudgetDTO,
+  CreateCategoryBudgetDTO,
+  UpdateBudgetDTO,
+  LegacyBudgetDataDTO
+} from './dto/budgetDTO'
+export { BudgetDTOMapper } from './dto/budgetDTO'
 
 // Casos de uso (capa de aplicación) - API pública
 export {
