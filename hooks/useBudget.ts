@@ -1,9 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createSupabaseClient } from '@/utils/supabase/client'
+import { CategoryBudgetService } from '@/features/budgets'
+import { getCurrentUser } from '@/services/supabase'
 import { User } from '@supabase/supabase-js'
 
+/**
+ * Hook refactorizado para presupuesto general - Solo maneja UI state
+ * 
+ * La lógica de negocio y acceso a datos se delegó a CategoryBudgetService
+ */
 export const useBudget = () => {
   const [totalBudget, setTotalBudget] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -11,162 +17,88 @@ export const useBudget = () => {
 
   const loadBudgetFromSupabase = async (userId: string) => {
     try {
-      const supabase = createSupabaseClient()
-      const now = new Date()
-      const currentMonth = now.getMonth() + 1
-      const currentYear = now.getFullYear()
-      const monthStart = new Date(currentYear, currentMonth - 1, 1)
-      const monthEnd = new Date(currentYear, currentMonth, 0)
-
-      console.log('🔍 BUDGET - Cargando presupuesto para:', { 
-        userId, 
-        mes: currentMonth, 
-        año: currentYear,
-        monthStart: monthStart.toISOString().split('T')[0],
-        monthEnd: monthEnd.toISOString().split('T')[0]
-      })
-
-      // Buscar presupuestos del mes actual por categoría
-      const { data, error } = await supabase
-        .from('presupuestos')
-        .select('valor, categorias')
-        .eq('usuario_id', userId)
-        .gte('mes', monthStart.toISOString().split('T')[0])
-        .lte('mes', monthEnd.toISOString().split('T')[0])
-
-      if (error) {
-        console.error('❌ BUDGET - Error cargando presupuesto:', error)
-        // Fallback a localStorage
-        const savedBudget = localStorage.getItem(`budget_${userId}`)
-        const budgetValue = savedBudget ? parseFloat(savedBudget) : 0
-        console.log('📱 BUDGET - Usando localStorage fallback:', budgetValue)
-        setTotalBudget(budgetValue)
-        return
-      }
-
-      if (data && data.length > 0) {
-        // Sumar todos los presupuestos del mes (por categoría)
-        const totalBudgetValue = data.reduce((sum, budget) => sum + Number(budget.valor), 0)
-        console.log('✅ BUDGET - Presupuesto cargado desde Supabase:', totalBudgetValue, 'de', data.length, 'categorías')
-        console.log('📊 BUDGET - Detalle por categoría:', data.map(b => `${b.categorias}: $${b.valor}`).join(', '))
-        setTotalBudget(totalBudgetValue)
-        // Sincronizar con localStorage como respaldo
-        localStorage.setItem(`budget_${userId}`, totalBudgetValue.toString())
-      } else {
-        console.log('📭 BUDGET - No hay presupuesto en Supabase, usando localStorage')
-        // No hay presupuesto en Supabase, intentar localStorage
-        const savedBudget = localStorage.getItem(`budget_${userId}`)
-        const budgetValue = savedBudget ? parseFloat(savedBudget) : 0
-        setTotalBudget(budgetValue)
-      }
+      console.log('💰 HOOK - Loading budget for user:', userId)
+      
+      // ✅ Usar caso de uso en lugar de lógica directa
+      const budgetTotal = await CategoryBudgetService.loadFromSupabase(userId)
+      
+      console.log('✅ HOOK - Budget loaded:', budgetTotal)
+      setTotalBudget(budgetTotal)
+      
+      // Sincronizar con localStorage como respaldo
+      localStorage.setItem(`budget_${userId}`, budgetTotal.toString())
     } catch (error) {
-      console.error('💥 BUDGET - Error en catch:', error)
-      // Fallback a localStorage en caso de error
+      console.error('❌ HOOK - Error loading budget:', error)
+      
+      // Fallback a localStorage
       const savedBudget = localStorage.getItem(`budget_${userId}`)
       const budgetValue = savedBudget ? parseFloat(savedBudget) : 0
+      console.log('📱 HOOK - Using localStorage fallback:', budgetValue)
       setTotalBudget(budgetValue)
     }
   }
 
   useEffect(() => {
-    const supabase = createSupabaseClient()
+    let mounted = true
     
-    // Obtener usuario actual con manejo de errores
-    supabase.auth.getUser().then(({ data: { user }, error }) => {
-      if (error) {
-        // Filtrar errores de refresh token
-        if (!error.message.includes('Invalid Refresh Token')) {
-          console.error('Error obteniendo usuario:', error.message)
-        }
-        setUser(null)
-        setTotalBudget(0)
-      } else {
-        setUser(user)
-        if (user) {
-          loadBudgetFromSupabase(user.id)
-        }
-      }
-      setLoading(false)
-    })
-
-    // Suscribirse a cambios de autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        // Filtrar eventos de refresh token inválido
-        if (event === 'TOKEN_REFRESHED' && !session) {
-          return
-        }
+    const loadUser = async () => {
+      try {
+        // ✅ Usar cliente centralizado
+        const currentUser = await getCurrentUser()
         
-        setUser(session?.user || null)
-        
-        if (session?.user) {
-          loadBudgetFromSupabase(session.user.id)
-        } else {
+        if (mounted) {
+          if (currentUser) {
+            setUser(currentUser)
+            await loadBudgetFromSupabase(currentUser.id)
+          } else {
+            setUser(null)
+            setTotalBudget(0)
+          }
+        }
+      } catch (error) {
+        console.error('❌ HOOK - Error getting user:', error)
+        if (mounted) {
+          setUser(null)
           setTotalBudget(0)
         }
-        
-        setLoading(false)
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
       }
-    )
-
-    return () => subscription.unsubscribe()
+    }
+    
+    loadUser()
+    
+    return () => {
+      mounted = false
+    }
   }, [])
 
   const saveBudget = async (newBudget: number) => {
     if (!user) return false
 
     try {
-      console.log('💾 BUDGET - Guardando presupuesto:', { userId: user.id, budget: newBudget })
+      console.log('💰 HOOK - Saving budget:', { userId: user.id, budget: newBudget })
       
-      const supabase = createSupabaseClient()
-      const now = new Date()
-      const currentMonth = now.getMonth() + 1
-      const currentYear = now.getFullYear()
-      const monthDate = new Date(currentYear, currentMonth - 1, 1)
-
-      // Primero eliminar presupuestos existentes del mes
-      const { error: deleteError } = await supabase
-        .from('presupuestos')
-        .delete()
-        .eq('usuario_id', user.id)
-        .gte('mes', monthDate.toISOString().split('T')[0])
-        .lte('mes', new Date(currentYear, currentMonth, 0).toISOString().split('T')[0])
-
-      if (deleteError) {
-        console.error('❌ BUDGET - Error eliminando presupuestos anteriores:', deleteError)
-      }
-
-      // Crear un presupuesto general para el mes
-      const { data, error } = await supabase
-        .from('presupuestos')
-        .insert({
-          usuario_id: user.id,
-          mes: monthDate.toISOString().split('T')[0],
-          categorias: 'General',
-          valor: newBudget
-        })
-        .select()
-
-      if (error) {
-        console.error('❌ BUDGET - Error guardando en Supabase:', error)
-        // Fallback a localStorage
-        console.log('📱 BUDGET - Usando localStorage como fallback')
-        localStorage.setItem(`budget_${user.id}`, newBudget.toString())
+      // ✅ Usar caso de uso en lugar de lógica directa
+      const success = await CategoryBudgetService.saveGeneral(user.id, newBudget)
+      
+      if (success) {
+        console.log('✅ HOOK - Budget saved successfully')
+        
+        // Actualizar estado local
         setTotalBudget(newBudget)
+        
+        // Sincronizar con localStorage como respaldo
+        localStorage.setItem(`budget_${user.id}`, newBudget.toString())
+        
         return true
       }
-
-      console.log('✅ BUDGET - Presupuesto guardado en Supabase:', data)
       
-      // Actualizar estado local
-      setTotalBudget(newBudget)
-      
-      // Sincronizar con localStorage como respaldo
-      localStorage.setItem(`budget_${user.id}`, newBudget.toString())
-      
-      return true
+      return false
     } catch (error) {
-      console.error('💥 BUDGET - Error en catch al guardar:', error)
+      console.error('❌ HOOK - Error saving budget:', error)
       
       // Fallback a localStorage
       try {
@@ -174,7 +106,7 @@ export const useBudget = () => {
         setTotalBudget(newBudget)
         return true
       } catch (localError) {
-        console.error('Error al guardar en localStorage:', localError)
+        console.error('❌ HOOK - Error saving to localStorage:', localError)
         return false
       }
     }
@@ -188,4 +120,4 @@ export const useBudget = () => {
     user,
     refetch: () => user ? loadBudgetFromSupabase(user.id) : Promise.resolve()
   }
-} 
+}

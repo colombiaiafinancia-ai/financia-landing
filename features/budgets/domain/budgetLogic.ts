@@ -245,3 +245,154 @@ export function isCurrentPeriod(period: BudgetPeriod): boolean {
   const current = getCurrentPeriod()
   return period.year === current.year && period.month === current.month
 }
+
+/**
+ * Tipos adicionales para presupuestos por categoría
+ */
+export interface CategoryBudget {
+  id: string
+  categorias: string
+  valor: number
+  mes: string
+  usuario_id: string
+}
+
+export interface CategoryBudgetSummary {
+  categoria: string
+  presupuestado: number
+  actual: number
+  excedente: number
+  porcentajeUsado: number
+}
+
+export interface BudgetStats {
+  totalPresupuestado: number
+  totalGastado: number
+  totalExcedente: number
+  categoriasConPresupuesto: number
+  categoriasSobrepasadas: number
+  categoriasBajoPresupuesto: number
+}
+
+/**
+ * Calcular resumen de presupuesto por categoría
+ * 
+ * @param budgets - Presupuestos por categoría
+ * @param expensesByCategory - Gastos agrupados por categoría
+ * @returns Resumen detallado por categoría
+ */
+export function calculateCategoryBudgetSummary(
+  budgets: CategoryBudget[],
+  expensesByCategory: Record<string, number>
+): CategoryBudgetSummary[] {
+  return budgets.map(budget => {
+    const actual = expensesByCategory[budget.categorias] || 0
+    const excedente = budget.valor - actual
+    const porcentajeUsado = budget.valor > 0 ? (actual / budget.valor) * 100 : 0
+    
+    return {
+      categoria: budget.categorias,
+      presupuestado: budget.valor,
+      actual,
+      excedente,
+      porcentajeUsado: Math.round(porcentajeUsado * 100) / 100
+    }
+  })
+}
+
+/**
+ * Calcular estadísticas generales de presupuesto
+ * 
+ * @param summaries - Resúmenes por categoría
+ * @returns Estadísticas generales
+ */
+export function calculateBudgetStats(summaries: CategoryBudgetSummary[]): BudgetStats {
+  const totalPresupuestado = summaries.reduce((sum, s) => sum + s.presupuestado, 0)
+  const totalGastado = summaries.reduce((sum, s) => sum + s.actual, 0)
+  const totalExcedente = totalPresupuestado - totalGastado
+  
+  const categoriasConPresupuesto = summaries.filter(s => s.presupuestado > 0).length
+  const categoriasSobrepasadas = summaries.filter(s => s.excedente < 0).length
+  const categoriasBajoPresupuesto = summaries.filter(s => s.excedente > 0 && s.presupuestado > 0).length
+  
+  return {
+    totalPresupuestado,
+    totalGastado,
+    totalExcedente,
+    categoriasConPresupuesto,
+    categoriasSobrepasadas,
+    categoriasBajoPresupuesto
+  }
+}
+
+/**
+ * Obtener fechas de inicio y fin del mes para consultas
+ * 
+ * @param date - Fecha base (opcional, por defecto fecha actual)
+ * @returns Fechas de inicio y fin del mes
+ */
+export function getMonthDateRange(date: Date = new Date()): {
+  monthStart: Date
+  monthEnd: Date
+  monthStartISO: string
+  monthEndISO: string
+} {
+  const year = date.getFullYear()
+  const month = date.getMonth()
+  
+  const monthStart = new Date(year, month, 1)
+  const monthEnd = new Date(year, month + 1, 0, 23, 59, 59, 999)
+  
+  return {
+    monthStart,
+    monthEnd,
+    monthStartISO: monthStart.toISOString().split('T')[0],
+    monthEndISO: monthEnd.toISOString().split('T')[0]
+  }
+}
+
+/**
+ * Validar datos completos de presupuesto por categoría
+ * 
+ * @param budgetData - Datos del presupuesto
+ * @returns Resultado de validación
+ */
+export function validateCategoryBudgetData(budgetData: {
+  usuario_id?: string
+  categoria?: string
+  valor?: number
+  mes?: string
+}): BudgetValidation {
+  const errors: string[] = []
+  
+  if (!budgetData.usuario_id || budgetData.usuario_id.trim().length === 0) {
+    errors.push('ID de usuario requerido')
+  }
+  
+  if (budgetData.categoria !== undefined) {
+    const categoryValidation = validateBudgetCategory(budgetData.categoria)
+    if (!categoryValidation.isValid) {
+      errors.push(...categoryValidation.errors)
+    }
+  }
+  
+  if (budgetData.valor !== undefined) {
+    const amountValidation = validateBudgetAmount(budgetData.valor)
+    if (!amountValidation.isValid) {
+      errors.push(...amountValidation.errors)
+    }
+  }
+  
+  if (budgetData.mes) {
+    // Validar formato de fecha YYYY-MM-DD
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/
+    if (!datePattern.test(budgetData.mes)) {
+      errors.push('Formato de fecha inválido. Use YYYY-MM-DD')
+    }
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  }
+}

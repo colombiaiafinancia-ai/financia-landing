@@ -1,68 +1,85 @@
 /**
- * Punto de entrada para la feature Transactions
+ * TRANSACTIONS FEATURE - Public API
  * 
- * Exporta todas las funcionalidades públicas de la feature
- * manteniendo la separación de capas interna.
- * 
- * @author Tech Lead - Refactor Arquitectónico
- * @since Fase 1 - Separación de Capas
+ * Punto de entrada único para la funcionalidad de transacciones.
+ * Exporta únicamente lo necesario para el resto de la aplicación.
  */
 
-// Casos de uso (capa de aplicación) - API pública
-export {
-  transactionUseCases,
-  TransactionApplicationError,
-  type Transaction,
-  type TransactionCreate
-} from './application/transactionUseCases'
-
-// Lógica de dominio - para casos especiales
-export {
-  validateTransactionAmount,
-  validateTransactionCategory,
-  validateTransactionType,
-  validateTransactionDescription,
-  getCurrentMonthRange,
-  getMonthRange,
-  getWeeksRange,
-  calculateCategorySummary,
-  calculateWeeklySummary,
-  formatTransactionAmount,
-  getCategoryColor,
-  isExpense,
-  isIncome,
-  normalizeTransactionAmount,
-  CATEGORY_COLORS,
-  type TransactionType,
-  type TransactionCategory,
-  type CategorySummary,
-  type WeeklySummary,
-  type DateRange,
-  type TransactionValidation
+// Domain types and logic (solo tipos y funciones puras)
+export type { 
+  Transaction,
+  TransactionSummary,
+  WeeklyData,
+  CategorySummary,
+  TransactionValidation,
+  TransactionType
 } from './domain/transactionLogic'
 
-// Repositorio - solo para testing o casos muy específicos
-export {
-  transactionRepository
-} from './services/transactionRepository'
+export { 
+  validateTransactionData,
+  validateTransactionCreation,
+  calculateTransactionSummary,
+  calculateTodayExpenses,
+  calculateWeekExpenses,
+  calculateMonthExpenses,
+  calculateTotalIncome,
+  calculateTotalExpenses,
+  groupExpensesByCategory,
+  calculateCategorySummary,
+  calculateWeeklyTrend,
+  formatTransactionAmount
+} from './domain/transactionLogic'
 
-/**
- * API de conveniencia para casos de uso más comunes
- */
+// Application layer (casos de uso)
+export { transactionUseCases } from './application/transactionUseCases'
+export type {
+  TransactionCreationRequest,
+  TransactionUpdateRequest,
+  TransactionStats
+} from './application/transactionUseCases'
+
+// Infrastructure layer (solo para casos especiales)
+export { transactionRepository } from './services/transactionRepository'
+
+// Convenience exports para facilitar el uso
 export const TransactionService = {
   // Consultas
-  getMonthly: transactionUseCases.getMonthlyTransactions.bind(transactionUseCases),
-  getCategorySummary: transactionUseCases.getCategorySummary.bind(transactionUseCases),
-  getWeeklySummary: transactionUseCases.getWeeklySummary.bind(transactionUseCases),
-  getMonthlySpent: transactionUseCases.getMonthlySpent.bind(transactionUseCases),
-  getMonthlyIncome: transactionUseCases.getMonthlyIncome.bind(transactionUseCases),
-  getExpensesByCategory: transactionUseCases.getExpensesByCategory.bind(transactionUseCases),
-  getById: transactionUseCases.getTransactionById.bind(transactionUseCases),
+  getAll: (userId: string) => 
+    transactionUseCases.getAllTransactions(userId),
+  
+  getMonthly: (userId: string, year?: number, month?: number) => 
+    transactionUseCases.getMonthlyTransactions(userId, year, month),
+  
+  getSummary: (userId: string) => 
+    transactionUseCases.getTransactionSummary(userId),
+  
+  getCategorySummary: (userId: string) => 
+    transactionUseCases.getCategorySummary(userId),
+  
+  getWeeklySummary: (userId: string) => 
+    transactionUseCases.getWeeklySummary(userId),
+  
+  getMonthlySpent: (userId: string) => 
+    transactionUseCases.getMonthlySpent(userId),
+  
+  getStats: (userId: string) => 
+    transactionUseCases.getTransactionStats(userId),
   
   // Operaciones
-  create: transactionUseCases.createTransaction.bind(transactionUseCases),
-  delete: transactionUseCases.deleteTransaction.bind(transactionUseCases),
+  create: (userId: string, data: import('./application/transactionUseCases').TransactionCreationRequest) => 
+    transactionUseCases.createTransaction(userId, data),
+  
+  update: (transactionId: string, userId: string, updates: import('./application/transactionUseCases').TransactionUpdateRequest) => 
+    transactionUseCases.updateTransaction(transactionId, userId, updates),
+  
+  delete: (transactionId: string, userId: string) => 
+    transactionUseCases.deleteTransaction(transactionId, userId),
   
   // Suscripciones
-  subscribe: transactionUseCases.subscribeToChanges.bind(transactionUseCases)
+  subscribe: (userId: string, callback: () => void) => 
+    transactionUseCases.subscribeToChanges(userId, callback),
+  
+  // Métodos de compatibilidad con hooks legacy
+  getWithCalculations: (userId: string) => 
+    transactionUseCases.getTransactionsWithCalculations(userId)
 }

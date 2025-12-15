@@ -1,35 +1,43 @@
 /**
- * Casos de Uso - Budgets (Capa de Aplicación)
+ * Casos de Uso de Budgets - Capa de Aplicación
  * 
  * RESPONSABILIDAD: Orquestar flujos de negocio
  * - Coordinar dominio + infraestructura
- * - Casos de uso específicos
- * - Validaciones de entrada
- * - Manejo de errores de aplicación
+ * - Validar usando reglas de dominio
+ * - Transformar datos entre capas
+ * - Manejar errores de aplicación
  * 
- * FLUJO: UI → Application → Domain → Infrastructure
+ * NO DEBE CONTENER:
+ * ❌ Acceso directo a Supabase
+ * ❌ Lógica de UI
+ * ❌ Efectos secundarios de UI
  * 
  * @author Tech Lead - Refactor Arquitectónico
- * @since Fase 1 - Separación de Capas
+ * @since Fase 2 - Migración de Hooks Legacy
  */
 
 import { 
   getCurrentPeriod, 
-  getPeriod,
-  validateBudgetAmount,
+  getPeriod, 
+  validateBudgetAmount, 
   validateBudgetCategory,
+  validateCategoryBudgetData,
   calculateBudgetProgress,
+  calculateCategoryBudgetSummary,
+  calculateBudgetStats,
   formatBudgetAmount,
   getPeriodDateRange,
-  type BudgetPeriod 
+  getMonthDateRange,
+  isCurrentPeriod,
+  type BudgetPeriod,
+  type BudgetValidation,
+  type BudgetCalculation,
+  type CategoryBudget as DomainCategoryBudget,
+  type CategoryBudgetSummary,
+  type BudgetStats
 } from '../domain/budgetLogic'
 
-import { 
-  budgetRepository, 
-  categoryBudgetRepository,
-  type BudgetEntity,
-  type CategoryBudgetEntity 
-} from '../services/budgetRepository'
+import { budgetRepository, categoryBudgetRepository, type BudgetEntity, type CategoryBudgetEntity } from '../services/budgetRepository'
 
 /**
  * Tipos de aplicación (DTOs)
@@ -37,9 +45,9 @@ import {
 export interface Budget {
   id?: string
   userId: string
-  amount: number
-  year: number
+  monthlyAmount: number
   month: number
+  year: number
   createdAt?: string
   updatedAt?: string
 }
@@ -47,29 +55,26 @@ export interface Budget {
 export interface CategoryBudget {
   id?: string
   userId: string
+  month: string
   category: string
   amount: number
-  monthDate: string
   createdAt?: string
   updatedAt?: string
 }
 
-export interface CategoryBudgetSummary {
-  categoria: string
-  actual: number
-  presupuestado: number
-  excedente: number
-  porcentaje_usado: number
+export interface BudgetSummary {
+  period: BudgetPeriod
+  totalBudget: number
+  spent: number
+  remaining: number
+  progress: BudgetCalculation
+  isCurrentPeriod: boolean
 }
 
-/**
- * Errores de aplicación
- */
-export class BudgetApplicationError extends Error {
-  constructor(message: string, public code: string) {
-    super(message)
-    this.name = 'BudgetApplicationError'
-  }
+export interface LegacyBudgetData {
+  totalBudget: number
+  spent: number
+  month: string
 }
 
 /**
@@ -77,166 +82,128 @@ export class BudgetApplicationError extends Error {
  */
 export class BudgetUseCases {
   /**
+   * Mapear entidad de BD a modelo de dominio
+   */
+  private mapEntityToDomain(entity: BudgetEntity): Budget {
+    return {
+      id: entity.id,
+      userId: entity.user_id,
+      monthlyAmount: entity.monto_mensual,
+      month: entity.mes,
+      year: entity.año,
+      createdAt: entity.created_at,
+      updatedAt: entity.updated_at
+    }
+  }
+
+  /**
+   * Mapear modelo de dominio a entidad de BD
+   */
+  private mapDomainToEntity(budget: Budget): Omit<BudgetEntity, 'id' | 'created_at' | 'updated_at'> {
+    return {
+      user_id: budget.userId,
+      monto_mensual: budget.monthlyAmount,
+      mes: budget.month,
+      año: budget.year
+    }
+  }
+
+  /**
    * Obtener presupuesto actual del usuario
    */
   async getCurrentBudget(userId: string): Promise<Budget | null> {
-    if (!userId) {
-      throw new BudgetApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
-    try {
-      const period = getCurrentPeriod()
-      const entity = await budgetRepository.findByUserAndPeriod(userId, period.year, period.month)
-      
-      if (!entity) {
-        return null
-      }
-
-      return this.mapEntityToDomain(entity)
-    } catch (error) {
-      if (error instanceof BudgetApplicationError) {
-        throw error
-      }
-      throw new BudgetApplicationError(
-        `Failed to get current budget: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'GET_CURRENT_BUDGET_FAILED'
-      )
-    }
+    const period = getCurrentPeriod()
+    
+    const entity = await budgetRepository.findByUserAndPeriod(
+      userId, 
+      period.year, 
+      period.month
+    )
+    
+    return entity ? this.mapEntityToDomain(entity) : null
   }
 
   /**
    * Obtener presupuesto de un período específico
    */
   async getBudgetByPeriod(userId: string, year: number, month: number): Promise<Budget | null> {
-    if (!userId) {
-      throw new BudgetApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
-    try {
-      // Validar período usando lógica de dominio
-      getPeriod(year, month) // Lanza error si el período es inválido
-
-      const entity = await budgetRepository.findByUserAndPeriod(userId, year, month)
-      
-      if (!entity) {
-        return null
-      }
-
-      return this.mapEntityToDomain(entity)
-    } catch (error) {
-      if (error instanceof BudgetApplicationError) {
-        throw error
-      }
-      throw new BudgetApplicationError(
-        `Failed to get budget by period: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'GET_BUDGET_BY_PERIOD_FAILED'
-      )
-    }
+    // Validar período usando lógica de dominio
+    const period = getPeriod(year, month)
+    
+    const entity = await budgetRepository.findByUserAndPeriod(
+      userId, 
+      period.year, 
+      period.month
+    )
+    
+    return entity ? this.mapEntityToDomain(entity) : null
   }
 
   /**
-   * Guardar presupuesto (crear o actualizar)
+   * Guardar presupuesto para el período actual
    */
-  async saveBudget(userId: string, amount: number): Promise<Budget> {
-    if (!userId) {
-      throw new BudgetApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
-    // Validar monto usando lógica de dominio
-    const validation = validateBudgetAmount(amount)
+  async saveBudget(userId: string, monthlyAmount: number): Promise<Budget> {
+    // Validar usando lógica de dominio
+    const validation = validateBudgetAmount(monthlyAmount)
     if (!validation.isValid) {
-      throw new BudgetApplicationError(
-        `Invalid budget amount: ${validation.errors.join(', ')}`,
-        'INVALID_BUDGET_AMOUNT'
-      )
+      throw new Error(`Monto inválido: ${validation.errors.join(', ')}`)
     }
 
-    try {
-      const period = getCurrentPeriod()
-      
-      // Verificar si ya existe
-      const existing = await budgetRepository.findByUserAndPeriod(userId, period.year, period.month)
-      
-      let entity: BudgetEntity
+    const period = getCurrentPeriod()
+    
+    // Verificar si ya existe
+    const existing = await budgetRepository.findByUserAndPeriod(
+      userId, 
+      period.year, 
+      period.month
+    )
 
-      if (existing) {
-        // Actualizar existente
-        entity = await budgetRepository.update(userId, period.year, period.month, {
-          monto_mensual: amount
-        })
-      } else {
-        // Crear nuevo
-        entity = await budgetRepository.create({
-          user_id: userId,
-          monto_mensual: amount,
-          mes: period.month,
-          año: period.year
-        })
-      }
+    let entity: BudgetEntity
 
-      return this.mapEntityToDomain(entity)
-    } catch (error) {
-      if (error instanceof BudgetApplicationError) {
-        throw error
-      }
-      throw new BudgetApplicationError(
-        `Failed to save budget: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'SAVE_BUDGET_FAILED'
+    if (existing) {
+      // Actualizar existente
+      entity = await budgetRepository.update(
+        userId, 
+        period.year, 
+        period.month, 
+        { monto_mensual: monthlyAmount }
       )
+    } else {
+      // Crear nuevo
+      entity = await budgetRepository.create({
+        user_id: userId,
+        monto_mensual: monthlyAmount,
+        mes: period.month,
+        año: period.year
+      })
     }
+
+    return this.mapEntityToDomain(entity)
   }
 
   /**
-   * Obtener todos los presupuestos del usuario
+   * Eliminar presupuesto del período actual
+   */
+  async deleteBudget(userId: string): Promise<void> {
+    const period = getCurrentPeriod()
+    
+    await budgetRepository.delete(userId, period.year, period.month)
+  }
+
+  /**
+   * Obtener todos los presupuestos de un usuario
    */
   async getAllBudgets(userId: string): Promise<Budget[]> {
-    if (!userId) {
-      throw new BudgetApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
-    try {
-      const entities = await budgetRepository.findAllByUser(userId)
-      return entities.map(entity => this.mapEntityToDomain(entity))
-    } catch (error) {
-      throw new BudgetApplicationError(
-        `Failed to get all budgets: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'GET_ALL_BUDGETS_FAILED'
-      )
-    }
+    const entities = await budgetRepository.findAllByUser(userId)
+    
+    return entities.map(entity => this.mapEntityToDomain(entity))
   }
 
   /**
    * Suscribirse a cambios en tiempo real
    */
-  subscribeToChanges(userId: string, callback: (budget: Budget | null) => void) {
-    if (!userId) {
-      throw new BudgetApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
-    return budgetRepository.subscribeToChanges(userId, async () => {
-      try {
-        const budget = await this.getCurrentBudget(userId)
-        callback(budget)
-      } catch (error) {
-        console.error('Error in budget subscription callback:', error)
-        callback(null)
-      }
-    })
-  }
-
-  /**
-   * Mapear entidad de BD a dominio
-   */
-  private mapEntityToDomain(entity: BudgetEntity): Budget {
-    return {
-      id: entity.id,
-      userId: entity.user_id,
-      amount: entity.monto_mensual,
-      year: entity.año,
-      month: entity.mes,
-      createdAt: entity.created_at,
-      updatedAt: entity.updated_at
-    }
+  subscribeToChanges(userId: string, callback: () => void) {
+    return budgetRepository.subscribeToChanges(userId, callback)
   }
 }
 
@@ -245,195 +212,213 @@ export class BudgetUseCases {
  */
 export class CategoryBudgetUseCases {
   /**
-   * Obtener resumen de presupuesto vs gastos por categoría
-   * 
-   * NOTA: Este caso de uso necesita acceso a transacciones.
-   * En una implementación completa, se inyectaría el repositorio de transacciones.
-   * Por ahora, mantenemos la funcionalidad existente.
+   * Mapear entidad de BD a modelo de dominio
+   */
+  private mapEntityToDomain(entity: CategoryBudgetEntity): CategoryBudget {
+    return {
+      id: entity.id,
+      userId: entity.usuario_id,
+      month: entity.mes,
+      category: entity.categorias,
+      amount: entity.valor,
+      createdAt: entity.created_at,
+      updatedAt: entity.updated_at
+    }
+  }
+
+  /**
+   * Obtener presupuestos por categoría del período actual
+   */
+  async getCurrentCategoryBudgets(userId: string): Promise<CategoryBudget[]> {
+    const period = getCurrentPeriod()
+    
+    const entities = await categoryBudgetRepository.findByUserAndPeriod(
+      userId, 
+      period.monthDate
+    )
+    
+    return entities.map(entity => this.mapEntityToDomain(entity))
+  }
+
+  /**
+   * Obtener presupuestos por rango de fechas (para compatibilidad con hooks legacy)
+   */
+  async getCategoryBudgetsByDateRange(
+    userId: string, 
+    startDate: string, 
+    endDate: string
+  ): Promise<CategoryBudget[]> {
+    const entities = await categoryBudgetRepository.findByUserAndDateRange(
+      userId, 
+      startDate, 
+      endDate
+    )
+    
+    return entities.map(entity => this.mapEntityToDomain(entity))
+  }
+
+  /**
+   * Obtener resumen de presupuesto por categoría (para useCategoryBudget)
    */
   async getCategoryBudgetSummary(
-    userId: string, 
-    getExpensesByCategory: (userId: string, monthDate: string) => Promise<Record<string, number>>
+    userId: string,
+    expensesByCategory: Record<string, number>
   ): Promise<CategoryBudgetSummary[]> {
-    if (!userId) {
-      throw new BudgetApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
-    try {
-      const period = getCurrentPeriod()
-      
-      // Obtener presupuestos por categoría
-      const budgetEntities = await categoryBudgetRepository.findByUserAndPeriod(userId, period.monthDate)
-      
-      // Obtener gastos por categoría (inyectado desde fuera)
-      const expensesByCategory = await getExpensesByCategory(userId, period.monthDate)
-      
-      // Crear mapa de presupuestos
-      const budgetsByCategory: Record<string, number> = {}
-      budgetEntities.forEach(budget => {
-        budgetsByCategory[budget.categorias] = budget.valor
-      })
-      
-      // Crear resumen combinando presupuestos y gastos
-      const summary: CategoryBudgetSummary[] = []
-      
-      // Agregar categorías con presupuesto definido
-      Object.entries(budgetsByCategory).forEach(([categoria, presupuestado]) => {
-        const actual = expensesByCategory[categoria] || 0
-        const progress = calculateBudgetProgress(presupuestado, actual)
-        
-        summary.push({
-          categoria,
-          actual,
-          presupuestado,
-          excedente: progress.remaining,
-          porcentaje_usado: progress.percentage
-        })
-      })
-      
-      // Agregar categorías con gastos pero sin presupuesto definido
-      Object.entries(expensesByCategory).forEach(([categoria, actual]) => {
-        const existsInBudgets = budgetsByCategory.hasOwnProperty(categoria)
-        if (!existsInBudgets && actual > 0) {
-          summary.push({
-            categoria,
-            actual,
-            presupuestado: 0,
-            excedente: -actual,
-            porcentaje_usado: 0
-          })
-        }
-      })
-      
-      // Ordenar por mayor gasto
-      return summary.sort((a, b) => b.actual - a.actual)
-    } catch (error) {
-      if (error instanceof BudgetApplicationError) {
-        throw error
-      }
-      throw new BudgetApplicationError(
-        `Failed to get category budget summary: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'GET_CATEGORY_SUMMARY_FAILED'
-      )
-    }
+    const period = getCurrentPeriod()
+    
+    const entities = await categoryBudgetRepository.findByUserAndPeriod(
+      userId, 
+      period.monthDate
+    )
+    
+    // Convertir a formato de dominio
+    const domainBudgets: DomainCategoryBudget[] = entities.map(entity => ({
+      id: entity.id!,
+      categorias: entity.categorias,
+      valor: entity.valor,
+      mes: entity.mes,
+      usuario_id: entity.usuario_id
+    }))
+    
+    // Usar lógica de dominio para calcular resumen
+    return calculateCategoryBudgetSummary(domainBudgets, expensesByCategory)
   }
 
   /**
-   * Guardar presupuesto de una categoría
+   * Obtener estadísticas generales de presupuesto
    */
-  async saveCategoryBudget(userId: string, categoria: string, amount: number): Promise<CategoryBudget> {
-    if (!userId) {
-      throw new BudgetApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
+  async getBudgetStats(
+    userId: string,
+    expensesByCategory: Record<string, number>
+  ): Promise<BudgetStats> {
+    const summaries = await this.getCategoryBudgetSummary(userId, expensesByCategory)
+    return calculateBudgetStats(summaries)
+  }
 
+  /**
+   * Guardar presupuesto por categoría
+   */
+  async saveCategoryBudget(
+    userId: string, 
+    category: string, 
+    amount: number
+  ): Promise<CategoryBudget> {
     // Validar usando lógica de dominio
-    const amountValidation = validateBudgetAmount(amount)
-    if (!amountValidation.isValid) {
-      throw new BudgetApplicationError(
-        `Invalid budget amount: ${amountValidation.errors.join(', ')}`,
-        'INVALID_BUDGET_AMOUNT'
-      )
+    const validation = validateCategoryBudgetData({
+      usuario_id: userId,
+      categoria: category,
+      valor: amount
+    })
+    
+    if (!validation.isValid) {
+      throw new Error(`Datos inválidos: ${validation.errors.join(', ')}`)
     }
 
-    const categoryValidation = validateBudgetCategory(categoria)
-    if (!categoryValidation.isValid) {
-      throw new BudgetApplicationError(
-        `Invalid category: ${categoryValidation.errors.join(', ')}`,
-        'INVALID_CATEGORY'
-      )
-    }
+    const period = getCurrentPeriod()
+    
+    const entity = await categoryBudgetRepository.upsertByCategory(
+      userId,
+      period.monthDate,
+      category,
+      amount
+    )
 
-    try {
-      const period = getCurrentPeriod()
-      
-      // Verificar si ya existe
-      const existing = await categoryBudgetRepository.findByUserPeriodAndCategory(
-        userId, 
-        period.monthDate, 
-        categoria
-      )
-      
-      let entity: CategoryBudgetEntity
-
-      if (existing) {
-        // Actualizar existente
-        entity = await categoryBudgetRepository.update(existing.id!, { valor: amount })
-      } else {
-        // Crear nuevo
-        entity = await categoryBudgetRepository.create({
-          usuario_id: userId,
-          mes: period.monthDate,
-          valor: amount,
-          categorias: categoria
-        })
-      }
-
-      return this.mapEntityToDomain(entity)
-    } catch (error) {
-      if (error instanceof BudgetApplicationError) {
-        throw error
-      }
-      throw new BudgetApplicationError(
-        `Failed to save category budget: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'SAVE_CATEGORY_BUDGET_FAILED'
-      )
-    }
+    return this.mapEntityToDomain(entity)
   }
 
   /**
-   * Eliminar presupuesto de una categoría
+   * Eliminar presupuesto por categoría
    */
-  async deleteCategoryBudget(userId: string, categoria: string): Promise<void> {
-    if (!userId) {
-      throw new BudgetApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
-    const categoryValidation = validateBudgetCategory(categoria)
-    if (!categoryValidation.isValid) {
-      throw new BudgetApplicationError(
-        `Invalid category: ${categoryValidation.errors.join(', ')}`,
-        'INVALID_CATEGORY'
-      )
-    }
-
-    try {
-      const period = getCurrentPeriod()
-      await categoryBudgetRepository.delete(userId, period.monthDate, categoria)
-    } catch (error) {
-      throw new BudgetApplicationError(
-        `Failed to delete category budget: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'DELETE_CATEGORY_BUDGET_FAILED'
-      )
-    }
+  async deleteCategoryBudget(userId: string, category: string): Promise<void> {
+    const period = getCurrentPeriod()
+    
+    await categoryBudgetRepository.delete(userId, period.monthDate, category)
   }
 
   /**
    * Suscribirse a cambios en tiempo real
    */
   subscribeToChanges(userId: string, callback: () => void) {
-    if (!userId) {
-      throw new BudgetApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
     return categoryBudgetRepository.subscribeToChanges(userId, callback)
   }
 
   /**
-   * Mapear entidad de BD a dominio
+   * MÉTODOS DE COMPATIBILIDAD CON HOOKS LEGACY
    */
-  private mapEntityToDomain(entity: CategoryBudgetEntity): CategoryBudget {
-    return {
-      id: entity.id,
-      userId: entity.usuario_id,
-      category: entity.categorias,
-      amount: entity.valor,
-      monthDate: entity.mes,
-      createdAt: entity.created_at,
-      updatedAt: entity.updated_at
+
+  /**
+   * Cargar presupuesto desde Supabase (compatibilidad con useBudget.ts)
+   */
+  async loadBudgetFromSupabase(userId: string): Promise<number> {
+    try {
+      console.log('💰 BUDGET_USE_CASE - Loading budget for user:', userId)
+      
+      const dateRange = getMonthDateRange()
+      
+      console.log('💰 BUDGET_USE_CASE - Date range:', {
+        monthStartISO: dateRange.monthStartISO,
+        monthEndISO: dateRange.monthEndISO
+      })
+      
+      const entities = await categoryBudgetRepository.findByUserAndDateRange(
+        userId,
+        dateRange.monthStartISO,
+        dateRange.monthEndISO
+      )
+      
+      console.log('💰 BUDGET_USE_CASE - Found budgets:', entities.length)
+      
+      // Sumar todos los presupuestos del mes (por categoría)
+      const totalBudget = entities.reduce((sum, budget) => sum + budget.valor, 0)
+      
+      console.log('✅ BUDGET_USE_CASE - Total budget calculated:', totalBudget)
+      
+      return totalBudget
+    } catch (error) {
+      console.error('❌ BUDGET_USE_CASE - Error loading budget from Supabase:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Guardar presupuesto general (compatibilidad con useBudget.ts)
+   */
+  async saveBudgetGeneral(userId: string, newBudget: number): Promise<boolean> {
+    try {
+      console.log('💰 BUDGET_USE_CASE - Saving general budget:', { userId, newBudget })
+      
+      // Validar usando lógica de dominio
+      const validation = validateBudgetAmount(newBudget)
+      if (!validation.isValid) {
+        throw new Error(`Monto inválido: ${validation.errors.join(', ')}`)
+      }
+
+      const period = getCurrentPeriod()
+      
+      console.log('💰 BUDGET_USE_CASE - Current period:', period)
+      
+      // Eliminar presupuestos existentes del mes
+      await categoryBudgetRepository.deleteAllByUserAndPeriod(userId, period.monthDate)
+      
+      console.log('💰 BUDGET_USE_CASE - Deleted existing budgets for period')
+      
+      // Crear un presupuesto general para el mes
+      const created = await categoryBudgetRepository.createGeneralBudget(
+        userId,
+        period.monthDate,
+        newBudget
+      )
+      
+      console.log('✅ BUDGET_USE_CASE - General budget created:', created)
+      
+      return true
+    } catch (error) {
+      console.error('❌ BUDGET_USE_CASE - Error saving general budget:', error)
+      throw error
     }
   }
 }
 
-// Instancias singleton para reutilización
+// Instancias singleton
 export const budgetUseCases = new BudgetUseCases()
 export const categoryBudgetUseCases = new CategoryBudgetUseCases()

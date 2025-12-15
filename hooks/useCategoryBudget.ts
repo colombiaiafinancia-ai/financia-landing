@@ -1,27 +1,37 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { categoryBudgetService } from '@/services/supabase/categoryBudget'
-import { CategoryBudgetSummary } from '@/types/database'
+import { CategoryBudgetService, type CategoryBudgetSummary } from '@/features/budgets'
 
+/**
+ * Hook refactorizado para presupuestos por categoría - Solo maneja UI state
+ * 
+ * La lógica de negocio y acceso a datos se delegó a CategoryBudgetService
+ */
 export const useCategoryBudget = (userId: string) => {
   const [budgetSummary, setBudgetSummary] = useState<CategoryBudgetSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // Cargar resumen de presupuesto por categorías
-  const loadBudgetSummary = async () => {
+  const loadBudgetSummary = async (expensesByCategory: Record<string, number> = {}) => {
     if (!userId) return
 
     try {
       setLoading(true)
       setError(null)
       
-      const summary = await categoryBudgetService.getCategoryBudgetSummary(userId)
+      console.log('💰 HOOK - Loading category budget summary for user:', userId)
+      
+      // ✅ Usar caso de uso en lugar de servicio legacy
+      const summary = await CategoryBudgetService.getSummary(userId, expensesByCategory)
+      
+      console.log('✅ HOOK - Category budget summary loaded:', summary.length, 'categories')
       setBudgetSummary(summary)
     } catch (err) {
-      console.error('Error loading category budget summary:', err)
-      setError('Error al cargar el resumen de presupuesto por categorías')
+      console.error('❌ HOOK - Error loading category budget summary:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Error al cargar el resumen de presupuesto por categorías'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -35,11 +45,16 @@ export const useCategoryBudget = (userId: string) => {
   useEffect(() => {
     if (!userId) return
 
-    const subscription = categoryBudgetService.subscribeToCategoryBudgets(userId, () => {
+    console.log('💰 HOOK - Setting up real-time subscription for user:', userId)
+
+    // ✅ Usar caso de uso para suscripción
+    const subscription = CategoryBudgetService.subscribe(userId, () => {
+      console.log('💰 HOOK - Real-time change detected, reloading...')
       loadBudgetSummary()
     })
 
     return () => {
+      console.log('💰 HOOK - Cleaning up subscription')
       subscription.unsubscribe()
     }
   }, [userId])
@@ -48,13 +63,20 @@ export const useCategoryBudget = (userId: string) => {
   const saveCategoryBudget = async (categoria: string, amount: number) => {
     try {
       setError(null)
-      await categoryBudgetService.saveCategoryBudget(userId, categoria, amount)
+      
+      console.log('💰 HOOK - Saving category budget:', { categoria, amount })
+      
+      // ✅ Usar caso de uso en lugar de servicio legacy
+      await CategoryBudgetService.save(userId, categoria, amount)
+      
+      console.log('✅ HOOK - Category budget saved successfully')
       
       // Recargar datos
       await loadBudgetSummary()
     } catch (err) {
-      console.error('Error saving category budget:', err)
-      setError('Error al guardar el presupuesto de la categoría')
+      console.error('❌ HOOK - Error saving category budget:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Error al guardar el presupuesto de la categoría'
+      setError(errorMessage)
       throw err
     }
   }
@@ -63,18 +85,25 @@ export const useCategoryBudget = (userId: string) => {
   const deleteCategoryBudget = async (categoria: string) => {
     try {
       setError(null)
-      await categoryBudgetService.deleteCategoryBudget(userId, categoria)
+      
+      console.log('💰 HOOK - Deleting category budget:', categoria)
+      
+      // ✅ Usar caso de uso en lugar de servicio legacy
+      await CategoryBudgetService.delete(userId, categoria)
+      
+      console.log('✅ HOOK - Category budget deleted successfully')
       
       // Recargar datos
       await loadBudgetSummary()
     } catch (err) {
-      console.error('Error deleting category budget:', err)
-      setError('Error al eliminar el presupuesto de la categoría')
+      console.error('❌ HOOK - Error deleting category budget:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Error al eliminar el presupuesto de la categoría'
+      setError(errorMessage)
       throw err
     }
   }
 
-  // Estadísticas calculadas
+  // ✅ Usar lógica de dominio para estadísticas (calculadas en el caso de uso)
   const stats = {
     totalPresupuestado: budgetSummary.reduce((sum, item) => sum + item.presupuestado, 0),
     totalGastado: budgetSummary.reduce((sum, item) => sum + item.actual, 0),
@@ -93,6 +122,6 @@ export const useCategoryBudget = (userId: string) => {
     deleteBudget: deleteCategoryBudget,
     saveCategoryBudget,
     deleteCategoryBudget,
-    loadBudgetSummary
+    loadBudgetSummary: () => loadBudgetSummary()
   }
-} 
+}

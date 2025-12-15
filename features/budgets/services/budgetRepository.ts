@@ -242,7 +242,7 @@ export class CategoryBudgetRepository {
     const client = await this.getClient()
 
     const { data, error } = await client
-      .from('presupuesto')
+      .from('presupuestos')
       .select('*')
       .eq('usuario_id', userId)
       .eq('mes', monthDate)
@@ -252,6 +252,103 @@ export class CategoryBudgetRepository {
     }
 
     return data || []
+  }
+
+  /**
+   * Obtener presupuestos por rango de fechas (para compatibilidad con hooks legacy)
+   */
+  async findByUserAndDateRange(
+    userId: string, 
+    startDate: string, 
+    endDate: string
+  ): Promise<CategoryBudgetEntity[]> {
+    const client = await this.getClient()
+
+    const { data, error } = await client
+      .from('presupuestos')
+      .select('valor, categorias, mes')
+      .eq('usuario_id', userId)
+      .gte('mes', startDate)
+      .lte('mes', endDate)
+
+    if (error) {
+      throw new Error(`Error fetching category budgets by date range: ${error.message}`)
+    }
+
+    return data || []
+  }
+
+  /**
+   * Eliminar todos los presupuestos de un período específico
+   */
+  async deleteAllByUserAndPeriod(userId: string, monthDate: string): Promise<void> {
+    const client = await this.getClient()
+
+    const { error } = await client
+      .from('presupuestos')
+      .delete()
+      .eq('usuario_id', userId)
+      .eq('mes', monthDate)
+
+    if (error) {
+      throw new Error(`Error deleting all budgets for period: ${error.message}`)
+    }
+  }
+
+  /**
+   * Crear presupuesto general (para compatibilidad con useBudget.ts)
+   */
+  async createGeneralBudget(
+    userId: string,
+    monthDate: string,
+    valor: number
+  ): Promise<CategoryBudgetEntity> {
+    const client = await this.getClient()
+
+    const { data, error } = await client
+      .from('presupuestos')
+      .insert({
+        usuario_id: userId,
+        mes: monthDate,
+        categorias: 'General',
+        valor
+      })
+      .select()
+      .single()
+
+    if (error) {
+      throw new Error(`Error creating general budget: ${error.message}`)
+    }
+
+    return data
+  }
+
+  /**
+   * Crear o actualizar presupuesto por categoría (upsert)
+   */
+  async upsertByCategory(
+    userId: string,
+    monthDate: string,
+    categoria: string,
+    valor: number
+  ): Promise<CategoryBudgetEntity> {
+    const client = await this.getClient()
+
+    // Primero verificar si existe
+    const existing = await this.findByUserPeriodAndCategory(userId, monthDate, categoria)
+
+    if (existing) {
+      // Actualizar existente
+      return await this.update(existing.id!, { valor })
+    } else {
+      // Crear nuevo
+      return await this.create({
+        usuario_id: userId,
+        mes: monthDate,
+        categorias: categoria,
+        valor
+      })
+    }
   }
 
   /**
@@ -265,7 +362,7 @@ export class CategoryBudgetRepository {
     const client = await this.getClient()
 
     const { data, error } = await client
-      .from('presupuesto')
+      .from('presupuestos')
       .select('*')
       .eq('usuario_id', userId)
       .eq('mes', monthDate)
@@ -289,7 +386,7 @@ export class CategoryBudgetRepository {
     const client = await this.getClient()
 
     const { data, error } = await client
-      .from('presupuesto')
+      .from('presupuestos')
       .insert(budget)
       .select()
       .single()
@@ -308,7 +405,7 @@ export class CategoryBudgetRepository {
     const client = await this.getClient()
 
     const { data, error } = await client
-      .from('presupuesto')
+      .from('presupuestos')
       .update(updates)
       .eq('id', id)
       .select()
@@ -328,7 +425,7 @@ export class CategoryBudgetRepository {
     const client = await this.getClient()
 
     const { error } = await client
-      .from('presupuesto')
+      .from('presupuestos')
       .delete()
       .eq('usuario_id', userId)
       .eq('mes', monthDate)
@@ -356,7 +453,7 @@ export class CategoryBudgetRepository {
         { 
           event: '*', 
           schema: 'public', 
-          table: 'presupuesto',
+          table: 'presupuestos',
           filter: `usuario_id=eq.${userId}`
         }, 
         callback

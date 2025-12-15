@@ -1,302 +1,335 @@
 /**
- * Repositorio de Transactions - Capa de Infraestructura
+ * INFRASTRUCTURE LAYER - Transaction Repository
  * 
- * RESPONSABILIDAD: Acceso a datos ÚNICAMENTE
- * - Queries a Supabase
- * - Suscripciones en tiempo real
- * - Manejo de errores de infraestructura
- * 
- * @author Tech Lead - Refactor Arquitectónico
- * @since Fase 1 - Separación de Capas
+ * Maneja ÚNICAMENTE el acceso a datos de transacciones en Supabase.
+ * No contiene lógica de negocio.
  */
 
-import { getServerSupabaseClient, getBrowserSupabaseClient } from '@/services/supabase'
-import type { BrowserSupabaseClient, ServerSupabaseClient } from '@/services/supabase/types'
+import { getBrowserSupabaseClient, getServerSupabaseClient } from '@/services/supabase'
 
-/**
- * Tipos de infraestructura (mapeo directo con BD)
- */
 export interface TransactionEntity {
-  id?: string
-  user_id: string
-  monto: number
-  categoria: string
-  tipo: string
-  descripcion?: string
-  fecha: string
-  created_at?: string
-  updated_at?: string
+  id: string
+  usuario_id: string
+  valor: number
+  categoria: string | null
+  tipo: 'gasto' | 'ingreso' | null
+  descripcion: string | null
+  creado_en: string | null
 }
 
-export interface TransactionCreateEntity {
-  user_id: string
-  monto: number
+export interface TransactionCreationData {
+  usuario_id: string
+  valor: number
   categoria: string
-  tipo: string
-  descripcion?: string
-  fecha?: string
+  tipo: 'gasto' | 'ingreso'
+  descripcion?: string | null
 }
 
-/**
- * Repositorio para transacciones
- */
 export class TransactionRepository {
-  private client: BrowserSupabaseClient | ServerSupabaseClient | null = null
-
   /**
-   * Obtener cliente apropiado según el entorno
+   * Obtiene el cliente Supabase apropiado según el entorno
    */
-  private async getClient(): Promise<BrowserSupabaseClient | ServerSupabaseClient> {
-    if (this.client) {
-      return this.client
-    }
-
+  private async getClient() {
+    // Detectar entorno automáticamente
     if (typeof window !== 'undefined') {
-      // Browser environment
-      this.client = getBrowserSupabaseClient()
+      // Cliente browser para hooks y componentes
+      return getBrowserSupabaseClient()
     } else {
-      // Server environment
-      this.client = await getServerSupabaseClient()
+      // Cliente server para API routes y Server Components
+      return await getServerSupabaseClient()
     }
-
-    return this.client
   }
 
   /**
-   * Obtener transacciones por rango de fechas
+   * Obtiene todas las transacciones de un usuario
    */
-  async findByUserAndDateRange(
-    userId: string, 
-    startDate: string, 
-    endDate: string
-  ): Promise<TransactionEntity[]> {
-    const client = await this.getClient()
+  async findAllByUser(userId: string): Promise<TransactionEntity[]> {
+    try {
+      const client = await this.getClient()
+      
+      const { data, error } = await client
+        .from('transacciones')
+        .select('*')
+        .eq('usuario_id', userId)
+        .order('creado_en', { ascending: false })
 
-    const { data, error } = await client
-      .from('transacciones')
-      .select('*')
-      .eq('user_id', userId)
-      .gte('fecha', startDate)
-      .lte('fecha', endDate)
-      .order('fecha', { ascending: false })
+      if (error) {
+        console.error('❌ TRANSACTION_REPO - Error fetching transactions:', error)
+        throw new Error(`Error al obtener transacciones: ${error.message}`)
+      }
 
-    if (error) {
-      throw new Error(`Error fetching transactions: ${error.message}`)
+      return data || []
+    } catch (error) {
+      console.error('💥 TRANSACTION_REPO - Unexpected error:', error)
+      throw error
     }
-
-    return data || []
   }
 
   /**
-   * Obtener transacciones del mes actual
+   * Obtiene transacciones de un usuario por período específico
    */
-  async findMonthlyByUser(
+  async findByUserAndPeriod(
     userId: string, 
     year?: number, 
     month?: number
   ): Promise<TransactionEntity[]> {
-    const now = new Date()
-    const currentYear = year || now.getFullYear()
-    const currentMonth = month || (now.getMonth() + 1)
-    
-    const startDate = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-01`
-    const endDate = `${currentYear}-${currentMonth.toString().padStart(2, '0')}-31`
+    try {
+      const client = await this.getClient()
+      
+      let query = client
+        .from('transacciones')
+        .select('*')
+        .eq('usuario_id', userId)
+        .order('creado_en', { ascending: false })
 
-    return this.findByUserAndDateRange(userId, startDate, endDate)
-  }
-
-  /**
-   * Obtener gastos por categoría en un período
-   */
-  async findExpensesByCategory(
-    userId: string, 
-    startDate: string, 
-    endDate: string
-  ): Promise<Record<string, number>> {
-    const client = await this.getClient()
-
-    const { data, error } = await client
-      .from('transacciones')
-      .select('categoria, monto')
-      .eq('user_id', userId)
-      .eq('tipo', 'gasto')
-      .gte('fecha', startDate)
-      .lte('fecha', endDate)
-
-    if (error) {
-      throw new Error(`Error fetching expenses by category: ${error.message}`)
-    }
-
-    // Agrupar por categoría
-    const expensesByCategory: Record<string, number> = {}
-    data?.forEach(transaction => {
-      if (transaction.categoria) {
-        expensesByCategory[transaction.categoria] = 
-          (expensesByCategory[transaction.categoria] || 0) + Math.abs(transaction.monto || 0)
+      if (year && month) {
+        const startDate = `${year}-${month.toString().padStart(2, '0')}-01`
+        const endDate = `${year}-${month.toString().padStart(2, '0')}-31`
+        
+        query = query
+          .gte('creado_en', startDate)
+          .lte('creado_en', endDate)
       }
-    })
 
-    return expensesByCategory
-  }
+      const { data, error } = await query
 
-  /**
-   * Obtener total gastado en un período
-   */
-  async getTotalSpentByUser(
-    userId: string, 
-    startDate: string, 
-    endDate: string
-  ): Promise<number> {
-    const client = await this.getClient()
+      if (error) {
+        console.error('❌ TRANSACTION_REPO - Error fetching transactions by period:', error)
+        throw new Error(`Error al obtener transacciones por período: ${error.message}`)
+      }
 
-    const { data, error } = await client
-      .from('transacciones')
-      .select('monto')
-      .eq('user_id', userId)
-      .eq('tipo', 'gasto')
-      .gte('fecha', startDate)
-      .lte('fecha', endDate)
-
-    if (error) {
-      throw new Error(`Error fetching total spent: ${error.message}`)
+      return data || []
+    } catch (error) {
+      console.error('💥 TRANSACTION_REPO - Unexpected error:', error)
+      throw error
     }
-
-    return data?.reduce((total, transaction) => total + Math.abs(transaction.monto || 0), 0) || 0
   }
 
   /**
-   * Obtener total de ingresos en un período
+   * Obtiene transacciones del mes actual
    */
-  async getTotalIncomeByUser(
-    userId: string, 
-    startDate: string, 
-    endDate: string
-  ): Promise<number> {
-    const client = await this.getClient()
-
-    const { data, error } = await client
-      .from('transacciones')
-      .select('monto')
-      .eq('user_id', userId)
-      .eq('tipo', 'ingreso')
-      .gte('fecha', startDate)
-      .lte('fecha', endDate)
-
-    if (error) {
-      throw new Error(`Error fetching total income: ${error.message}`)
-    }
-
-    return data?.reduce((total, transaction) => total + Math.abs(transaction.monto || 0), 0) || 0
+  async findMonthlyByUser(userId: string): Promise<TransactionEntity[]> {
+    const now = new Date()
+    return this.findByUserAndPeriod(userId, now.getFullYear(), now.getMonth() + 1)
   }
 
   /**
-   * Crear nueva transacción
+   * Obtiene el gasto total del mes para un usuario
    */
-  async create(transaction: TransactionCreateEntity): Promise<TransactionEntity> {
-    const client = await this.getClient()
+  async getMonthlySpent(userId: string): Promise<number> {
+    try {
+      const client = await this.getClient()
+      
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+      
+      const { data, error } = await client
+        .from('transacciones')
+        .select('valor')
+        .eq('usuario_id', userId)
+        .eq('tipo', 'gasto')
+        .gte('creado_en', startOfMonth)
+        .lte('creado_en', endOfMonth)
 
-    const { data, error } = await client
-      .from('transacciones')
-      .insert({
-        ...transaction,
-        fecha: transaction.fecha || new Date().toISOString().split('T')[0]
-      })
-      .select()
-      .single()
+      if (error) {
+        console.error('❌ TRANSACTION_REPO - Error calculating monthly spent:', error)
+        throw new Error(`Error al calcular gastos mensuales: ${error.message}`)
+      }
 
-    if (error) {
-      throw new Error(`Error creating transaction: ${error.message}`)
+      return (data || []).reduce((sum, transaction) => sum + transaction.valor, 0)
+    } catch (error) {
+      console.error('💥 TRANSACTION_REPO - Unexpected error:', error)
+      throw error
     }
-
-    return data
   }
 
   /**
-   * Actualizar transacción existente
+   * Obtiene resumen de gastos por categoría
+   */
+  async getCategorySummary(userId: string): Promise<Array<{categoria: string, total: number, count: number}>> {
+    try {
+      const client = await this.getClient()
+      
+      const { data, error } = await client
+        .from('transacciones')
+        .select('categoria, valor')
+        .eq('usuario_id', userId)
+        .eq('tipo', 'gasto')
+        .not('categoria', 'is', null)
+
+      if (error) {
+        console.error('❌ TRANSACTION_REPO - Error getting category summary:', error)
+        throw new Error(`Error al obtener resumen por categoría: ${error.message}`)
+      }
+
+      // Agrupar por categoría
+      const summary = (data || []).reduce((acc, transaction) => {
+        const category = transaction.categoria!
+        if (!acc[category]) {
+          acc[category] = { total: 0, count: 0 }
+        }
+        acc[category].total += transaction.valor
+        acc[category].count += 1
+        return acc
+      }, {} as Record<string, {total: number, count: number}>)
+
+      // Convertir a array y ordenar por total
+      return Object.entries(summary)
+        .map(([categoria, stats]) => ({
+          categoria,
+          total: stats.total,
+          count: stats.count
+        }))
+        .sort((a, b) => b.total - a.total)
+    } catch (error) {
+      console.error('💥 TRANSACTION_REPO - Unexpected error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Obtiene resumen semanal de gastos
+   */
+  async getWeeklySummary(userId: string): Promise<Array<{week: string, total: number, date: string}>> {
+    try {
+      const client = await this.getClient()
+      
+      // Obtener transacciones de las últimas 4 semanas
+      const fourWeeksAgo = new Date()
+      fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28)
+      
+      const { data, error } = await client
+        .from('transacciones')
+        .select('valor, creado_en')
+        .eq('usuario_id', userId)
+        .eq('tipo', 'gasto')
+        .gte('creado_en', fourWeeksAgo.toISOString().split('T')[0])
+        .order('creado_en', { ascending: true })
+
+      if (error) {
+        console.error('❌ TRANSACTION_REPO - Error getting weekly summary:', error)
+        throw new Error(`Error al obtener resumen semanal: ${error.message}`)
+      }
+
+      // Agrupar por semana
+      const weeklyData: Array<{week: string, total: number, date: string}> = []
+      const today = new Date()
+      
+      for (let i = 3; i >= 0; i--) {
+        const weekStart = new Date(today.getTime() - (i * 7 * 24 * 60 * 60 * 1000))
+        const weekEnd = new Date(weekStart.getTime() + (6 * 24 * 60 * 60 * 1000))
+        
+        const weekTransactions = (data || []).filter(t => {
+          const transactionDate = new Date(t.creado_en!)
+          return transactionDate >= weekStart && transactionDate <= weekEnd
+        })
+        
+        const weekTotal = weekTransactions.reduce((sum, t) => sum + t.valor, 0)
+        const weekLabel = i === 0 ? 'Esta semana' : `Hace ${i} semana${i > 1 ? 's' : ''}`
+        
+        weeklyData.push({
+          week: weekLabel,
+          total: weekTotal,
+          date: weekStart.toLocaleDateString('es-CO')
+        })
+      }
+      
+      return weeklyData
+    } catch (error) {
+      console.error('💥 TRANSACTION_REPO - Unexpected error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Crea una nueva transacción
+   */
+  async create(transactionData: TransactionCreationData): Promise<TransactionEntity> {
+    try {
+      const client = await this.getClient()
+      
+      const { data, error } = await client
+        .from('transacciones')
+        .insert({
+          usuario_id: transactionData.usuario_id,
+          valor: transactionData.valor,
+          categoria: transactionData.categoria,
+          tipo: transactionData.tipo,
+          descripcion: transactionData.descripcion || null,
+          creado_en: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('❌ TRANSACTION_REPO - Error creating transaction:', error)
+        throw new Error(`Error al crear transacción: ${error.message}`)
+      }
+
+      console.log('✅ TRANSACTION_REPO - Transaction created:', data)
+      return data
+    } catch (error) {
+      console.error('💥 TRANSACTION_REPO - Unexpected error:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Actualiza una transacción existente
    */
   async update(
-    id: string, 
-    updates: Partial<Omit<TransactionEntity, 'id' | 'user_id' | 'created_at' | 'updated_at'>>
+    transactionId: string, 
+    userId: string, 
+    updates: Partial<Omit<TransactionEntity, 'id' | 'usuario_id' | 'creado_en'>>
   ): Promise<TransactionEntity> {
-    const client = await this.getClient()
+    try {
+      const client = await this.getClient()
+      
+      const { data, error } = await client
+        .from('transacciones')
+        .update(updates)
+        .eq('id', transactionId)
+        .eq('usuario_id', userId) // Seguridad adicional
+        .select()
+        .single()
 
-    const { data, error } = await client
-      .from('transacciones')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) {
-      throw new Error(`Error updating transaction: ${error.message}`)
-    }
-
-    return data
-  }
-
-  /**
-   * Eliminar transacción
-   */
-  async delete(id: string, userId: string): Promise<void> {
-    const client = await this.getClient()
-
-    const { error } = await client
-      .from('transacciones')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId) // Seguridad: solo el dueño puede eliminar
-
-    if (error) {
-      throw new Error(`Error deleting transaction: ${error.message}`)
-    }
-  }
-
-  /**
-   * Obtener transacción por ID
-   */
-  async findById(id: string, userId: string): Promise<TransactionEntity | null> {
-    const client = await this.getClient()
-
-    const { data, error } = await client
-      .from('transacciones')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single()
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return null
+      if (error) {
+        console.error('❌ TRANSACTION_REPO - Error updating transaction:', error)
+        throw new Error(`Error al actualizar transacción: ${error.message}`)
       }
-      throw new Error(`Error fetching transaction: ${error.message}`)
-    }
 
-    return data
+      console.log('✅ TRANSACTION_REPO - Transaction updated:', data)
+      return data
+    } catch (error) {
+      console.error('💥 TRANSACTION_REPO - Unexpected error:', error)
+      throw error
+    }
   }
 
   /**
-   * Obtener todas las transacciones de un usuario
+   * Elimina una transacción
    */
-  async findAllByUser(userId: string, limit?: number): Promise<TransactionEntity[]> {
-    const client = await this.getClient()
+  async delete(transactionId: string, userId: string): Promise<void> {
+    try {
+      const client = await this.getClient()
+      
+      const { error } = await client
+        .from('transacciones')
+        .delete()
+        .eq('id', transactionId)
+        .eq('usuario_id', userId) // Seguridad adicional
 
-    let query = client
-      .from('transacciones')
-      .select('*')
-      .eq('user_id', userId)
-      .order('fecha', { ascending: false })
+      if (error) {
+        console.error('❌ TRANSACTION_REPO - Error deleting transaction:', error)
+        throw new Error(`Error al eliminar transacción: ${error.message}`)
+      }
 
-    if (limit) {
-      query = query.limit(limit)
+      console.log('✅ TRANSACTION_REPO - Transaction deleted:', transactionId)
+    } catch (error) {
+      console.error('💥 TRANSACTION_REPO - Unexpected error:', error)
+      throw error
     }
-
-    const { data, error } = await query
-
-    if (error) {
-      throw new Error(`Error fetching all transactions: ${error.message}`)
-    }
-
-    return data || []
   }
 
   /**
@@ -317,7 +350,7 @@ export class TransactionRepository {
           event: '*', 
           schema: 'public', 
           table: 'transacciones',
-          filter: `user_id=eq.${userId}`
+          filter: `usuario_id=eq.${userId}`
         }, 
         callback
       )
@@ -325,5 +358,5 @@ export class TransactionRepository {
   }
 }
 
-// Instancia singleton para reutilización
+// Singleton instance
 export const transactionRepository = new TransactionRepository()

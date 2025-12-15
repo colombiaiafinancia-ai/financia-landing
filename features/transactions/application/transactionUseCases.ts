@@ -1,337 +1,318 @@
 /**
- * Casos de Uso - Transactions (Capa de Aplicación)
+ * APPLICATION LAYER - Transaction Use Cases
  * 
- * RESPONSABILIDAD: Orquestar flujos de negocio
- * - Coordinar dominio + infraestructura
- * - Casos de uso específicos
- * - Validaciones de entrada
- * 
- * @author Tech Lead - Refactor Arquitectónico
- * @since Fase 1 - Separación de Capas
+ * Orquesta la lógica de dominio y los repositorios.
+ * Define los casos de uso de la aplicación para transacciones.
  */
 
 import {
-  validateTransactionAmount,
-  validateTransactionCategory,
-  validateTransactionType,
-  validateTransactionDescription,
-  getCurrentMonthRange,
-  getMonthRange,
-  getWeeksRange,
+  validateTransactionCreation,
+  calculateTransactionSummary,
+  calculateTodayExpenses,
+  calculateWeekExpenses,
+  calculateMonthExpenses,
+  calculateTotalIncome,
+  calculateTotalExpenses,
+  groupExpensesByCategory,
   calculateCategorySummary,
-  calculateWeeklySummary,
-  normalizeTransactionAmount,
-  type TransactionType,
-  type TransactionCategory,
+  calculateWeeklyTrend,
+  formatTransactionAmount,
+  type Transaction,
+  type TransactionSummary,
+  type WeeklyData,
   type CategorySummary,
-  type WeeklySummary
+  type TransactionType
 } from '../domain/transactionLogic'
 
-import {
-  transactionRepository,
-  type TransactionEntity,
-  type TransactionCreateEntity
+import { 
+  transactionRepository, 
+  type TransactionEntity, 
+  type TransactionCreationData 
 } from '../services/transactionRepository'
 
-/**
- * Tipos de aplicación (DTOs)
- */
-export interface Transaction {
-  id?: string
-  userId: string
-  amount: number
-  category: TransactionCategory
-  type: TransactionType
-  description?: string
-  date: string
-  createdAt?: string
-  updatedAt?: string
+export interface TransactionCreationRequest {
+  valor: number
+  categoria: string
+  tipo: TransactionType
+  descripcion?: string
 }
 
-export interface TransactionCreate {
-  userId: string
-  amount: number
-  category: TransactionCategory
-  type: TransactionType
-  description?: string
-  date?: string
+export interface TransactionUpdateRequest {
+  valor?: number
+  categoria?: string
+  tipo?: TransactionType
+  descripcion?: string
 }
 
-/**
- * Errores de aplicación
- */
-export class TransactionApplicationError extends Error {
-  constructor(message: string, public code: string) {
-    super(message)
-    this.name = 'TransactionApplicationError'
-  }
+export interface TransactionStats {
+  totalTransactions: number
+  totalSpent: number
+  totalIncome: number
+  averageTransaction: number
+  mostUsedCategory: string | null
+  thisWeekSpent: number
+  lastWeekSpent: number
 }
 
-/**
- * Casos de uso para transacciones
- */
 export class TransactionUseCases {
+  /**
+   * Mapear entidad de BD a modelo de dominio
+   */
+  private mapEntityToDomain(entity: TransactionEntity): Transaction {
+    return {
+      id: entity.id,
+      usuario_id: entity.usuario_id,
+      valor: entity.valor,
+      categoria: entity.categoria,
+      tipo: entity.tipo as 'gasto' | 'ingreso' | null,
+      descripcion: entity.descripcion,
+      creado_en: entity.creado_en
+    }
+  }
+
+  /**
+   * Obtener todas las transacciones de un usuario
+   */
+  async getAllTransactions(userId: string): Promise<Transaction[]> {
+    try {
+      console.log('💰 TRANSACTION_USE_CASE - Loading all transactions for user:', userId)
+      
+      const entities = await transactionRepository.findAllByUser(userId)
+      const transactions = entities.map(this.mapEntityToDomain)
+      
+      console.log('✅ TRANSACTION_USE_CASE - Transactions loaded:', transactions.length)
+      return transactions
+    } catch (error) {
+      console.error('❌ TRANSACTION_USE_CASE - Error loading transactions:', error)
+      throw error
+    }
+  }
+
   /**
    * Obtener transacciones del mes actual
    */
   async getMonthlyTransactions(userId: string, year?: number, month?: number): Promise<Transaction[]> {
-    if (!userId) {
-      throw new TransactionApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
     try {
-      const entities = await transactionRepository.findMonthlyByUser(userId, year, month)
-      return entities.map(entity => this.mapEntityToDomain(entity))
-    } catch (error) {
-      throw new TransactionApplicationError(
-        `Failed to get monthly transactions: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'GET_MONTHLY_TRANSACTIONS_FAILED'
-      )
-    }
-  }
-
-  /**
-   * Obtener resumen por categorías del mes actual
-   */
-  async getCategorySummary(userId: string): Promise<CategorySummary[]> {
-    if (!userId) {
-      throw new TransactionApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
-    try {
-      const transactions = await this.getMonthlyTransactions(userId)
+      console.log('💰 TRANSACTION_USE_CASE - Loading monthly transactions:', { userId, year, month })
       
-      // Filtrar solo gastos para el resumen por categorías
-      const expenses = transactions.filter(t => t.type === 'gasto')
+      const entities = await transactionRepository.findByUserAndPeriod(userId, year, month)
+      const transactions = entities.map(this.mapEntityToDomain)
       
-      return calculateCategorySummary(expenses.map(t => ({
-        categoria: t.category,
-        monto: Math.abs(t.amount)
-      })))
+      console.log('✅ TRANSACTION_USE_CASE - Monthly transactions loaded:', transactions.length)
+      return transactions
     } catch (error) {
-      if (error instanceof TransactionApplicationError) {
-        throw error
-      }
-      throw new TransactionApplicationError(
-        `Failed to get category summary: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'GET_CATEGORY_SUMMARY_FAILED'
-      )
-    }
-  }
-
-  /**
-   * Obtener resumen semanal de las últimas 4 semanas
-   */
-  async getWeeklySummary(userId: string, weeksCount: number = 4): Promise<WeeklySummary[]> {
-    if (!userId) {
-      throw new TransactionApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
-    try {
-      const dateRange = getWeeksRange(weeksCount)
-      const entities = await transactionRepository.findByUserAndDateRange(
-        userId, 
-        dateRange.startDate, 
-        dateRange.endDate
-      )
-      
-      const transactions = entities.map(entity => ({
-        fecha: entity.fecha,
-        monto: Math.abs(entity.monto)
-      }))
-      
-      return calculateWeeklySummary(transactions, weeksCount)
-    } catch (error) {
-      throw new TransactionApplicationError(
-        `Failed to get weekly summary: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'GET_WEEKLY_SUMMARY_FAILED'
-      )
-    }
-  }
-
-  /**
-   * Obtener total gastado en el mes
-   */
-  async getMonthlySpent(userId: string): Promise<number> {
-    if (!userId) {
-      throw new TransactionApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
-    try {
-      const dateRange = getCurrentMonthRange()
-      return await transactionRepository.getTotalSpentByUser(
-        userId, 
-        dateRange.startDate, 
-        dateRange.endDate
-      )
-    } catch (error) {
-      throw new TransactionApplicationError(
-        `Failed to get monthly spent: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'GET_MONTHLY_SPENT_FAILED'
-      )
-    }
-  }
-
-  /**
-   * Obtener total de ingresos en el mes
-   */
-  async getMonthlyIncome(userId: string): Promise<number> {
-    if (!userId) {
-      throw new TransactionApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
-    try {
-      const dateRange = getCurrentMonthRange()
-      return await transactionRepository.getTotalIncomeByUser(
-        userId, 
-        dateRange.startDate, 
-        dateRange.endDate
-      )
-    } catch (error) {
-      throw new TransactionApplicationError(
-        `Failed to get monthly income: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'GET_MONTHLY_INCOME_FAILED'
-      )
-    }
-  }
-
-  /**
-   * Obtener gastos por categoría para un período
-   */
-  async getExpensesByCategory(userId: string, monthDate: string): Promise<Record<string, number>> {
-    if (!userId) {
-      throw new TransactionApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
-    try {
-      // Convertir monthDate (YYYY-MM-01) a rango completo del mes
-      const [year, month] = monthDate.split('-').map(Number)
-      const dateRange = getMonthRange(year, month)
-      
-      return await transactionRepository.findExpensesByCategory(
-        userId, 
-        dateRange.startDate, 
-        dateRange.endDate
-      )
-    } catch (error) {
-      throw new TransactionApplicationError(
-        `Failed to get expenses by category: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'GET_EXPENSES_BY_CATEGORY_FAILED'
-      )
+      console.error('❌ TRANSACTION_USE_CASE - Error loading monthly transactions:', error)
+      throw error
     }
   }
 
   /**
    * Crear nueva transacción
    */
-  async createTransaction(transactionData: TransactionCreate): Promise<Transaction> {
-    // Validaciones usando lógica de dominio
-    const amountValidation = validateTransactionAmount(transactionData.amount)
-    if (!amountValidation.isValid) {
-      throw new TransactionApplicationError(
-        `Invalid amount: ${amountValidation.errors.join(', ')}`,
-        'INVALID_AMOUNT'
-      )
-    }
-
-    const categoryValidation = validateTransactionCategory(transactionData.category)
-    if (!categoryValidation.isValid) {
-      throw new TransactionApplicationError(
-        `Invalid category: ${categoryValidation.errors.join(', ')}`,
-        'INVALID_CATEGORY'
-      )
-    }
-
-    const typeValidation = validateTransactionType(transactionData.type)
-    if (!typeValidation.isValid) {
-      throw new TransactionApplicationError(
-        `Invalid type: ${typeValidation.errors.join(', ')}`,
-        'INVALID_TYPE'
-      )
-    }
-
-    const descriptionValidation = validateTransactionDescription(transactionData.description)
-    if (!descriptionValidation.isValid) {
-      throw new TransactionApplicationError(
-        `Invalid description: ${descriptionValidation.errors.join(', ')}`,
-        'INVALID_DESCRIPTION'
-      )
-    }
-
+  async createTransaction(userId: string, transactionData: TransactionCreationRequest): Promise<Transaction> {
     try {
-      // Normalizar monto según tipo (gastos negativos, ingresos positivos)
-      const normalizedAmount = normalizeTransactionAmount(transactionData.amount, transactionData.type)
-
-      const createEntity: TransactionCreateEntity = {
-        user_id: transactionData.userId,
-        monto: normalizedAmount,
-        categoria: transactionData.category,
-        tipo: transactionData.type,
-        descripcion: transactionData.description,
-        fecha: transactionData.date
+      console.log('💰 TRANSACTION_USE_CASE - Creating transaction:', { userId, transactionData })
+      
+      // Validar usando lógica de dominio
+      const validation = validateTransactionCreation({
+        valor: transactionData.valor,
+        categoria: transactionData.categoria,
+        tipo: transactionData.tipo,
+        descripcion: transactionData.descripcion
+      })
+      
+      if (!validation.isValid) {
+        throw new Error(`Datos de transacción inválidos: ${validation.errors.join(', ')}`)
       }
-
-      const entity = await transactionRepository.create(createEntity)
-      return this.mapEntityToDomain(entity)
+      
+      // Crear en el repositorio
+      const creationData: TransactionCreationData = {
+        usuario_id: userId,
+        valor: transactionData.valor,
+        categoria: transactionData.categoria,
+        tipo: transactionData.tipo,
+        descripcion: transactionData.descripcion || null
+      }
+      
+      const entity = await transactionRepository.create(creationData)
+      const transaction = this.mapEntityToDomain(entity)
+      
+      console.log('✅ TRANSACTION_USE_CASE - Transaction created:', transaction.id)
+      return transaction
     } catch (error) {
-      throw new TransactionApplicationError(
-        `Failed to create transaction: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'CREATE_TRANSACTION_FAILED'
-      )
+      console.error('❌ TRANSACTION_USE_CASE - Error creating transaction:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Actualizar transacción existente
+   */
+  async updateTransaction(
+    transactionId: string, 
+    userId: string, 
+    updates: TransactionUpdateRequest
+  ): Promise<Transaction> {
+    try {
+      console.log('💰 TRANSACTION_USE_CASE - Updating transaction:', { transactionId, userId, updates })
+      
+      // Validar actualizaciones si se proporcionan
+      if (Object.keys(updates).length > 0) {
+        const validation = validateTransactionCreation({
+          valor: updates.valor || 0, // Valor dummy para validación
+          categoria: updates.categoria || 'dummy',
+          tipo: updates.tipo || 'gasto',
+          descripcion: updates.descripcion
+        })
+        
+        // Solo validar campos que se están actualizando
+        if (updates.valor !== undefined || updates.categoria !== undefined || updates.tipo !== undefined) {
+          if (!validation.isValid) {
+            throw new Error(`Datos de actualización inválidos: ${validation.errors.join(', ')}`)
+          }
+        }
+      }
+      
+      const entity = await transactionRepository.update(transactionId, userId, updates)
+      const transaction = this.mapEntityToDomain(entity)
+      
+      console.log('✅ TRANSACTION_USE_CASE - Transaction updated:', transaction.id)
+      return transaction
+    } catch (error) {
+      console.error('❌ TRANSACTION_USE_CASE - Error updating transaction:', error)
+      throw error
     }
   }
 
   /**
    * Eliminar transacción
    */
-  async deleteTransaction(id: string, userId: string): Promise<void> {
-    if (!id) {
-      throw new TransactionApplicationError('Transaction ID is required', 'INVALID_TRANSACTION_ID')
-    }
-
-    if (!userId) {
-      throw new TransactionApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
+  async deleteTransaction(transactionId: string, userId: string): Promise<void> {
     try {
-      // Verificar que la transacción existe y pertenece al usuario
-      const existing = await transactionRepository.findById(id, userId)
-      if (!existing) {
-        throw new TransactionApplicationError('Transaction not found', 'TRANSACTION_NOT_FOUND')
-      }
-
-      await transactionRepository.delete(id, userId)
+      console.log('💰 TRANSACTION_USE_CASE - Deleting transaction:', { transactionId, userId })
+      
+      await transactionRepository.delete(transactionId, userId)
+      
+      console.log('✅ TRANSACTION_USE_CASE - Transaction deleted:', transactionId)
     } catch (error) {
-      if (error instanceof TransactionApplicationError) {
-        throw error
-      }
-      throw new TransactionApplicationError(
-        `Failed to delete transaction: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'DELETE_TRANSACTION_FAILED'
-      )
+      console.error('❌ TRANSACTION_USE_CASE - Error deleting transaction:', error)
+      throw error
     }
   }
 
   /**
-   * Obtener transacción por ID
+   * Obtener resumen completo de transacciones
    */
-  async getTransactionById(id: string, userId: string): Promise<Transaction | null> {
-    if (!id) {
-      throw new TransactionApplicationError('Transaction ID is required', 'INVALID_TRANSACTION_ID')
-    }
-
-    if (!userId) {
-      throw new TransactionApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
+  async getTransactionSummary(userId: string): Promise<TransactionSummary> {
     try {
-      const entity = await transactionRepository.findById(id, userId)
-      return entity ? this.mapEntityToDomain(entity) : null
+      console.log('💰 TRANSACTION_USE_CASE - Calculating transaction summary for user:', userId)
+      
+      const transactions = await this.getAllTransactions(userId)
+      const summary = calculateTransactionSummary(transactions)
+      
+      console.log('✅ TRANSACTION_USE_CASE - Summary calculated:', {
+        totalSpent: summary.totalSpent,
+        totalIncome: summary.totalIncome,
+        todayExpenses: summary.todayExpenses,
+        weekExpenses: summary.weekExpenses,
+        monthExpenses: summary.monthExpenses,
+        categoriesCount: Object.keys(summary.expensesByCategory).length
+      })
+      
+      return summary
     } catch (error) {
-      throw new TransactionApplicationError(
-        `Failed to get transaction: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        'GET_TRANSACTION_FAILED'
-      )
+      console.error('❌ TRANSACTION_USE_CASE - Error calculating summary:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Obtener resumen por categorías
+   */
+  async getCategorySummary(userId: string): Promise<CategorySummary[]> {
+    try {
+      console.log('💰 TRANSACTION_USE_CASE - Calculating category summary for user:', userId)
+      
+      const transactions = await this.getAllTransactions(userId)
+      const categorySummary = calculateCategorySummary(transactions)
+      
+      console.log('✅ TRANSACTION_USE_CASE - Category summary calculated:', categorySummary.length, 'categories')
+      return categorySummary
+    } catch (error) {
+      console.error('❌ TRANSACTION_USE_CASE - Error calculating category summary:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Obtener tendencia semanal
+   */
+  async getWeeklySummary(userId: string): Promise<WeeklyData[]> {
+    try {
+      console.log('💰 TRANSACTION_USE_CASE - Calculating weekly trend for user:', userId)
+      
+      const transactions = await this.getAllTransactions(userId)
+      const weeklyTrend = calculateWeeklyTrend(transactions)
+      
+      console.log('✅ TRANSACTION_USE_CASE - Weekly trend calculated:', weeklyTrend.length, 'weeks')
+      return weeklyTrend
+    } catch (error) {
+      console.error('❌ TRANSACTION_USE_CASE - Error calculating weekly trend:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Obtener gasto mensual total
+   */
+  async getMonthlySpent(userId: string): Promise<number> {
+    try {
+      console.log('💰 TRANSACTION_USE_CASE - Calculating monthly spent for user:', userId)
+      
+      const monthlySpent = await transactionRepository.getMonthlySpent(userId)
+      
+      console.log('✅ TRANSACTION_USE_CASE - Monthly spent calculated:', monthlySpent)
+      return monthlySpent
+    } catch (error) {
+      console.error('❌ TRANSACTION_USE_CASE - Error calculating monthly spent:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Obtener estadísticas rápidas
+   */
+  async getTransactionStats(userId: string): Promise<TransactionStats> {
+    try {
+      console.log('💰 TRANSACTION_USE_CASE - Calculating transaction stats for user:', userId)
+      
+      const transactions = await this.getAllTransactions(userId)
+      const categorySummary = calculateCategorySummary(transactions)
+      const weeklyTrend = calculateWeeklyTrend(transactions)
+      
+      const totalTransactions = transactions.length
+      const totalSpent = calculateTotalExpenses(transactions)
+      const totalIncome = calculateTotalIncome(transactions)
+      const averageTransaction = totalTransactions > 0 ? totalSpent / totalTransactions : 0
+      const mostUsedCategory = categorySummary.length > 0 ? categorySummary[0].categoria : null
+      const thisWeekSpent = weeklyTrend.length > 0 ? weeklyTrend[weeklyTrend.length - 1].amount : 0
+      const lastWeekSpent = weeklyTrend.length > 1 ? weeklyTrend[weeklyTrend.length - 2].amount : 0
+      
+      const stats: TransactionStats = {
+        totalTransactions,
+        totalSpent,
+        totalIncome,
+        averageTransaction,
+        mostUsedCategory,
+        thisWeekSpent,
+        lastWeekSpent
+      }
+      
+      console.log('✅ TRANSACTION_USE_CASE - Stats calculated:', stats)
+      return stats
+    } catch (error) {
+      console.error('❌ TRANSACTION_USE_CASE - Error calculating stats:', error)
+      throw error
     }
   }
 
@@ -339,30 +320,56 @@ export class TransactionUseCases {
    * Suscribirse a cambios en tiempo real
    */
   subscribeToChanges(userId: string, callback: () => void) {
-    if (!userId) {
-      throw new TransactionApplicationError('User ID is required', 'INVALID_USER_ID')
-    }
-
+    console.log('💰 TRANSACTION_USE_CASE - Setting up real-time subscription for user:', userId)
     return transactionRepository.subscribeToChanges(userId, callback)
   }
 
   /**
-   * Mapear entidad de BD a dominio
+   * MÉTODOS DE COMPATIBILIDAD CON HOOKS LEGACY
    */
-  private mapEntityToDomain(entity: TransactionEntity): Transaction {
-    return {
-      id: entity.id,
-      userId: entity.user_id,
-      amount: entity.monto,
-      category: entity.categoria as TransactionCategory,
-      type: entity.tipo as TransactionType,
-      description: entity.descripcion,
-      date: entity.fecha,
-      createdAt: entity.created_at,
-      updatedAt: entity.updated_at
+
+  /**
+   * Obtener transacciones con cálculos optimizados (para useTransactionsUnified)
+   */
+  async getTransactionsWithCalculations(userId: string): Promise<{
+    transactions: Transaction[]
+    totalSpent: number
+    totalIncome: number
+    todayExpenses: number
+    weekExpenses: number
+    monthExpenses: number
+    expensesByCategory: Record<string, number>
+    weeklyTrend: WeeklyData[]
+  }> {
+    try {
+      console.log('💰 TRANSACTION_USE_CASE - Loading transactions with calculations for user:', userId)
+      
+      const transactions = await this.getAllTransactions(userId)
+      
+      const result = {
+        transactions,
+        totalSpent: calculateTotalExpenses(transactions),
+        totalIncome: calculateTotalIncome(transactions),
+        todayExpenses: calculateTodayExpenses(transactions),
+        weekExpenses: calculateWeekExpenses(transactions),
+        monthExpenses: calculateMonthExpenses(transactions),
+        expensesByCategory: groupExpensesByCategory(transactions),
+        weeklyTrend: calculateWeeklyTrend(transactions)
+      }
+      
+      console.log('✅ TRANSACTION_USE_CASE - Transactions with calculations loaded:', {
+        transactionsCount: result.transactions.length,
+        totalSpent: result.totalSpent,
+        totalIncome: result.totalIncome
+      })
+      
+      return result
+    } catch (error) {
+      console.error('❌ TRANSACTION_USE_CASE - Error loading transactions with calculations:', error)
+      throw error
     }
   }
 }
 
-// Instancia singleton para reutilización
+// Singleton instance
 export const transactionUseCases = new TransactionUseCases()

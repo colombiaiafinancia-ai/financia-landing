@@ -12,11 +12,16 @@
 export {
   budgetUseCases,
   categoryBudgetUseCases,
-  BudgetApplicationError,
+  BudgetUseCases,
+  CategoryBudgetUseCases,
   type Budget,
   type CategoryBudget,
-  type CategoryBudgetSummary
+  type BudgetSummary,
+  type LegacyBudgetData
 } from './application/budgetUseCases'
+
+// Import para uso interno en este archivo
+import { budgetUseCases, categoryBudgetUseCases } from './application/budgetUseCases'
 
 // Lógica de dominio - para casos especiales
 export {
@@ -24,11 +29,17 @@ export {
   getPeriod,
   validateBudgetAmount,
   validateBudgetCategory,
+  validateCategoryBudgetData,
   calculateBudgetProgress,
+  calculateCategoryBudgetSummary,
+  calculateBudgetStats,
   formatBudgetAmount,
+  getMonthDateRange,
   type BudgetPeriod,
   type BudgetValidation,
-  type BudgetCalculation
+  type BudgetCalculation,
+  type CategoryBudgetSummary,
+  type BudgetStats
 } from './domain/budgetLogic'
 
 // Repositorios - solo para testing o casos muy específicos
@@ -43,17 +54,35 @@ export {
 
 // Presupuestos generales
 export const BudgetService = {
-  getCurrent: budgetUseCases.getCurrentBudget.bind(budgetUseCases),
-  getByPeriod: budgetUseCases.getBudgetByPeriod.bind(budgetUseCases),
-  save: budgetUseCases.saveBudget.bind(budgetUseCases),
-  getAll: budgetUseCases.getAllBudgets.bind(budgetUseCases),
-  subscribe: budgetUseCases.subscribeToChanges.bind(budgetUseCases)
+  // Consultas
+  getCurrent: (userId: string) => budgetUseCases.getCurrentBudget(userId),
+  getByPeriod: (userId: string, year: number, month: number) => budgetUseCases.getBudgetByPeriod(userId, year, month),
+  getAll: (userId: string) => budgetUseCases.getAllBudgets(userId),
+  
+  // Operaciones
+  save: (userId: string, amount: number) => budgetUseCases.saveBudget(userId, amount),
+  delete: (userId: string) => budgetUseCases.deleteBudget(userId),
+  
+  // Suscripciones
+  subscribe: (userId: string, callback: () => void) => budgetUseCases.subscribeToChanges(userId, callback)
 }
 
 // Presupuestos por categoría
 export const CategoryBudgetService = {
-  getSummary: categoryBudgetUseCases.getCategoryBudgetSummary.bind(categoryBudgetUseCases),
-  save: categoryBudgetUseCases.saveCategoryBudget.bind(categoryBudgetUseCases),
-  delete: categoryBudgetUseCases.deleteCategoryBudget.bind(categoryBudgetUseCases),
-  subscribe: categoryBudgetUseCases.subscribeToChanges.bind(categoryBudgetUseCases)
+  // Consultas
+  getCurrent: (userId: string) => categoryBudgetUseCases.getCurrentCategoryBudgets(userId),
+  getByDateRange: (userId: string, startDate: string, endDate: string) => categoryBudgetUseCases.getCategoryBudgetsByDateRange(userId, startDate, endDate),
+  getSummary: (userId: string, expensesByCategory: Record<string, number>) => categoryBudgetUseCases.getCategoryBudgetSummary(userId, expensesByCategory),
+  getStats: (userId: string, expensesByCategory: Record<string, number>) => categoryBudgetUseCases.getBudgetStats(userId, expensesByCategory),
+  
+  // Operaciones
+  save: (userId: string, category: string, amount: number) => categoryBudgetUseCases.saveCategoryBudget(userId, category, amount),
+  delete: (userId: string, category: string) => categoryBudgetUseCases.deleteCategoryBudget(userId, category),
+  
+  // Suscripciones
+  subscribe: (userId: string, callback: () => void) => categoryBudgetUseCases.subscribeToChanges(userId, callback),
+  
+  // Métodos de compatibilidad con hooks legacy
+  loadFromSupabase: (userId: string) => categoryBudgetUseCases.loadBudgetFromSupabase(userId),
+  saveGeneral: (userId: string, amount: number) => categoryBudgetUseCases.saveBudgetGeneral(userId, amount)
 }

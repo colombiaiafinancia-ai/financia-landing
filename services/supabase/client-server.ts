@@ -23,7 +23,6 @@
  */
 
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { serverConfig, commonConfig } from './config'
 import { 
   ServerSupabaseClient, 
@@ -67,7 +66,8 @@ export async function getServerSupabaseClient(options: ClientOptions = {}): Prom
   logInfo('Creating server Supabase client', { options: clientOptions })
 
   try {
-    // Obtener store de cookies de Next.js
+    // Importar cookies dinámicamente para evitar errores en build
+    const { cookies } = await import('next/headers')
     const cookieStore = cookies()
 
     // Crear cliente server con manejo de cookies
@@ -198,6 +198,8 @@ export async function getServerSupabaseAdmin(serviceRoleKey?: string): Promise<S
   logInfo('Creating admin Supabase client')
 
   try {
+    // Importar cookies dinámicamente para evitar errores en build
+    const { cookies } = await import('next/headers')
     const cookieStore = cookies()
 
     const client = createServerClient(
