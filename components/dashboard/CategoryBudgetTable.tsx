@@ -285,13 +285,13 @@ export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
                   <td className="py-3 px-2 text-center">
                     <div className="flex items-center justify-center">
                       <div className={`text-sm font-medium px-2 py-1 rounded ${
-                        item.porcentaje_usado <= 80 
+                        item.porcentajeUsado <= 80 
                           ? 'bg-green-500/20 text-green-400' 
-                          : item.porcentaje_usado <= 100
+                          : item.porcentajeUsado <= 100
                           ? 'bg-yellow-500/20 text-yellow-400'
                           : 'bg-red-500/20 text-red-400'
                       }`}>
-                        {item.presupuestado > 0 ? `${item.porcentaje_usado.toFixed(0)}%` : 'N/A'}
+                        {item.presupuestado > 0 ? `${item.porcentajeUsado.toFixed(0)}%` : 'N/A'}
                       </div>
                     </div>
                   </td>

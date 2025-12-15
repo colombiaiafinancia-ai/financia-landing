@@ -4,11 +4,11 @@ import { useState } from 'react'
 import { Trash2, Edit3, DollarSign, TrendingUp, TrendingDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-// ✅ Ya no necesitamos acceso directo a Supabase - se maneja en los hooks
-import { UnifiedTransaction } from '@/hooks/useTransactionsUnified'
+// ✅ Usar DTO oficial en lugar de tipos legacy de hooks
+import { TransactionDTO } from '@/features/transactions'
 
 interface TransactionsTableProps {
-  transactions: UnifiedTransaction[]
+  transactions: TransactionDTO[]
   onTransactionDeleted: () => void
   onDeleteTransaction?: (transactionId: string) => Promise<boolean>
   loading?: boolean
@@ -22,11 +22,11 @@ export const TransactionsTable = ({
 }: TransactionsTableProps) => {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [transactionToDelete, setTransactionToDelete] = useState<UnifiedTransaction | null>(null)
+  const [transactionToDelete, setTransactionToDelete] = useState<TransactionDTO | null>(null)
 
   // ✅ Ya no necesitamos cliente Supabase directo
 
-  const handleDeleteClick = (transaction: UnifiedTransaction) => {
+  const handleDeleteClick = (transaction: TransactionDTO) => {
     setTransactionToDelete(transaction)
     setShowDeleteModal(true)
   }
@@ -40,21 +40,13 @@ export const TransactionsTable = ({
       let success = false
       
       if (onDeleteTransaction) {
-        // Usar la función del hook si está disponible
+        // ✅ Usar la función del hook refactorizado
         success = await onDeleteTransaction(transactionToDelete.id)
       } else {
-        // Fallback a eliminación directa
-        const { error } = await supabase
-          .from('transacciones')
-          .delete()
-          .eq('id', transactionToDelete.id)
-
-        if (error) {
-          console.error('Error eliminando transacción:', error)
-          alert('Error al eliminar la transacción. Inténtalo de nuevo.')
-          return
-        }
-        success = true
+        // ❌ No hay fallback directo - siempre debe usar hooks
+        console.error('No delete function provided')
+        alert('Error: No se puede eliminar la transacción sin función de eliminación.')
+        return
       }
 
       if (success) {
@@ -77,37 +69,17 @@ export const TransactionsTable = ({
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
+  // ✅ Ya no necesitamos formatters - el DTO incluye valores pre-formateados
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'Sin fecha'
-    
-    const date = new Date(dateString)
-    return date.toLocaleDateString('es-CO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  const getTransactionIcon = (tipo: string | null) => {
-    if (tipo === 'ingreso') {
+  const getTransactionIcon = (type: string | null) => {
+    if (type === 'ingreso') {
       return <TrendingUp className="h-4 w-4 text-green-400" />
     }
     return <TrendingDown className="h-4 w-4 text-red-400" />
   }
 
-  const getTransactionColor = (tipo: string | null) => {
-    if (tipo === 'ingreso') {
+  const getTransactionColor = (type: string | null) => {
+    if (type === 'ingreso') {
       return 'text-green-400'
     }
     return 'text-red-400'
@@ -162,27 +134,27 @@ export const TransactionsTable = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="flex-shrink-0">
-                    {getTransactionIcon(transaction.tipo)}
+                    {getTransactionIcon(transaction.type)}
                   </div>
                   
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`font-semibold ${getTransactionColor(transaction.tipo)}`}>
-                        {formatCurrency(transaction.valor)}
+                      <span className={`font-semibold ${getTransactionColor(transaction.type)}`}>
+                        {transaction.formattedAmount}
                       </span>
                       <span className="text-xs bg-white/20 px-2 py-1 rounded-full text-white/80">
-                        {transaction.categoria || 'Sin categoría'}
+                        {transaction.category || 'Sin categoría'}
                       </span>
                     </div>
                     
-                    {transaction.descripcion && (
+                    {transaction.description && (
                       <p className="text-white/70 text-sm truncate">
-                        {transaction.descripcion}
+                        {transaction.description}
                       </p>
                     )}
                     
                     <p className="text-white/50 text-xs">
-                      {formatDate(transaction.creado_en)}
+                      {transaction.formattedDate}
                     </p>
                   </div>
                 </div>
@@ -222,19 +194,19 @@ export const TransactionsTable = ({
                 
                 <div className="bg-white/5 rounded-lg p-4 border border-white/10">
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    {getTransactionIcon(transactionToDelete.tipo)}
-                    <span className={`font-bold text-lg ${getTransactionColor(transactionToDelete.tipo)}`}>
-                      {formatCurrency(transactionToDelete.valor)}
+                    {getTransactionIcon(transactionToDelete.type)}
+                    <span className={`font-bold text-lg ${getTransactionColor(transactionToDelete.type)}`}>
+                      {transactionToDelete.formattedAmount}
                     </span>
                   </div>
                   
                   <p className="text-white/70 text-sm">
-                    {transactionToDelete.categoria || 'Sin categoría'}
+                    {transactionToDelete.category || 'Sin categoría'}
                   </p>
                   
-                  {transactionToDelete.descripcion && (
+                  {transactionToDelete.description && (
                     <p className="text-white/60 text-xs mt-1">
-                      {transactionToDelete.descripcion}
+                      {transactionToDelete.description}
                     </p>
                   )}
                 </div>

@@ -5,12 +5,12 @@ import { Trash2, Filter, Search, TrendingUp, TrendingDown, ChevronDown, ChevronU
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { UnifiedTransaction } from '@/hooks/useTransactionsUnified'
+import { TransactionDTO } from '@/features/transactions'
 import { useCategories } from '@/hooks/useCategories'
 import { DeleteErrorHandler } from './DeleteErrorHandler'
 
 interface TransactionsTableImprovedProps {
-  transactions: UnifiedTransaction[]
+  transactions: TransactionDTO[]
   onTransactionDeleted: () => void
   onDeleteTransaction?: (transactionId: string) => Promise<boolean>
   loading?: boolean
@@ -24,7 +24,7 @@ export const TransactionsTableImproved = ({
 }: TransactionsTableImprovedProps) => {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [transactionToDelete, setTransactionToDelete] = useState<UnifiedTransaction | null>(null)
+  const [transactionToDelete, setTransactionToDelete] = useState<TransactionDTO | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'gasto' | 'ingreso'>('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -40,14 +40,14 @@ export const TransactionsTableImproved = ({
     let filtered = transactions.filter(transaction => {
       // Filtro por búsqueda
       const matchesSearch = !searchTerm || 
-        transaction.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.categoria?.toLowerCase().includes(searchTerm.toLowerCase())
+        transaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction.category?.toLowerCase().includes(searchTerm.toLowerCase())
 
       // Filtro por tipo
-      const matchesType = typeFilter === 'all' || transaction.tipo === typeFilter
+      const matchesType = typeFilter === 'all' || transaction.type === typeFilter
 
       // Filtro por categoría
-      const matchesCategory = categoryFilter === 'all' || transaction.categoria === categoryFilter
+      const matchesCategory = categoryFilter === 'all' || transaction.category === categoryFilter
 
       return matchesSearch && matchesType && matchesCategory
     })
@@ -58,13 +58,13 @@ export const TransactionsTableImproved = ({
       
       switch (sortBy) {
         case 'date':
-          comparison = new Date(a.creado_en || 0).getTime() - new Date(b.creado_en || 0).getTime()
+          comparison = new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
           break
         case 'amount':
-          comparison = a.valor - b.valor
+          comparison = a.amount - b.amount
           break
         case 'category':
-          comparison = (a.categoria || '').localeCompare(b.categoria || '')
+          comparison = (a.category || '').localeCompare(b.category || '')
           break
       }
 
@@ -74,7 +74,7 @@ export const TransactionsTableImproved = ({
     return filtered
   }, [transactions, searchTerm, typeFilter, categoryFilter, sortBy, sortOrder])
 
-  const handleDeleteClick = (transaction: UnifiedTransaction) => {
+  const handleDeleteClick = (transaction: TransactionDTO) => {
     setTransactionToDelete(transaction)
     setShowDeleteModal(true)
   }
@@ -110,37 +110,17 @@ export const TransactionsTableImproved = ({
     }
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
+  // ✅ Ya no necesitamos formatters - el DTO incluye valores pre-formateados
 
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'Sin fecha'
-    
-    const date = new Date(dateString)
-    return date.toLocaleDateString('es-CO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
-
-  const getTransactionIcon = (tipo: string | null) => {
-    if (tipo === 'ingreso') {
+  const getTransactionIcon = (type: string | null) => {
+    if (type === 'ingreso') {
       return <TrendingUp className="h-4 w-4 text-green-400" />
     }
     return <TrendingDown className="h-4 w-4 text-red-400" />
   }
 
-  const getTransactionColor = (tipo: string | null) => {
-    if (tipo === 'ingreso') {
+  const getTransactionColor = (type: string | null) => {
+    if (type === 'ingreso') {
       return 'text-green-400'
     }
     return 'text-red-400'
@@ -294,27 +274,27 @@ export const TransactionsTableImproved = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <div className="flex-shrink-0">
-                      {getTransactionIcon(transaction.tipo)}
+                      {getTransactionIcon(transaction.type)}
                     </div>
                     
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`font-semibold ${getTransactionColor(transaction.tipo)}`}>
-                          {formatCurrency(transaction.valor)}
+                        <span className={`font-semibold ${getTransactionColor(transaction.type)}`}>
+                          {transaction.formattedAmount}
                         </span>
                         <span className="text-xs bg-white/20 px-2 py-1 rounded-full text-white/80">
-                          {transaction.categoria || 'Sin categoría'}
+                          {transaction.category || 'Sin categoría'}
                         </span>
                       </div>
                       
-                      {transaction.descripcion && (
+                      {transaction.description && (
                         <p className="text-white/70 text-sm truncate">
-                          {transaction.descripcion}
+                          {transaction.description}
                         </p>
                       )}
-                      
+
                       <p className="text-white/50 text-xs">
-                        {formatDate(transaction.creado_en)}
+                        {transaction.formattedDate}
                       </p>
                     </div>
                   </div>
@@ -355,19 +335,19 @@ export const TransactionsTableImproved = ({
                 
                 <div className="bg-white/5 rounded-lg p-4 border border-white/10">
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    {getTransactionIcon(transactionToDelete.tipo)}
-                    <span className={`font-bold text-lg ${getTransactionColor(transactionToDelete.tipo)}`}>
-                      {formatCurrency(transactionToDelete.valor)}
+                    {getTransactionIcon(transactionToDelete.type)}
+                    <span className={`font-bold text-lg ${getTransactionColor(transactionToDelete.type)}`}>
+                      {transactionToDelete.formattedAmount}
                     </span>
                   </div>
                   
                   <p className="text-white/70 text-sm">
-                    {transactionToDelete.categoria || 'Sin categoría'}
+                    {transactionToDelete.category || 'Sin categoría'}
                   </p>
                   
-                  {transactionToDelete.descripcion && (
+                  {transactionToDelete.description && (
                     <p className="text-white/60 text-xs mt-1">
-                      {transactionToDelete.descripcion}
+                      {transactionToDelete.description}
                     </p>
                   )}
                 </div>
