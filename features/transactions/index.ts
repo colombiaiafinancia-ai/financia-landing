@@ -55,6 +55,9 @@ export type {
 // Infrastructure layer (solo para casos especiales)
 export { transactionRepository } from './services/transactionRepository'
 
+// Import para uso interno en este archivo
+import { transactionUseCases } from './application/transactionUseCases'
+
 // Convenience exports para facilitar el uso
 export const TransactionService = {
   // Consultas

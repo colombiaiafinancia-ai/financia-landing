@@ -122,7 +122,7 @@ export const useTransactionsUnified = (): AsyncState<TransactionSummaryDTO> & {
       })
       
       // Actualizar estados
-      setTransactions(transactionDTOs)
+      setTransactions([...transactionDTOs])
       setState(AsyncStateUtils.createWithData(completeSummaryDTO, fetchTransactions))
       
     } catch (err) {
@@ -224,7 +224,7 @@ export const useTransactionsUnified = (): AsyncState<TransactionSummaryDTO> & {
     weekExpenses: summaryData?.weekExpenses || 0,
     monthExpenses: summaryData?.monthExpenses || 0,
     expensesByCategory,
-    weeklyTrend: summaryData?.weeklyTrend || [],
+    weeklyTrend: summaryData?.weeklyTrend ? [...summaryData.weeklyTrend] : [],
     user,
     createTransaction,
     deleteTransaction,

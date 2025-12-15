@@ -38,6 +38,9 @@ export type {
 // Infrastructure layer (solo para casos especiales)
 export { categoryRepository } from './services/categoryRepository'
 
+// Import para uso interno en este archivo
+import { categoryUseCases } from './application/categoryUseCases'
+
 // Convenience exports para facilitar el uso
 export const CategoryService = {
   // Consultas

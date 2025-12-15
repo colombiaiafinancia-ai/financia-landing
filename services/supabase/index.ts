@@ -39,6 +39,10 @@ export {
   isAuthRoute,
 } from './client-middleware'
 
+// Importaciones para uso interno
+import { getBrowserSupabaseClient } from './client-browser'
+import { getServerSupabaseClient } from './client-server'
+
 // Re-exports de tipos importantes para conveniencia
 export type {
   BrowserSupabaseClient,

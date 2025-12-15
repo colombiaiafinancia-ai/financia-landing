@@ -266,7 +266,7 @@ export class CategoryBudgetRepository {
 
     const { data, error } = await client
       .from('presupuestos')
-      .select('valor, categorias, mes')
+      .select('valor, categorias, mes, usuario_id')
       .eq('usuario_id', userId)
       .gte('mes', startDate)
       .lte('mes', endDate)
