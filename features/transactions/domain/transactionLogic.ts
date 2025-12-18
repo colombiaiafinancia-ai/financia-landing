@@ -148,22 +148,57 @@ export function calculateExpensesByPeriod(
   startDate: Date,
   endDate: Date
 ): number {
-  return transactions
-    .filter(t => {
-      if (!t.creado_en || t.tipo !== 'gasto') return false
-      const transactionDate = new Date(t.creado_en)
-      return transactionDate >= startDate && transactionDate <= endDate
-    })
-    .reduce((sum, t) => sum + (t.valor || 0), 0)
+  const filteredTransactions = transactions.filter(t => {
+    if (!t.creado_en || t.tipo !== 'gasto') return false
+    const transactionDate = new Date(t.creado_en)
+    const isInRange = transactionDate >= startDate && transactionDate <= endDate
+    
+    // Log para debug
+    if (t.tipo === 'gasto') {
+      console.log('📊 CALC - Transaction filter:', {
+        id: t.id,
+        creado_en: t.creado_en,
+        transactionDate: transactionDate.toISOString(),
+        transactionLocal: transactionDate.toLocaleString('es-CO'),
+        valor: t.valor,
+        categoria: t.categoria,
+        isInRange,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      })
+    }
+    
+    return isInRange
+  })
+  
+  const total = filteredTransactions.reduce((sum, t) => sum + (t.valor || 0), 0)
+  
+  console.log('💰 CALC - Period calculation result:', {
+    totalTransactions: transactions.length,
+    filteredTransactions: filteredTransactions.length,
+    total,
+    startDate: startDate.toISOString(),
+    endDate: endDate.toISOString()
+  })
+  
+  return total
 }
 
 /**
- * Calcula gastos de hoy
+ * Calcula gastos de hoy (en timezone local de Colombia)
  */
 export function calculateTodayExpenses(transactions: Transaction[]): number {
+  // ✅ Usar timezone local para calcular "hoy"
   const today = new Date()
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
+  
+  console.log('📅 CALC - Today expenses range:', {
+    todayStart: todayStart.toISOString(),
+    todayEnd: todayEnd.toISOString(),
+    localStart: todayStart.toLocaleString('es-CO'),
+    localEnd: todayEnd.toLocaleString('es-CO')
+  })
   
   return calculateExpensesByPeriod(transactions, todayStart, todayEnd)
 }
@@ -181,12 +216,19 @@ export function calculateWeekExpenses(transactions: Transaction[]): number {
 }
 
 /**
- * Calcula gastos del mes actual
+ * Calcula gastos del mes actual (en timezone local de Colombia)
  */
 export function calculateMonthExpenses(transactions: Transaction[]): number {
   const today = new Date()
   const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999)
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+  
+  console.log('📅 CALC - Month expenses range:', {
+    firstDayOfMonth: firstDayOfMonth.toISOString(),
+    todayEnd: todayEnd.toISOString(),
+    localStart: firstDayOfMonth.toLocaleString('es-CO'),
+    localEnd: todayEnd.toLocaleString('es-CO')
+  })
   
   return calculateExpensesByPeriod(transactions, firstDayOfMonth, todayEnd)
 }

@@ -58,6 +58,17 @@ export class TransactionRepository {
         throw new Error(`Error al obtener transacciones: ${error.message}`)
       }
 
+      console.log('✅ TRANSACTION_REPO - All transactions loaded:', {
+        userId,
+        count: data?.length || 0,
+        firstTransaction: data?.[0] ? {
+          id: data[0].id,
+          creado_en: data[0].creado_en,
+          valor: data[0].valor,
+          categoria: data[0].categoria
+        } : null
+      })
+
       return data || []
     } catch (error) {
       console.error('💥 TRANSACTION_REPO - Unexpected error:', error)
@@ -84,7 +95,11 @@ export class TransactionRepository {
 
       if (year && month) {
         const startDate = `${year}-${month.toString().padStart(2, '0')}-01`
-        const endDate = `${year}-${month.toString().padStart(2, '0')}-31`
+        // ✅ Calcular correctamente el último día del mes
+        const lastDayOfMonth = new Date(year, month, 0).getDate()
+        const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDayOfMonth.toString().padStart(2, '0')}`
+        
+        console.log('📅 TRANSACTION_REPO - Date range filter:', { startDate, endDate, year, month })
         
         query = query
           .gte('creado_en', startDate)
@@ -97,6 +112,19 @@ export class TransactionRepository {
         console.error('❌ TRANSACTION_REPO - Error fetching transactions by period:', error)
         throw new Error(`Error al obtener transacciones por período: ${error.message}`)
       }
+
+      console.log('✅ TRANSACTION_REPO - Period transactions loaded:', {
+        userId,
+        year,
+        month,
+        count: data?.length || 0,
+        transactions: data?.map(t => ({
+          id: t.id,
+          creado_en: t.creado_en,
+          valor: t.valor,
+          categoria: t.categoria
+        })) || []
+      })
 
       return data || []
     } catch (error) {
@@ -123,6 +151,8 @@ export class TransactionRepository {
       const now = new Date()
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
       const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+      
+      console.log('📅 TRANSACTION_REPO - Monthly spent date range:', { startOfMonth, endOfMonth })
       
       const { data, error } = await client
         .from('transacciones')
