@@ -101,10 +101,35 @@ export async function signUp(formData: FormData) {
     };
   }
 
-  if (!phone || phone.length < 10) {
-    console.log('❌ SERVER - Validación falló: teléfono inválido', { phone, length: phone?.length });
+  // Validación mejorada para números telefónicos internacionales
+  if (!phone || phone.trim().length === 0) {
+    console.log('❌ SERVER - Validación falló: teléfono vacío');
     return {
-      error: "Por favor ingresa un número de teléfono válido"
+      error: "Por favor ingresa un número de teléfono"
+    };
+  }
+
+  // Validar formato internacional: debe empezar con + y tener al menos 8 dígitos
+  const phoneRegex = /^\+\d{1,4}\d{4,15}$/;
+  if (!phoneRegex.test(phone.trim())) {
+    console.log('❌ SERVER - Validación falló: formato de teléfono inválido', { 
+      phone: phone.trim(), 
+      length: phone.trim().length 
+    });
+    return {
+      error: "Por favor ingresa un número de teléfono válido (formato: +código país + número)"
+    };
+  }
+
+  // Validar longitud total (código de país + número)
+  const phoneDigits = phone.replace(/\D/g, ''); // Solo dígitos
+  if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+    console.log('❌ SERVER - Validación falló: longitud de teléfono inválida', { 
+      phoneDigits, 
+      length: phoneDigits.length 
+    });
+    return {
+      error: "El número de teléfono debe tener entre 7 y 15 dígitos"
     };
   }
 

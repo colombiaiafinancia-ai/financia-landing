@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import CountryCodeSelector from './CountryCodeSelector'
+import { validateInternationalPhone, formatPhoneForDisplay } from '@/utils/phoneValidation'
 
 export const RegisterForm = () => {
   const router = useRouter()
@@ -13,6 +14,42 @@ export const RegisterForm = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isSuccessful, setIsSuccessful] = useState(false)
   const [countryCode, setCountryCode] = useState('+57') // Default to Colombia
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [phoneError, setPhoneError] = useState('')
+
+  // Validar teléfono en tiempo real
+  const handlePhoneChange = useCallback((value: string) => {
+    setPhoneNumber(value)
+    
+    if (value.trim()) {
+      const fullPhone = countryCode + value.replace(/\D/g, '') // Solo dígitos
+      const validation = validateInternationalPhone(fullPhone)
+      
+      if (!validation.isValid) {
+        setPhoneError(validation.error || 'Número inválido')
+      } else {
+        setPhoneError('')
+      }
+    } else {
+      setPhoneError('')
+    }
+  }, [countryCode])
+
+  // Validar cuando cambia el código de país
+  const handleCountryCodeChange = useCallback((newCountryCode: string) => {
+    setCountryCode(newCountryCode)
+    
+    if (phoneNumber.trim()) {
+      const fullPhone = newCountryCode + phoneNumber.replace(/\D/g, '')
+      const validation = validateInternationalPhone(fullPhone)
+      
+      if (!validation.isValid) {
+        setPhoneError(validation.error || 'Número inválido')
+      } else {
+        setPhoneError('')
+      }
+    }
+  }, [phoneNumber])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     console.log('🚀 FORM SUBMIT - Iniciando proceso de registro')
@@ -151,21 +188,39 @@ export const RegisterForm = () => {
             <div className='flex'>
               <CountryCodeSelector
                 value={countryCode}
-                onChange={setCountryCode}
+                onChange={handleCountryCodeChange}
                 disabled={isLoading}
               />
               <input
                 type='tel'
                 id='phone'
                 name='phone'
+                value={phoneNumber}
+                onChange={(e) => handlePhoneChange(e.target.value)}
                 required
                 disabled={isLoading}
-                className='flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-r-lg text-white placeholder-white/50 focus:outline-none focus:border-[#9DFAD7] transition-colors border-l-0'
+                className={`flex-1 px-4 py-3 bg-white/5 border rounded-r-lg text-white placeholder-white/50 focus:outline-none transition-colors border-l-0 ${
+                  phoneError 
+                    ? 'border-red-500 focus:border-red-400' 
+                    : 'border-white/10 focus:border-[#5ce1e6]'
+                }`}
                 placeholder='300 123 4567'
                 pattern='[0-9\s\-]+'
                 title='Solo números, espacios y guiones'
               />
             </div>
+            {phoneError && (
+              <p className='text-red-400 text-sm mt-1 flex items-center gap-1'>
+                <span>⚠️</span>
+                {phoneError}
+              </p>
+            )}
+            {!phoneError && phoneNumber && countryCode && (
+              <p className='text-green-400 text-sm mt-1 flex items-center gap-1'>
+                <span>✅</span>
+                Formato: {formatPhoneForDisplay(countryCode + phoneNumber.replace(/\D/g, ''))}
+              </p>
+            )}
           </div>
 
           <div>

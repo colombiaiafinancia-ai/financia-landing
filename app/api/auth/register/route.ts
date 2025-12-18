@@ -18,8 +18,25 @@ export async function POST(request: NextRequest) {
     if (!email?.trim()) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
+    // Validación mejorada para números telefónicos internacionales
     if (!phone?.trim()) {
       return NextResponse.json({ error: 'Phone is required' }, { status: 400 })
+    }
+
+    // Validar formato internacional: debe empezar con + y tener formato válido
+    const phoneRegex = /^\+\d{1,4}\d{4,15}$/;
+    if (!phoneRegex.test(phone.trim())) {
+      return NextResponse.json({ 
+        error: 'Please enter a valid international phone number (format: +country code + number)' 
+      }, { status: 400 })
+    }
+
+    // Validar longitud total
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length < 7 || phoneDigits.length > 15) {
+      return NextResponse.json({ 
+        error: 'Phone number must have between 7 and 15 digits' 
+      }, { status: 400 })
     }
     if (!password) {
       return NextResponse.json({ error: 'Password is required' }, { status: 400 })
