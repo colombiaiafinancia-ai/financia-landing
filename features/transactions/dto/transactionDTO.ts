@@ -1,9 +1,14 @@
 /**
  * DTOs para Transactions Feature
- * 
+ *
  * Define los contratos de datos que la UI debe usar.
  * La UI NUNCA debe acceder a entidades de Supabase directamente.
  */
+
+/**
+ * Habilita o deshabilita logs de depuración para transacciones
+ */
+const DEBUG_TRANSACTIONS = false
 
 /**
  * DTO principal para transacciones
@@ -125,35 +130,23 @@ export interface TransactionPeriodDTO {
  */
 export class TransactionDTOMapper {
   /**
-   * Formatea un monto como moneda colombiana
-   */
-  private static formatAmount(amount: number): string {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount)
-  }
-  
-  /**
    * Formatea una fecha
    */
   private static formatDate(dateString: string | null): string {
     if (!dateString) return 'Sin fecha'
-    
+
     try {
       const date = new Date(dateString)
       return date.toLocaleDateString('es-CO', {
         year: 'numeric',
         month: 'short',
-        day: 'numeric'
+        day: 'numeric',
       })
     } catch {
       return 'Fecha inválida'
     }
   }
-  
+
   /**
    * Convierte transacción a DTO
    */
@@ -166,6 +159,15 @@ export class TransactionDTOMapper {
     descripcion: string | null
     creado_en: string | null
   }): TransactionDTO {
+    if (DEBUG_TRANSACTIONS) {
+      console.log('[TransactionDTOMapper] Convirtiendo transacción:', {
+        id: transaction.id,
+        valor: transaction.valor,
+        categoria: transaction.categoria,
+        tipo: transaction.tipo,
+      })
+    }
+
     return {
       id: transaction.id,
       userId: transaction.usuario_id,
@@ -174,11 +176,11 @@ export class TransactionDTOMapper {
       type: transaction.tipo,
       description: transaction.descripcion,
       createdAt: transaction.creado_en,
-      formattedAmount: this.formatAmount(transaction.valor),
-      formattedDate: this.formatDate(transaction.creado_en)
+      formattedAmount: transaction.valor.toString(),
+      formattedDate: this.formatDate(transaction.creado_en),
     }
   }
-  
+
   /**
    * Convierte múltiples transacciones a DTOs
    */
@@ -191,9 +193,13 @@ export class TransactionDTOMapper {
     descripcion: string | null
     creado_en: string | null
   }>): readonly TransactionDTO[] {
-    return transactions.map(this.transactionToDTO)
+    if (DEBUG_TRANSACTIONS) {
+      console.log('[TransactionDTOMapper] Convirtiendo', transactions.length, 'transacciones a DTOs')
+    }
+
+    return transactions.map(transaction => TransactionDTOMapper.transactionToDTO(transaction))
   }
-  
+
   /**
    * Convierte gastos por categoría a DTO
    */
@@ -204,16 +210,25 @@ export class TransactionDTOMapper {
     totalExpenses: number
   ): CategoryExpenseDTO {
     const percentage = totalExpenses > 0 ? Math.round((total / totalExpenses) * 10000) / 100 : 0
-    
+
+    if (DEBUG_TRANSACTIONS) {
+      console.log('[TransactionDTOMapper] Gasto por categoría:', {
+        categoria,
+        total,
+        count,
+        percentage,
+      })
+    }
+
     return {
       categoria,
       total,
       count,
       percentage,
-      formattedTotal: this.formatAmount(total)
+      formattedTotal: total.toString(),
     }
   }
-  
+
   /**
    * Convierte datos semanales a DTO
    */
@@ -222,35 +237,54 @@ export class TransactionDTOMapper {
     amount: number
     date: string
   }): WeeklyDataDTO {
+    if (DEBUG_TRANSACTIONS) {
+      console.log('[TransactionDTOMapper] Datos semanales:', weeklyData)
+    }
+
     return {
       week: weeklyData.week,
       amount: weeklyData.amount,
       date: weeklyData.date,
-      formattedAmount: this.formatAmount(weeklyData.amount),
-      formattedDate: weeklyData.date
+      formattedAmount: weeklyData.amount.toString(),
+      formattedDate: weeklyData.date,
     }
   }
-  
+
   /**
    * Convierte resumen de transacciones a DTO
    */
-  static summaryToDTO(summary: {
-    totalSpent: number
-    totalIncome: number
-    todayExpenses: number
-    weekExpenses: number
-    monthExpenses: number
-    expensesByCategory: Record<string, number>
-  }, transactionCount: number): TransactionSummaryDTO {
+  static summaryToDTO(
+    summary: {
+      totalSpent: number
+      totalIncome: number
+      todayExpenses: number
+      weekExpenses: number
+      monthExpenses: number
+      expensesByCategory: Record<string, number>
+    },
+    transactionCount: number
+  ): TransactionSummaryDTO {
     const balance = summary.totalIncome - summary.totalSpent
-    
+
+    if (DEBUG_TRANSACTIONS) {
+      console.log('[TransactionDTOMapper] Resumen de transacciones:', {
+        totalSpent: summary.totalSpent,
+        totalIncome: summary.totalIncome,
+        balance,
+        todayExpenses: summary.todayExpenses,
+        weekExpenses: summary.weekExpenses,
+        monthExpenses: summary.monthExpenses,
+        transactionCount,
+      })
+    }
+
     // Convertir gastos por categoría a DTOs
     const categoryExpenses = Object.entries(summary.expensesByCategory)
-      .map(([categoria, total]) => 
+      .map(([categoria, total]) =>
         this.categoryExpenseToDTO(categoria, total, 0, summary.totalSpent)
       )
       .sort((a, b) => b.total - a.total)
-    
+
     return {
       totalSpent: summary.totalSpent,
       totalIncome: summary.totalIncome,
@@ -261,12 +295,12 @@ export class TransactionDTOMapper {
       transactionCount,
       expensesByCategory: categoryExpenses,
       weeklyTrend: [], // Se llena por separado
-      formattedTotalSpent: this.formatAmount(summary.totalSpent),
-      formattedTotalIncome: this.formatAmount(summary.totalIncome),
-      formattedBalance: this.formatAmount(balance)
+      formattedTotalSpent: summary.totalSpent.toString(),
+      formattedTotalIncome: summary.totalIncome.toString(),
+      formattedBalance: balance.toString(),
     }
   }
-  
+
   /**
    * Convierte estadísticas a DTO
    */
@@ -279,10 +313,23 @@ export class TransactionDTOMapper {
     thisWeekSpent: number
     lastWeekSpent: number
   }): TransactionStatsDTO {
-    const weeklyGrowth = stats.lastWeekSpent > 0 
+    const weeklyGrowth = stats.lastWeekSpent > 0
       ? Math.round(((stats.thisWeekSpent - stats.lastWeekSpent) / stats.lastWeekSpent) * 10000) / 100
       : 0
-    
+
+    if (DEBUG_TRANSACTIONS) {
+      console.log('[TransactionDTOMapper] Estadísticas de transacciones:', {
+        totalTransactions: stats.totalTransactions,
+        totalSpent: stats.totalSpent,
+        totalIncome: stats.totalIncome,
+        averageTransaction: stats.averageTransaction,
+        mostUsedCategory: stats.mostUsedCategory,
+        thisWeekSpent: stats.thisWeekSpent,
+        lastWeekSpent: stats.lastWeekSpent,
+        weeklyGrowth,
+      })
+    }
+
     return {
       totalTransactions: stats.totalTransactions,
       totalSpent: stats.totalSpent,
@@ -292,30 +339,49 @@ export class TransactionDTOMapper {
       thisWeekSpent: stats.thisWeekSpent,
       lastWeekSpent: stats.lastWeekSpent,
       weeklyGrowth,
-      formattedAverageTransaction: this.formatAmount(stats.averageTransaction),
-      formattedThisWeekSpent: this.formatAmount(stats.thisWeekSpent),
-      formattedLastWeekSpent: this.formatAmount(stats.lastWeekSpent)
+      formattedAverageTransaction: stats.averageTransaction.toString(),
+      formattedThisWeekSpent: stats.thisWeekSpent.toString(),
+      formattedLastWeekSpent: stats.lastWeekSpent.toString(),
     }
   }
-  
+
   /**
    * Convierte período a DTO
    */
   static periodToDTO(year: number, month: number): TransactionPeriodDTO {
     const monthNames = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
     ]
-    
+
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`
     const endDate = new Date(year, month, 0).toISOString().split('T')[0]
-    
+
+    if (DEBUG_TRANSACTIONS) {
+      console.log('[TransactionDTOMapper] Período de transacciones:', {
+        year,
+        month,
+        startDate,
+        endDate,
+      })
+    }
+
     return {
       year,
       month,
       displayName: `${monthNames[month - 1]} ${year}`,
       startDate,
-      endDate
+      endDate,
     }
   }
 }

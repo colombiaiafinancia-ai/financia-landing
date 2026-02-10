@@ -6,6 +6,11 @@
  */
 
 /**
+ * Habilita o deshabilita logs de depuración para budgets
+ */
+const DEBUG_BUDGETS = true
+
+/**
  * DTO principal para presupuestos generales
  */
 export interface BudgetDTO {
@@ -127,6 +132,16 @@ export class BudgetDTOMapper {
     createdAt?: string
     updatedAt?: string
   }): BudgetDTO {
+    if (DEBUG_BUDGETS) {
+      console.log('[BudgetDTOMapper] Convirtiendo presupuesto general:', {
+        id: budget.id,
+        userId: budget.userId,
+        monthlyAmount: budget.monthlyAmount,
+        month: budget.month,
+        year: budget.year,
+      })
+    }
+
     return {
       id: budget.id,
       userId: budget.userId,
@@ -150,6 +165,16 @@ export class BudgetDTOMapper {
     createdAt?: string
     updatedAt?: string
   }): CategoryBudgetDTO {
+    if (DEBUG_BUDGETS) {
+      console.log('[BudgetDTOMapper] Convirtiendo presupuesto por categoría:', {
+        id: budget.id,
+        userId: budget.userId,
+        month: budget.month,
+        category: budget.category,
+        amount: budget.amount,
+      })
+    }
+
     return {
       id: budget.id,
       userId: budget.userId,
@@ -177,6 +202,17 @@ export class BudgetDTOMapper {
     if (percentage >= 100) estado = 'danger'
     else if (percentage >= 80) estado = 'warning'
     
+    if (DEBUG_BUDGETS) {
+      console.log('[BudgetDTOMapper] Resumen de categoría de presupuesto:', {
+        categoria: summary.categoria,
+        presupuestado: summary.presupuestado,
+        actual: summary.actual,
+        excedente: summary.excedente,
+        porcentajeUsado: percentage,
+        estado,
+      })
+    }
+
     return {
       categoria: summary.categoria,
       presupuestado: summary.presupuestado,
@@ -202,6 +238,18 @@ export class BudgetDTOMapper {
       ? Math.round((stats.totalGastado / stats.totalPresupuestado) * 10000) / 100
       : 0
     
+    if (DEBUG_BUDGETS) {
+      console.log('[BudgetDTOMapper] Estadísticas de presupuesto:', {
+        totalPresupuestado: stats.totalPresupuestado,
+        totalGastado: stats.totalGastado,
+        totalExcedente: stats.totalExcedente,
+        categoriasConPresupuesto: stats.categoriasConPresupuesto,
+        categoriasSobrepasadas: stats.categoriasSobrepasadas,
+        categoriasBajoPresupuesto: stats.categoriasBajoPresupuesto,
+        porcentajeEjecucion,
+      })
+    }
+
     return {
       totalPresupuestado: stats.totalPresupuestado,
       totalGastado: stats.totalGastado,
@@ -226,6 +274,14 @@ export class BudgetDTOMapper {
       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
     ]
     
+    if (DEBUG_BUDGETS) {
+      console.log('[BudgetDTOMapper] Período de presupuesto:', {
+        year: period.year,
+        month: period.month,
+        monthDate: period.monthDate,
+      })
+    }
+
     return {
       year: period.year,
       month: period.month,
@@ -259,15 +315,28 @@ export class BudgetDTOMapper {
     const now = new Date()
     const isCurrentPeriod = period.year === now.getFullYear() && period.month === (now.getMonth() + 1)
     
+    if (DEBUG_BUDGETS) {
+      console.log('[BudgetDTOMapper] Resumen completo de presupuesto:', {
+        period,
+        totalBudget,
+        spent,
+        remaining,
+        percentage,
+        status,
+        isCurrentPeriod,
+        categoryBreakdownCount: categoryBreakdown.length,
+      })
+    }
+
     return {
-      period: this.periodToDTO(period),
+      period: BudgetDTOMapper.periodToDTO(period),
       totalBudget,
       spent,
       remaining,
       percentage,
       status,
       isCurrentPeriod,
-      categoryBreakdown: categoryBreakdown.map(this.categoryBudgetSummaryToDTO)
+      categoryBreakdown: categoryBreakdown.map(item => BudgetDTOMapper.categoryBudgetSummaryToDTO(item))
     }
   }
 }
