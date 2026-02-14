@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class',
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
@@ -13,12 +14,10 @@ module.exports = {
         sans: ['Roboto', 'sans-serif'],
       },
       colors: {
-        // Colores de la landing FinancIA
         primary: '#5ce1e6',
         secondary: '#4dd0e1',
         dark: '#0D1D35',
-        
-        // Colores para el dashboard
+
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -55,4 +54,4 @@ module.exports = {
     },
   },
   plugins: [],
-} 
+}
