@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { resetPassword } from '@/actions/auth'
+import { getBrowserSupabaseClient } from '@/services/supabase'
 
 export default function ResetPasswordPage() {
   const [error, setError] = useState<string>('')
@@ -11,7 +12,17 @@ export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [sessionReady, setSessionReady] = useState(false)
   const router = useRouter()
+
+  // Procesar el hash del URL (#access_token=...) para establecer la sesión en cookies.
+  // El cliente browser debe ejecutarse para que Supabase lea el token y lo persista.
+  useEffect(() => {
+    const supabase = getBrowserSupabaseClient()
+    supabase.auth.getSession().then(() => {
+      setSessionReady(true)
+    })
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -60,6 +71,11 @@ export default function ResetPasswordPage() {
           </div>
 
           <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 md:p-8">
+            {!sessionReady ? (
+              <div className="text-center py-8 text-white/80">
+                Verificando enlace...
+              </div>
+            ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && (
                 <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
@@ -130,6 +146,7 @@ export default function ResetPasswordPage() {
                 {isLoading ? 'Guardando...' : 'Guardar contraseña'}
               </button>
             </form>
+            )}
           </div>
 
           <div className="mt-6 text-center">
