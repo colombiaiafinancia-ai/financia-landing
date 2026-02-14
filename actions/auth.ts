@@ -268,4 +268,101 @@ export async function logOut() {
   }
   
   redirect("/");
+}
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+/**
+ * Solicitar correo de recuperación de contraseña.
+ * Envía el link de reset a resetPasswordForEmail con redirectTo a /reset-password.
+ */
+export async function requestPasswordReset(formData: FormData) {
+  const email = (formData.get("email") as string)?.trim();
+
+  if (!email) {
+    return { error: "Ingresa tu email" };
+  }
+  if (!email.includes("@")) {
+    return { error: "Ingresa un email válido" };
+  }
+
+  const supabase = await createSupabaseClient();
+
+  try {
+    // 1) Comprobar si existe un usuario con ese email en nuestra tabla pública
+    //    (sin usar service_role, solo la anon key y las policies de RLS).
+    const { data: userRecord, error: userError } = await supabase
+      .from("usuarios")
+      .select("id")
+      .eq("gmail", email)
+      .maybeSingle();
+
+    if (userError) {
+      console.error("requestPasswordReset - error comprobando usuarios:", userError);
+      return {
+        error: "No pudimos verificar este email. Intenta nuevamente en unos minutos.",
+      };
+    }
+
+    if (!userRecord) {
+      // El email no está registrado en nuestra base → avisamos al usuario.
+      return {
+        error: "No encontramos ninguna cuenta con este email. Regístrate primero.",
+      };
+    }
+
+    // 2) Si el email existe, entonces sí pedimos el correo de recuperación a Supabase.
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${SITE_URL}/reset-password`,
+    });
+
+    if (error) {
+      if (error.message.includes("rate limit") || error.message.includes("Too many")) {
+        return { error: "Demasiados intentos. Espera unos minutos e intenta de nuevo." };
+      }
+      return { error: "No pudimos enviar el correo. Verifica el email e intenta de nuevo." };
+    }
+
+    return { success: "Revisa tu correo. Te enviamos un enlace para restablecer tu contraseña." };
+  } catch (err) {
+    console.error("requestPasswordReset error:", err);
+    return { error: "Error del servidor. Intenta más tarde." };
+  }
+}
+
+/**
+ * Actualizar contraseña usando la sesión temporal del link del correo.
+ * Valida que password y confirmación coincidan y tengan longitud mínima.
+ */
+export async function resetPassword(formData: FormData) {
+  const password = formData.get("password") as string;
+  const confirmPassword = formData.get("confirmPassword") as string;
+
+  if (!password || !confirmPassword) {
+    return { error: "Completa ambos campos" };
+  }
+  if (password.length < 6) {
+    return { error: "La contraseña debe tener al menos 6 caracteres" };
+  }
+  if (password !== confirmPassword) {
+    return { error: "Las contraseñas no coinciden" };
+  }
+
+  const supabase = await createSupabaseClient();
+
+  try {
+    const { error } = await supabase.auth.updateUser({ password });
+
+    if (error) {
+      if (error.message.includes("same as")) {
+        return { error: "La nueva contraseña debe ser distinta a la actual." };
+      }
+      return { error: "No se pudo actualizar la contraseña. El enlace puede haber expirado." };
+    }
+
+    return { success: "Contraseña actualizada. Ya puedes iniciar sesión." };
+  } catch (err) {
+    console.error("resetPassword error:", err);
+    return { error: "Error del servidor. Intenta más tarde." };
+  }
 } 

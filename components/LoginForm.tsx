@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { logIn } from '@/actions/auth'
 
 export const LoginForm = () => {
@@ -98,12 +99,12 @@ export const LoginForm = () => {
             />
             <span className='ml-2 text-white/80 text-sm'>Recordarme</span>
           </label>
-          <a
-            href='#forgot-password'
+          <Link
+            href='/forgot-password'
             className='text-[#9DFAD7] hover:text-[#D4FFB5] text-sm font-medium transition-colors'
           >
             ¿Olvidaste tu contraseña?
-          </a>
+          </Link>
         </div>
 
         <button

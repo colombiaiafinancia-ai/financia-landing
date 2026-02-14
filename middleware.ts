@@ -60,7 +60,8 @@ function handleAuthRedirects(
   isAuthenticated: boolean
 ): NextResponse {
   // Usuario autenticado en páginas de auth o landing → redirigir a dashboard
-  if (isAuthenticated && (isAuthRoute(pathname) || pathname === '/')) {
+  // Excepción: /reset-password no se redirige para permitir el flujo del link del correo
+  if (isAuthenticated && (isAuthRoute(pathname) || pathname === '/') && pathname !== '/reset-password') {
     const dashboardUrl = new URL('/dashboard', request.url)
     return addSecurityHeaders(NextResponse.redirect(dashboardUrl))
   }
