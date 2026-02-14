@@ -62,6 +62,9 @@ function handleAuthRedirects(
   // Usuario autenticado en páginas de auth o landing → redirigir a dashboard
   // Excepción: /reset-password no se redirige para permitir el flujo del link del correo
   if (isAuthenticated && (isAuthRoute(pathname) || pathname === '/') && pathname !== '/reset-password') {
+    if (pathname === '/reset-password') {
+      return addSecurityHeaders(NextResponse.next())
+    }
     const dashboardUrl = new URL('/dashboard', request.url)
     return addSecurityHeaders(NextResponse.redirect(dashboardUrl))
   }
