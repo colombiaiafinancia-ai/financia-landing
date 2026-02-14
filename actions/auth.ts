@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseClient } from "@/utils/supabase/server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export async function logIn(formData: FormData) {
@@ -270,7 +271,23 @@ export async function logOut() {
   redirect("/");
 }
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+/**
+ * Obtiene la URL base del sitio desde env o desde los headers de la petición.
+ * Prioriza env para build, pero usa la URL real de la petición en producción.
+ */
+function getSiteUrl(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+  if (fromEnv) return fromEnv;
+  try {
+    const headersList = headers();
+    const host = headersList.get("x-forwarded-host") || headersList.get("host");
+    const proto = headersList.get("x-forwarded-proto") || "https";
+    if (host) return `${proto}://${host}`.replace(/\/$/, "");
+  } catch {
+    // headers() puede fallar en algunos contextos
+  }
+  return "http://localhost:3000";
+}
 
 /**
  * Solicitar correo de recuperación de contraseña.
@@ -312,8 +329,9 @@ export async function requestPasswordReset(formData: FormData) {
     }
 
     // 2) Si el email existe, entonces sí pedimos el correo de recuperación a Supabase.
+    const siteUrl = getSiteUrl();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${SITE_URL}/reset-password`,
+      redirectTo: `${siteUrl}/reset-password`,
     });
 
     if (error) {
