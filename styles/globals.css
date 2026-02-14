@@ -3,27 +3,81 @@
 @tailwind utilities;
 
 @layer base {
+  /* LIGHT (default) */
   :root {
-    --background: 220 30% 5%;
+    --background: 200 60% 97%;
+
+    --foreground: 222 47% 11%;
+
+    --card: 200 10% 90%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 180 70% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 180 70% 45%;
+
+    --radius: 0.5rem;
+  }
+
+  /* DARK */
+  .dark {
+    /* Mantengo tu look oscuro actual (muy cercano a #0D1D35) */
+    --background: 214 60% 13%;
     --foreground: 0 0% 98%;
+
     --card: 220 30% 8%;
     --card-foreground: 0 0% 98%;
+
     --popover: 220 30% 8%;
     --popover-foreground: 0 0% 98%;
+
     --primary: 180 70% 60%;
     --primary-foreground: 220 30% 5%;
+
     --secondary: 220 30% 12%;
     --secondary-foreground: 0 0% 98%;
+
     --muted: 220 30% 12%;
     --muted-foreground: 0 0% 60%;
+
     --accent: 220 30% 15%;
     --accent-foreground: 0 0% 98%;
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
+
     --border: 220 30% 15%;
     --input: 220 30% 15%;
     --ring: 180 70% 60%;
+
     --radius: 0.5rem;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Fondo y texto por variables (esto habilita light/dark real) */
+  body {
+    @apply bg-background text-foreground;
   }
 }
 
@@ -42,20 +96,18 @@
   animation: fadeIn 0.6s ease-out forwards;
 }
 
-:root {
-  scroll-behavior: smooth;
-}
-
-body {
-  @apply bg-[#0D1D35];
-}
-
 /* Scrollbar Styles */
 .scrollbar-thin {
   scrollbar-width: thin;
 }
 
+/* Default (light) */
 .scrollbar-thumb-white\/10 {
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+/* Dark override */
+.dark .scrollbar-thumb-white\/10 {
   scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
 }
 
@@ -68,7 +120,13 @@ body {
   background: transparent;
 }
 
+/* Default (light) */
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.15);
   border-radius: 20px;
-} 
+}
+
+/* Dark override */
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.1);
+}
