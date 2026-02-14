@@ -39,6 +39,8 @@ export default function ResetPasswordPage() {
         setError(result.error)
       } else if (result?.success) {
         setSuccess(result.success)
+        const supabase = getBrowserSupabaseClient()
+        await supabase.auth.signOut()
         setTimeout(() => router.push('/login'), 2000)
       }
     } catch {
@@ -48,15 +50,25 @@ export default function ResetPasswordPage() {
     }
   }
 
+  const handleGoToLogin = async () => {
+    const supabase = getBrowserSupabaseClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
   return (
     <main className="min-h-screen bg-[#0D1D35] flex flex-col">
       <nav className="sticky top-0 z-50 bg-[#0D1D35]/95 backdrop-blur-sm border-b border-white/10 container mx-auto px-4 py-4 md:py-6 flex justify-between items-center">
         <Link href="/" className="text-xl md:text-2xl font-bold text-white hover:text-[#9DFAD7] transition-colors">
           FinancIA
         </Link>
-        <Link href="/login" className="text-white hover:text-[#9DFAD7] transition-colors text-sm md:text-base">
+        <button
+          type="button"
+          onClick={handleGoToLogin}
+          className="text-white hover:text-[#9DFAD7] transition-colors text-sm md:text-base bg-transparent border-none cursor-pointer"
+        >
           Iniciar sesión
-        </Link>
+        </button>
       </nav>
 
       <section className="flex-1 flex items-center justify-center px-4 py-8 md:py-12">
@@ -150,12 +162,13 @@ export default function ResetPasswordPage() {
           </div>
 
           <div className="mt-6 text-center">
-            <Link
-              href="/login"
-              className="text-[#9DFAD7] hover:text-[#D4FFB5] text-sm font-medium transition-colors"
+            <button
+              type="button"
+              onClick={handleGoToLogin}
+              className="text-[#9DFAD7] hover:text-[#D4FFB5] text-sm font-medium transition-colors bg-transparent border-none cursor-pointer underline"
             >
               Volver a iniciar sesión
-            </Link>
+            </button>
           </div>
         </div>
       </section>

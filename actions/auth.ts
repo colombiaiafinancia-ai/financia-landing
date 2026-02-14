@@ -372,8 +372,17 @@ export async function resetPassword(formData: FormData) {
     const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
-      if (error.message.includes("same as")) {
-        return { error: "La nueva contraseña debe ser distinta a la actual." };
+      const msg = error.message.toLowerCase();
+      const isSamePassword =
+        msg.includes("same as") ||
+        msg.includes("same password") ||
+        msg.includes("different from the old") ||
+        msg.includes("must be different") ||
+        msg.includes("should be different") ||
+        msg.includes("identical") ||
+        msg.includes("reuse");
+      if (isSamePassword) {
+        return { error: "La nueva contraseña debe ser distinta a la actual. Elige otra." };
       }
       return { error: "No se pudo actualizar la contraseña. El enlace puede haber expirado." };
     }
