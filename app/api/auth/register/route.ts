@@ -84,6 +84,34 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.log('❌ API ROUTE - Error en auth.signUp:', error)
+      const errMsg = error.message.toLowerCase()
+      if (
+        errMsg.includes('telefono') ||
+        errMsg.includes('usuarios_telefono') ||
+        (errMsg.includes('duplicate') && errMsg.includes('telefono'))
+      ) {
+        return NextResponse.json({ 
+          error: 'El número ya está enlazado a una cuenta' 
+        }, { status: 400 })
+      }
+      if (
+        (errMsg.includes('database error') && errMsg.includes('saving')) ||
+        (errMsg.includes('duplicate') && errMsg.includes('key'))
+      ) {
+        return NextResponse.json({ 
+          error: 'El email o el número ya está enlazado a una cuenta' 
+        }, { status: 400 })
+      }
+      if (
+        errMsg.includes('gmail') ||
+        (errMsg.includes('duplicate') && errMsg.includes('email')) ||
+        errMsg.includes('user already registered') ||
+        errMsg.includes('already registered')
+      ) {
+        return NextResponse.json({ 
+          error: 'Ya existe una cuenta con este email. Inicia sesión.' 
+        }, { status: 400 })
+      }
       return NextResponse.json({ 
         error: `Error al crear la cuenta: ${error.message}` 
       }, { status: 400 })
@@ -93,6 +121,14 @@ export async function POST(request: NextRequest) {
       console.log('❌ API ROUTE - No se creó el usuario')
       return NextResponse.json({ 
         error: 'Error al crear la cuenta' 
+      }, { status: 400 })
+    }
+
+    // Usuario ya existente: Supabase devuelve success con identities vacío
+    if (!data.user.identities || data.user.identities.length === 0) {
+      console.log('⚠️ API ROUTE - Email/phone ya registrado (identities vacío)')
+      return NextResponse.json({ 
+        error: 'Ya existe una cuenta con este email o teléfono. Inicia sesión.' 
       }, { status: 400 })
     }
 

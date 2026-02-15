@@ -217,11 +217,34 @@ export async function signUp(formData: FormData) {
       });
     }
 
+    // Usuario ya existente: Supabase devuelve success con identities vacío
+    if (!error && data.user && (!data.user.identities || data.user.identities.length === 0)) {
+      return { error: "Ya existe una cuenta con este email o teléfono. Inicia sesión." };
+    }
+
     if (error) {
       console.error('🔥 SERVER - Error en auth.signUp:', error);
-      
-      if (error.message.includes("User already registered")) {
-        return { error: "Ya existe una cuenta con este email" };
+      const errMsg = error.message.toLowerCase();
+      if (
+        errMsg.includes('telefono') ||
+        errMsg.includes('usuarios_telefono') ||
+        (errMsg.includes('duplicate') && errMsg.includes('telefono'))
+      ) {
+        return { error: "El número ya está enlazado a una cuenta" };
+      }
+      if (
+        (errMsg.includes('database error') && errMsg.includes('saving')) ||
+        (errMsg.includes('duplicate') && errMsg.includes('key'))
+      ) {
+        return { error: "El email o el número ya está enlazado a una cuenta" };
+      }
+      if (
+        errMsg.includes("user already registered") ||
+        errMsg.includes("already registered") ||
+        errMsg.includes("gmail") ||
+        (errMsg.includes('duplicate') && errMsg.includes('email'))
+      ) {
+        return { error: "Ya existe una cuenta con este email. Inicia sesión." };
       }
       if (error.message.includes("Password should be at least 6 characters")) {
         return { error: "La contraseña debe tener al menos 6 caracteres" };
