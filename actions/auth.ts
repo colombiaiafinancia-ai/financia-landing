@@ -273,7 +273,7 @@ export async function signUp(formData: FormData) {
 
     console.log('🏆 SERVER - Registro completado exitosamente');
     return {
-      success: "Cuenta creada exitosamente. Revisa tu email para confirmarla"
+      success: "Te enviamos un correo de verificación. Revisa tu bandeja de entrada, si no lo encuentras, revisa la carpeta de spam"
     };
   } catch (error) {
     console.error('💣 SERVER - Error en catch principal:', error);

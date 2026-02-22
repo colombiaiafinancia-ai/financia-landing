@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
     console.log('🏆 API ROUTE - Registro completado exitosamente')
 
     return NextResponse.json({ 
-      success: 'Cuenta creada exitosamente. Revisa tu email para confirmarla' 
+      success: 'Te enviamos un correo de verificación. Revisa tu bandeja de entrada, si no lo encuentras, revisa la carpeta de spam' 
     })
 
   } catch (error) {

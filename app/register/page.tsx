@@ -24,7 +24,7 @@ export default function RegisterPage() {
               Crear Cuenta
             </h1>
             <p className='text-white/80 text-base md:text-lg'>
-              Únete a FinancIA y transforma tu dinero
+              Ahora eres parte de FinancIA. Es hora de transformar el control de tu dinero
             </p>
           </div>
           

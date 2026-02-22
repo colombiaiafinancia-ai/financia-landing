@@ -112,8 +112,7 @@ export const RegisterForm = () => {
       } else if (result.success) {
         setSuccess(result.success)
         setIsSuccessful(true)
-        // Redirigir inmediatamente al dashboard tras registro exitoso
-        router.push('/dashboard')
+        // No redirigir: el usuario permanece en la pantalla hasta que haga clic en "Ir a iniciar sesión"
       } else {
         setError('Error inesperado. Intenta nuevamente')
       }
@@ -126,18 +125,41 @@ export const RegisterForm = () => {
     }
   }
 
+  // pantalla verificacion correo
+  if (isSuccessful && success) {
+    return (
+      <div className='bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 md:p-8'>
+        <div className='space-y-6 text-center'>
+          <div className='mx-auto w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center'>
+            <span className='text-3xl' aria-hidden>✉️</span>
+          </div>
+          <h3 className='text-xl font-semibold text-white'>
+            Cuenta creada correctamente
+          </h3>
+          <div className='bg-green-500/10 border border-green-500/20 rounded-lg p-4'>
+            <p className='text-green-400 text-sm leading-relaxed'>{success}</p>
+          </div>
+          <p className='text-white/80 text-sm'>
+            Cuando hayas verificado tu correo, usa el botón de abajo
+          </p>
+          <button
+            type='button'
+            onClick={() => router.push('/login')}
+            className='w-full bg-gradient-to-r from-[#9DFAD7] to-[#D4FFB5] text-[#0D1D35] font-semibold py-3 px-6 rounded-lg hover:opacity-90 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#9DFAD7]/20'
+          >
+            Ir a iniciar sesión
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className='bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 md:p-8'>
       <form onSubmit={handleSubmit} className='space-y-6'>
         {error && (
           <div className='bg-red-500/10 border border-red-500/20 rounded-lg p-3'>
             <p className='text-red-400 text-sm'>{error}</p>
-          </div>
-        )}
-
-        {success && (
-          <div className='bg-green-500/10 border border-green-500/20 rounded-lg p-3'>
-            <p className='text-green-400 text-sm'>{success}</p>
           </div>
         )}
 
