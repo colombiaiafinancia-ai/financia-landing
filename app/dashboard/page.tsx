@@ -100,7 +100,7 @@ export default function DashboardPage() {
                 href="/"
                 className="text-xl sm:text-2xl font-bold text-foreground hover:text-primary transition-colors"
               >
-                FinancIA
+                Finanzas Consulting - FinancIA
               </Link>
             </div>
 

@@ -60,7 +60,7 @@ export default function ResetPasswordPage() {
     <main className="min-h-screen bg-[#0D1D35] flex flex-col">
       <nav className="sticky top-0 z-50 bg-[#0D1D35]/95 backdrop-blur-sm border-b border-white/10 container mx-auto px-4 py-4 md:py-6 flex justify-between items-center">
         <Link href="/" className="text-xl md:text-2xl font-bold text-white hover:text-[#9DFAD7] transition-colors">
-          FinancIA
+          Finanzas Consulting - FinancIA
         </Link>
         <button
           type="button"

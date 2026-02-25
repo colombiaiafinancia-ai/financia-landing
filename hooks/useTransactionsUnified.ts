@@ -6,15 +6,8 @@ import { getCurrentUser } from '@/services/supabase'
 import { AsyncState, AsyncStateUtils } from '@/types/asyncState'
 import { ErrorHandler } from '@/types/errors'
 import { User } from '@supabase/supabase-js'
+import { CategoryBudgetService } from '@/features/budgets'
 
-/**
- * Hook refactorizado para transacciones unificadas - Usa AsyncState y DTOs
- * 
- * ✅ Solo maneja UI state
- * ✅ Usa DTOs en lugar de entidades directas
- * ✅ Sigue el contrato AsyncState estándar
- * ✅ Manejo de errores estandarizado
- */
 export const useTransactionsUnified = (): AsyncState<TransactionSummaryDTO> & {
   transactions: TransactionDTO[]
   totalSpent: number
@@ -35,7 +28,8 @@ export const useTransactionsUnified = (): AsyncState<TransactionSummaryDTO> & {
   const [state, setState] = useState<AsyncState<TransactionSummaryDTO>>(
     AsyncStateUtils.createInitial<TransactionSummaryDTO>()
   )
-  
+  const [optimisticTransactions, setOptimisticTransactions] = useState<TransactionDTO[]>([])
+
   const [user, setUser] = useState<User | null>(null)
   const [transactions, setTransactions] = useState<TransactionDTO[]>([])
   const errorHandler = ErrorHandler
@@ -134,79 +128,109 @@ export const useTransactionsUnified = (): AsyncState<TransactionSummaryDTO> & {
       
       setState(AsyncStateUtils.createWithError(errorMessage, fetchTransactions))
       
-      // Reset states on error
       setTransactions([])
     }
   }, [user, errorHandler])
 
-  // Cargar transacciones cuando se monte el componente o cambie el usuario
   useEffect(() => {
     fetchTransactions()
   }, [fetchTransactions])
 
-  // Crear nueva transacción
   const createTransaction = useCallback(async (transactionData: CreateTransactionDTO): Promise<TransactionDTO> => {
-    if (!user) {
-      throw new Error('Usuario no autenticado')
+  if (!user) {
+    throw new Error('Usuario no autenticado')
+  }
+
+  console.log('💰 HOOK - Creating transaction:', transactionData)
+
+  try {
+    const newTransaction = await TransactionService.create(user.id, {
+      valor: transactionData.amount,
+      categoria: transactionData.category,
+      tipo: transactionData.type,
+      descripcion: transactionData.description
+    })
+
+    const transactionDTO = TransactionDTOMapper.transactionToDTO(newTransaction)
+
+    // ✅ NUEVO: si es gasto, suma al gastado del budget de esa categoría (si existe)
+    if (transactionData.type === 'gasto' && transactionData.category) {
+      try {
+        await CategoryBudgetService.addSpentFromTransaction(
+          user.id,
+          transactionData.category,
+          transactionData.amount
+        )
+      } catch (e) {
+        // No rompas la creación de transacción si falla el budget
+        console.warn('⚠️ Budget gastado no actualizado (transacción sí creada):', e)
+      }
     }
 
-    console.log('💰 HOOK - Creating transaction:', transactionData)
-    
-    try {
-      // ✅ Usar caso de uso en lugar de acceso directo
-      const newTransaction = await TransactionService.create(user.id, {
-        valor: transactionData.amount,
-        categoria: transactionData.category,
-        tipo: transactionData.type,
-        descripcion: transactionData.description
-      })
-      
-      // ✅ Convertir a DTO
-      const transactionDTO = TransactionDTOMapper.transactionToDTO(newTransaction)
-      
-      console.log('✅ HOOK - Transaction created:', transactionDTO.id)
+    console.log('✅ HOOK - Transaction created:', transactionDTO.id)
 
-      // Recargar transacciones después de crear una nueva
-      await fetchTransactions()
-      return transactionDTO
-    } catch (error) {
-      const errorMessage = errorHandler.handle(error, 'transactions', { 
-        action: 'create', 
-        userId: user.id,
-        transactionData 
-      })
-      throw new Error(errorMessage)
-    }
-  }, [user, fetchTransactions, errorHandler])
-
-  // Función para eliminar una transacción
+    await fetchTransactions()
+    return transactionDTO
+  } catch (error) {
+    const errorMessage = errorHandler.handle(error, 'transactions', {
+      action: 'create',
+      userId: user.id,
+      transactionData
+    })
+    throw new Error(errorMessage)
+  }
+}, [user, fetchTransactions, errorHandler])
   const deleteTransaction = useCallback(async (transactionId: string): Promise<boolean> => {
     if (!user) {
       console.error('❌ HOOK - User not authenticated')
       return false
     }
 
+    const tx = (optimisticTransactions.length > 0 ? optimisticTransactions : transactions)
+      .find(t => t.id === transactionId)
+
     try {
       console.log('🗑️ HOOK - Deleting transaction:', transactionId)
 
-      // ✅ Usar caso de uso en lugar de acceso directo
-      await TransactionService.delete(transactionId, user.id)
+      setOptimisticTransactions(prev => {
+        const base = prev.length > 0 ? prev : transactions
+        return base.filter(t => t.id !== transactionId)
+      })
 
+      await TransactionService.delete(transactionId, user.id)
       console.log('✅ HOOK - Transaction deleted successfully')
-      
-      // Refrescar datos después de eliminar
+
+      // ✅ NUEVO: restar del gastado si era gasto
+      if (tx?.type === 'gasto' && tx.category) {
+        try {
+          await CategoryBudgetService.subtractSpentFromTransaction(
+            user.id,
+            tx.category,
+            tx.amount
+          )
+        } catch (e) {
+          console.warn(
+            '⚠️ Budget gastado no actualizado al eliminar (transacción sí eliminada):',
+            e
+          )
+        }
+      }
+
       await fetchTransactions()
       return true
     } catch (error) {
-      console.error('❌ HOOK - Error deleting transaction:', error)
-      errorHandler.handle(error, 'transactions', { 
-        action: 'delete', 
-        userId: user.id, 
-        transactionId 
+      console.error('❌ HOOK - Error, REVERTIENDO:', error)
+      setOptimisticTransactions(transactions)
+      errorHandler.handle(error, 'transactions', {
+        action: 'delete',
+        userId: user.id,
+        transactionId
       })
       return false
     }
-  }, [user, fetchTransactions, errorHandler])
+  }, [user, transactions, optimisticTransactions, fetchTransactions, errorHandler])
+
+
 
   // Extraer valores del DTO para compatibilidad
   const summaryData = state.data
@@ -217,7 +241,7 @@ export const useTransactionsUnified = (): AsyncState<TransactionSummaryDTO> & {
 
   return {
     ...state,
-    transactions,
+    transactions: optimisticTransactions.length > 0 ? optimisticTransactions : transactions,
     totalSpent: summaryData?.totalSpent || 0,
     totalIncome: summaryData?.totalIncome || 0,
     todayExpenses: summaryData?.todayExpenses || 0,
@@ -233,4 +257,5 @@ export const useTransactionsUnified = (): AsyncState<TransactionSummaryDTO> & {
     error: state.error,
     refetch: state.refetch
   }
+
 }

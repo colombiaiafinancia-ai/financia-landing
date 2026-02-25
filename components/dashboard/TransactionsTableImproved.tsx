@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { Trash2, Filter, Search, TrendingUp, TrendingDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,9 +33,31 @@ export const TransactionsTableImproved = ({
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
 
+  // 🔥 OPTIMISTIC UPDATE: Estado local para UI instantánea
+  const [localTransactions, setLocalTransactions] = useState<TransactionDTO[]>(transactions)
+
   const { gastoCategories, ingresoCategories } = useCategories()
 
-  // ✅ Formato COP SIEMPRE (formattedAmount nunca viene)
+  // 🔥 OPTIMISTIC UPDATE: Sync con props cuando cambian
+  useEffect(() => {
+    console.log('🔥 [OPTIMISTIC] Sync localTransactions con props:', {
+      propsCount: transactions.length,
+      localCount: localTransactions.length
+    })
+    setLocalTransactions(transactions)
+  }, [transactions])
+
+  // 🔥 DEBUG: Track cambios en props
+  useEffect(() => {
+    console.log('🔥 [DEBUG] Transactions UPDATE:', {
+      propsCount: transactions.length,
+      localCount: localTransactions.length,
+      firstIds: transactions.slice(0, 3).map(t => t.id),
+      hasOnDeleteTransaction: !!onDeleteTransaction,
+      onTransactionDeleted: typeof onTransactionDeleted
+    })
+  }, [transactions, localTransactions, onDeleteTransaction, onTransactionDeleted])
+
   const formatCOP = (amount: number) =>
     new Intl.NumberFormat('es-CO', {
       style: 'currency',
@@ -44,8 +66,9 @@ export const TransactionsTableImproved = ({
       maximumFractionDigits: 0
     }).format(amount)
 
+  // 🔥 OPTIMISTIC UPDATE: Usar localTransactions en lugar de transactions
   const filteredTransactions = useMemo(() => {
-    let filtered = transactions.filter((transaction) => {
+    let filtered = localTransactions.filter((transaction) => {
       const matchesSearch =
         !searchTerm ||
         transaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -76,42 +99,81 @@ export const TransactionsTableImproved = ({
     })
 
     return filtered
-  }, [transactions, searchTerm, typeFilter, categoryFilter, sortBy, sortOrder])
+  }, [localTransactions, searchTerm, typeFilter, categoryFilter, sortBy, sortOrder])
 
   const handleDeleteClick = (transaction: TransactionDTO) => {
+    console.log('🖱️ [DEBUG] CLICK DELETE:', {
+      id: transaction.id,
+      amount: transaction.amount,
+      description: transaction.description
+    })
     setTransactionToDelete(transaction)
     setShowDeleteModal(true)
   }
 
-  const handleDeleteConfirm = async () => {
-    if (!transactionToDelete) return
+  // 🔥 OPTIMISTIC UPDATE: Nueva lógica optimista
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!transactionToDelete) {
+      console.log('❌ [OPTIMISTIC] No transactionToDelete')
+      return
+    }
 
-    setDeletingId(transactionToDelete.id)
+    const transactionId = transactionToDelete.id
+    console.log('🚀 [OPTIMISTIC] INICIANDO DELETE OPTIMISTA:', transactionId)
+
+    // 1. UI INSTANTÁNEA: Remover inmediatamente de localTransactions
+    console.log('⚡ [OPTIMISTIC] PASO 1: Removiendo de localTransactions (UI instantánea)')
+    const prevLocalTransactions = localTransactions
+    setLocalTransactions(prev => prev.filter(t => t.id !== transactionId))
+    console.log('✅ [OPTIMISTIC] LocalTransactions ahora:', localTransactions.length - 1)
+
+    setDeletingId(transactionId)
     setDeleteError(null)
 
     try {
       let success = false
+
       if (onDeleteTransaction) {
-        success = await onDeleteTransaction(transactionToDelete.id)
+        console.log('📞 [OPTIMISTIC] PASO 2: Llamando backend onDeleteTransaction...')
+        const startTime = Date.now()
+        success = await onDeleteTransaction(transactionId)
+        const duration = Date.now() - startTime
+        console.log('✅ [OPTIMISTIC] Backend resultado:', {
+          success,
+          duration: `${duration}ms`,
+          transactionId
+        })
+      } else {
+        console.error('💥 [OPTIMISTIC] ❌ NO HAY onDeleteTransaction PROP!')
+        success = false
       }
 
       if (success) {
+        console.log('🎉 [OPTIMISTIC] DELETE EXITOSO - Todo OK')
         setShowDeleteModal(false)
         setTransactionToDelete(null)
+        console.log('🔔 [OPTIMISTIC] Llamando onTransactionDeleted() para sync final')
         onTransactionDeleted()
-        alert('Transacción eliminada exitosamente')
+        console.log('✅ [OPTIMISTIC] PROCESO COMPLETADO - Lista queda en', localTransactions.length - 1)
       } else {
-        setDeleteError('No se pudo eliminar la transacción. Verifica tus permisos o intenta nuevamente.')
+        // 3. REVERTIR si backend falla
+        console.error('🔄 [OPTIMISTIC] Backend falló - REVIERTIENDO cambios locales')
+        setLocalTransactions(prevLocalTransactions)
+        setDeleteError('Backend falló. Transacción restaurada.')
+        console.log('🔙 [OPTIMISTIC] Revertido a:', prevLocalTransactions.length)
       }
     } catch (error) {
+      // 3. REVERTIR en caso de error
+      console.error('💥 [OPTIMISTIC] ERROR - REVIERTIENDO:', error)
+      setLocalTransactions(prevLocalTransactions)
       const message = error instanceof Error ? error.message : String(error)
-      setDeleteError(`Error inesperado: ${message}`)
+      setDeleteError(`Error: ${message}. Transacción restaurada.`)
     } finally {
+      console.log('🔚 [OPTIMISTIC] FIN PROCESO OPTIMISTA')
       setDeletingId(null)
     }
-  }
+  }, [transactionToDelete, localTransactions, onDeleteTransaction, onTransactionDeleted])
 
-  // ✅ Verde para ingresos, ÁMBAR para gastos (menos “negativo”)
   const getTransactionIcon = (type: string | null) => {
     if (type === 'ingreso') return <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
     return <TrendingDown className="h-4 w-4 text-amber-700 dark:text-amber-400" />
@@ -122,11 +184,9 @@ export const TransactionsTableImproved = ({
     return 'text-amber-700 dark:text-amber-400'
   }
 
-  // ✅ IMPORTANTE: evitar mezcla bg-card + gradient en DARK
   const wrapperClass = `
     rounded-2xl p-6 border
     bg-card text-card-foreground border-border
-
     dark:bg-transparent
     dark:bg-gradient-to-br dark:from-white/10 dark:to-white/5
     dark:backdrop-blur-lg
@@ -148,12 +208,12 @@ export const TransactionsTableImproved = ({
   return (
     <>
       <div className={wrapperClass}>
-        {/* Header */}
+        {/* Header - 🔥 OPTIMISTIC UPDATE: Usar localTransactions */}
         <div className="flex flex-col lg:flex-row gap-4 mb-6">
           <div className="flex-1">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Mis Transacciones</h2>
             <p className="text-slate-700 dark:text-white/70 text-sm">
-              {filteredTransactions.length} de {transactions.length} transacciones
+              {filteredTransactions.length} de {localTransactions.length} transacciones
             </p>
           </div>
 
@@ -275,17 +335,17 @@ export const TransactionsTableImproved = ({
           </div>
         )}
 
-        {/* Lista */}
+        {/* Lista - 🔥 OPTIMISTIC UPDATE: empty state con localTransactions */}
         {filteredTransactions.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-muted dark:bg-white/10">
               <Search className="h-8 w-8 text-slate-400 dark:text-white/50" />
             </div>
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-              {transactions.length === 0 ? 'No hay transacciones' : 'No se encontraron resultados'}
+              {localTransactions.length === 0 ? 'No hay transacciones' : 'No se encontraron resultados'}
             </h3>
             <p className="text-slate-700 dark:text-white/70 text-sm">
-              {transactions.length === 0
+              {localTransactions.length === 0
                 ? 'Registra tu primera transacción para verla aquí'
                 : 'Intenta ajustar los filtros de búsqueda'}
             </p>
@@ -310,7 +370,6 @@ export const TransactionsTableImproved = ({
                         <span className={`font-semibold ${getTransactionColor(transaction.type)}`}>
                           {formatCOP(transaction.amount)}
                         </span>
-
                         <span
                           className="
                             text-xs px-2 py-1 rounded-full
@@ -334,7 +393,6 @@ export const TransactionsTableImproved = ({
                     </div>
                   </div>
 
-                  {/* ⚠️ Eliminar sigue siendo rojo (acción destructiva) */}
                   <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="outline"
@@ -347,6 +405,11 @@ export const TransactionsTableImproved = ({
                       "
                     >
                       <Trash2 className="h-4 w-4" />
+                      {deletingId === transaction.id ? (
+                        <span className="ml-1 text-xs">...</span>
+                      ) : (
+                        <span className="ml-1 text-xs">Del</span>
+                      )}
                     </Button>
                   </div>
                 </div>

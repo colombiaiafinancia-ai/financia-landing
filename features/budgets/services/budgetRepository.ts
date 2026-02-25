@@ -39,6 +39,7 @@ export interface CategoryBudgetEntity {
   mes: string // Formato: YYYY-MM-01
   valor: number
   categorias: string
+  gastado: number | null
   created_at?: string
   updated_at?: string
 }
@@ -266,10 +267,11 @@ export class CategoryBudgetRepository {
 
     const { data, error } = await client
       .from('presupuestos')
-      .select('valor, categorias, mes, usuario_id')
+      .select('valor, categorias, mes, usuario_id, gastado')
       .eq('usuario_id', userId)
       .gte('mes', startDate)
       .lte('mes', endDate)
+
 
     if (error) {
       throw new Error(`Error fetching category budgets by date range: ${error.message}`)
@@ -278,6 +280,45 @@ export class CategoryBudgetRepository {
     return data || []
   }
 
+  async addSpentToCategoryBudget(
+    userId: string,
+    monthDate: string, // YYYY-MM-01
+    categoria: string,
+    amount: number
+  ): Promise<void> {
+    const client = await this.getClient()
+
+    // 1) Buscar presupuesto de esa categoría en ese mes
+    const { data: budget, error: findError } = await client
+      .from('presupuestos')
+      .select('id, gastado')
+      .eq('usuario_id', userId)
+      .eq('mes', monthDate)
+      .eq('categorias', categoria)
+      .maybeSingle()
+
+    if (findError) {
+      throw new Error(`Error fetching category budget: ${findError.message}`)
+    }
+
+    // Si no existe budget para esa categoría, no hacemos nada
+    if (!budget?.id) return
+
+    const currentSpent = Number(budget.gastado) || 0
+    const newSpent = currentSpent + amount
+
+    // 2) Actualizar gastado
+    const { error: updateError } = await client
+      .from('presupuestos')
+      .update({
+        gastado: newSpent,
+      })
+      .eq('id', budget.id)
+
+    if (updateError) {
+      throw new Error(`Error updating gastado: ${updateError.message}`)
+    }
+  }
   /**
    * Eliminar todos los presupuestos de un período específico
    */
@@ -346,7 +387,8 @@ export class CategoryBudgetRepository {
         usuario_id: userId,
         mes: monthDate,
         categorias: categoria,
-        valor
+        valor,
+        gastado: 0
       })
     }
   }
@@ -435,7 +477,47 @@ export class CategoryBudgetRepository {
       throw new Error(`Error deleting category budget: ${error.message}`)
     }
   }
+  /**
+ * Resta el valor de una transacción (gasto) al campo gastado
+ * del presupuesto de esa categoría en el mes indicado.
+ */
+  async subtractSpentFromCategoryBudget(
+    userId: string,
+    monthDate: string,
+    categoria: string,
+    amount: number
+  ): Promise<void> {
+    const client = await this.getClient()
 
+    // 1. Buscar el presupuesto
+    const { data: budget, error: findError } = await client
+      .from('presupuestos')
+      .select('id, gastado')
+      .eq('usuario_id', userId)
+      .eq('mes', monthDate)
+      .eq('categorias', categoria)
+      .maybeSingle()
+
+    if (findError) {
+      throw new Error(`Error fetching category budget: ${findError.message}`)
+    }
+
+    // Si no existe presupuesto, no hay nada que restar
+    if (!budget?.id) return
+
+    const currentSpent = Number(budget.gastado) || 0
+    const newSpent = Math.max(0, currentSpent - amount)
+
+    // 2. Actualizar gastado
+    const { error: updateError } = await client
+      .from('presupuestos')
+      .update({ gastado: newSpent })
+      .eq('id', budget.id)
+
+    if (updateError) {
+      throw new Error(`Error updating gastado: ${updateError.message}`)
+    }
+  }
   /**
    * Suscribirse a cambios en tiempo real
    */

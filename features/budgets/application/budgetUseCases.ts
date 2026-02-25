@@ -1,25 +1,25 @@
 /**
  * Casos de Uso de Budgets - Capa de Aplicación
- * 
+ *
  * RESPONSABILIDAD: Orquestar flujos de negocio
  * - Coordinar dominio + infraestructura
  * - Validar usando reglas de dominio
  * - Transformar datos entre capas
  * - Manejar errores de aplicación
- * 
+ *
  * NO DEBE CONTENER:
  * ❌ Acceso directo a Supabase
  * ❌ Lógica de UI
  * ❌ Efectos secundarios de UI
- * 
+ *
  * @author Tech Lead - Refactor Arquitectónico
  * @since Fase 2 - Migración de Hooks Legacy
  */
 
-import { 
-  getCurrentPeriod, 
-  getPeriod, 
-  validateBudgetAmount, 
+import {
+  getCurrentPeriod,
+  getPeriod,
+  validateBudgetAmount,
   validateBudgetCategory,
   validateCategoryBudgetData,
   calculateBudgetProgress,
@@ -37,7 +37,12 @@ import {
   type BudgetStats
 } from '../domain/budgetLogic'
 
-import { budgetRepository, categoryBudgetRepository, type BudgetEntity, type CategoryBudgetEntity } from '../services/budgetRepository'
+import {
+  budgetRepository,
+  categoryBudgetRepository,
+  type BudgetEntity,
+  type CategoryBudgetEntity
+} from '../services/budgetRepository'
 
 /**
  * Tipos de aplicación (DTOs)
@@ -113,13 +118,9 @@ export class BudgetUseCases {
    */
   async getCurrentBudget(userId: string): Promise<Budget | null> {
     const period = getCurrentPeriod()
-    
-    const entity = await budgetRepository.findByUserAndPeriod(
-      userId, 
-      period.year, 
-      period.month
-    )
-    
+
+    const entity = await budgetRepository.findByUserAndPeriod(userId, period.year, period.month)
+
     return entity ? this.mapEntityToDomain(entity) : null
   }
 
@@ -129,13 +130,9 @@ export class BudgetUseCases {
   async getBudgetByPeriod(userId: string, year: number, month: number): Promise<Budget | null> {
     // Validar período usando lógica de dominio
     const period = getPeriod(year, month)
-    
-    const entity = await budgetRepository.findByUserAndPeriod(
-      userId, 
-      period.year, 
-      period.month
-    )
-    
+
+    const entity = await budgetRepository.findByUserAndPeriod(userId, period.year, period.month)
+
     return entity ? this.mapEntityToDomain(entity) : null
   }
 
@@ -150,24 +147,15 @@ export class BudgetUseCases {
     }
 
     const period = getCurrentPeriod()
-    
+
     // Verificar si ya existe
-    const existing = await budgetRepository.findByUserAndPeriod(
-      userId, 
-      period.year, 
-      period.month
-    )
+    const existing = await budgetRepository.findByUserAndPeriod(userId, period.year, period.month)
 
     let entity: BudgetEntity
 
     if (existing) {
       // Actualizar existente
-      entity = await budgetRepository.update(
-        userId, 
-        period.year, 
-        period.month, 
-        { monto_mensual: monthlyAmount }
-      )
+      entity = await budgetRepository.update(userId, period.year, period.month, { monto_mensual: monthlyAmount })
     } else {
       // Crear nuevo
       entity = await budgetRepository.create({
@@ -186,7 +174,6 @@ export class BudgetUseCases {
    */
   async deleteBudget(userId: string): Promise<void> {
     const period = getCurrentPeriod()
-    
     await budgetRepository.delete(userId, period.year, period.month)
   }
 
@@ -195,7 +182,6 @@ export class BudgetUseCases {
    */
   async getAllBudgets(userId: string): Promise<Budget[]> {
     const entities = await budgetRepository.findAllByUser(userId)
-    
     return entities.map(entity => this.mapEntityToDomain(entity))
   }
 
@@ -227,51 +213,52 @@ export class CategoryBudgetUseCases {
   }
 
   /**
+   * Suma el valor de una transacción (gasto) al campo gastado del presupuesto
+   * de esa categoría en el mes actual, si existe.
+   */
+  async addSpentFromTransaction(userId: string, categoria: string, amount: number): Promise<void> {
+    const dateRange = getMonthDateRange()
+    const monthDate = dateRange.monthStartISO // YYYY-MM-01
+
+    await categoryBudgetRepository.addSpentToCategoryBudget(userId, monthDate, categoria, amount)
+  }
+
+  /**
    * Obtener presupuestos por categoría del período actual
    */
   async getCurrentCategoryBudgets(userId: string): Promise<CategoryBudget[]> {
     const period = getCurrentPeriod()
-    
-    const entities = await categoryBudgetRepository.findByUserAndPeriod(
-      userId, 
-      period.monthDate
-    )
-    
+
+    const entities = await categoryBudgetRepository.findByUserAndPeriod(userId, period.monthDate)
+
     return entities.map(entity => this.mapEntityToDomain(entity))
   }
 
   /**
    * Obtener presupuestos por rango de fechas (para compatibilidad con hooks legacy)
    */
-  async getCategoryBudgetsByDateRange(
-    userId: string, 
-    startDate: string, 
-    endDate: string
-  ): Promise<CategoryBudget[]> {
-    const entities = await categoryBudgetRepository.findByUserAndDateRange(
-      userId, 
-      startDate, 
-      endDate
-    )
-    
+  async getCategoryBudgetsByDateRange(userId: string, startDate: string, endDate: string): Promise<CategoryBudget[]> {
+    const entities = await categoryBudgetRepository.findByUserAndDateRange(userId, startDate, endDate)
     return entities.map(entity => this.mapEntityToDomain(entity))
   }
 
   /**
    * Obtener resumen de presupuesto por categoría (para useCategoryBudget)
+   *
+   * ✅ CAMBIO CLAVE:
+   * - "actual" se calcula SIEMPRE desde la columna `gastado` (BD)
+   * - Se ignora `expensesByCategory` para evitar inconsistencias
+   * - El parámetro se mantiene por compatibilidad con la firma anterior
    */
   async getCategoryBudgetSummary(
     userId: string,
-    expensesByCategory: Record<string, number>
+    _expensesByCategory: Record<string, number>
   ): Promise<CategoryBudgetSummary[]> {
     const period = getCurrentPeriod()
-    
-    const entities = await categoryBudgetRepository.findByUserAndPeriod(
-      userId, 
-      period.monthDate
-    )
-    
-    // Convertir a formato de dominio
+
+    const entities = await categoryBudgetRepository.findByUserAndPeriod(userId, period.monthDate)
+
+    // Convertir a formato de dominio (presupuestado)
     const domainBudgets: DomainCategoryBudget[] = entities.map(entity => ({
       id: entity.id!,
       categorias: entity.categorias,
@@ -279,18 +266,21 @@ export class CategoryBudgetUseCases {
       mes: entity.mes,
       usuario_id: entity.usuario_id
     }))
-    
+
+    // ✅ Construir mapa de "gastos" desde BD usando `gastado`
+    const expensesFromDB: Record<string, number> = {}
+    for (const e of entities) {
+      expensesFromDB[e.categorias] = Number(e.gastado) || 0
+    }
+
     // Usar lógica de dominio para calcular resumen
-    return calculateCategoryBudgetSummary(domainBudgets, expensesByCategory)
+    return calculateCategoryBudgetSummary(domainBudgets, expensesFromDB)
   }
 
   /**
    * Obtener estadísticas generales de presupuesto
    */
-  async getBudgetStats(
-    userId: string,
-    expensesByCategory: Record<string, number>
-  ): Promise<BudgetStats> {
+  async getBudgetStats(userId: string, expensesByCategory: Record<string, number>): Promise<BudgetStats> {
     const summaries = await this.getCategoryBudgetSummary(userId, expensesByCategory)
     return calculateBudgetStats(summaries)
   }
@@ -298,30 +288,21 @@ export class CategoryBudgetUseCases {
   /**
    * Guardar presupuesto por categoría
    */
-  async saveCategoryBudget(
-    userId: string, 
-    category: string, 
-    amount: number
-  ): Promise<CategoryBudget> {
+  async saveCategoryBudget(userId: string, category: string, amount: number): Promise<CategoryBudget> {
     // Validar usando lógica de dominio
     const validation = validateCategoryBudgetData({
       usuario_id: userId,
       categoria: category,
       valor: amount
     })
-    
+
     if (!validation.isValid) {
       throw new Error(`Datos inválidos: ${validation.errors.join(', ')}`)
     }
 
     const period = getCurrentPeriod()
-    
-    const entity = await categoryBudgetRepository.upsertByCategory(
-      userId,
-      period.monthDate,
-      category,
-      amount
-    )
+
+    const entity = await categoryBudgetRepository.upsertByCategory(userId, period.monthDate, category, amount)
 
     return this.mapEntityToDomain(entity)
   }
@@ -331,7 +312,6 @@ export class CategoryBudgetUseCases {
    */
   async deleteCategoryBudget(userId: string, category: string): Promise<void> {
     const period = getCurrentPeriod()
-    
     await categoryBudgetRepository.delete(userId, period.monthDate, category)
   }
 
@@ -352,27 +332,27 @@ export class CategoryBudgetUseCases {
   async loadBudgetFromSupabase(userId: string): Promise<number> {
     try {
       console.log('💰 BUDGET_USE_CASE - Loading budget for user:', userId)
-      
+
       const dateRange = getMonthDateRange()
-      
+
       console.log('💰 BUDGET_USE_CASE - Date range:', {
         monthStartISO: dateRange.monthStartISO,
         monthEndISO: dateRange.monthEndISO
       })
-      
+
       const entities = await categoryBudgetRepository.findByUserAndDateRange(
         userId,
         dateRange.monthStartISO,
         dateRange.monthEndISO
       )
-      
+
       console.log('💰 BUDGET_USE_CASE - Found budgets:', entities.length)
-      
+
       // Sumar todos los presupuestos del mes (por categoría)
       const totalBudget = entities.reduce((sum, budget) => sum + budget.valor, 0)
-      
+
       console.log('✅ BUDGET_USE_CASE - Total budget calculated:', totalBudget)
-      
+
       return totalBudget
     } catch (error) {
       console.error('❌ BUDGET_USE_CASE - Error loading budget from Supabase:', error)
@@ -386,7 +366,7 @@ export class CategoryBudgetUseCases {
   async saveBudgetGeneral(userId: string, newBudget: number): Promise<boolean> {
     try {
       console.log('💰 BUDGET_USE_CASE - Saving general budget:', { userId, newBudget })
-      
+
       // Validar usando lógica de dominio
       const validation = validateBudgetAmount(newBudget)
       if (!validation.isValid) {
@@ -394,28 +374,43 @@ export class CategoryBudgetUseCases {
       }
 
       const period = getCurrentPeriod()
-      
+
       console.log('💰 BUDGET_USE_CASE - Current period:', period)
-      
+
       // Eliminar presupuestos existentes del mes
       await categoryBudgetRepository.deleteAllByUserAndPeriod(userId, period.monthDate)
-      
+
       console.log('💰 BUDGET_USE_CASE - Deleted existing budgets for period')
-      
+
       // Crear un presupuesto general para el mes
-      const created = await categoryBudgetRepository.createGeneralBudget(
-        userId,
-        period.monthDate,
-        newBudget
-      )
-      
+      const created = await categoryBudgetRepository.createGeneralBudget(userId, period.monthDate, newBudget)
+
       console.log('✅ BUDGET_USE_CASE - General budget created:', created)
-      
+
       return true
     } catch (error) {
       console.error('❌ BUDGET_USE_CASE - Error saving general budget:', error)
       throw error
     }
+  }
+  /**
+ * Resta el valor de una transacción eliminada (gasto)
+ * del campo gastado del presupuesto de la categoría.
+ */
+  async subtractSpentFromTransaction(
+    userId: string,
+    categoria: string,
+    amount: number
+  ): Promise<void> {
+    const dateRange = getMonthDateRange()
+    const monthDate = dateRange.monthStartISO // YYYY-MM-01
+
+    await categoryBudgetRepository.subtractSpentFromCategoryBudget(
+      userId,
+      monthDate,
+      categoria,
+      amount
+    )
   }
 }
 

@@ -57,6 +57,7 @@ export { transactionRepository } from './services/transactionRepository'
 
 // Import para uso interno en este archivo
 import { transactionUseCases } from './application/transactionUseCases'
+import { groupExpensesByCategory } from './domain/transactionLogic'
 
 // Convenience exports para facilitar el uso
 export const TransactionService = {
@@ -99,4 +100,6 @@ export const TransactionService = {
   // Métodos de compatibilidad con hooks legacy
   getWithCalculations: (userId: string) => 
     transactionUseCases.getTransactionsWithCalculations(userId)
+
+  
 }

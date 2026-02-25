@@ -89,11 +89,11 @@ export const CategoryBudgetService = {
   getByDateRange: (userId: string, startDate: string, endDate: string) => categoryBudgetUseCases.getCategoryBudgetsByDateRange(userId, startDate, endDate),
   getSummary: (userId: string, expensesByCategory: Record<string, number>) => categoryBudgetUseCases.getCategoryBudgetSummary(userId, expensesByCategory),
   getStats: (userId: string, expensesByCategory: Record<string, number>) => categoryBudgetUseCases.getBudgetStats(userId, expensesByCategory),
-  
+  addSpentFromTransaction: (userId: string, categoria: string, amount: number) =>  categoryBudgetUseCases.addSpentFromTransaction(userId, categoria, amount),
   // Operaciones
   save: (userId: string, category: string, amount: number) => categoryBudgetUseCases.saveCategoryBudget(userId, category, amount),
   delete: (userId: string, category: string) => categoryBudgetUseCases.deleteCategoryBudget(userId, category),
-  
+  subtractSpentFromTransaction: (  userId: string,  category: string,  amount: number) => categoryBudgetUseCases.subtractSpentFromTransaction(userId, category, amount),
   // Suscripciones
   subscribe: (userId: string, callback: () => void) => categoryBudgetUseCases.subscribeToChanges(userId, callback),
   

@@ -12,10 +12,8 @@ export default function Home() {
   return (
     <main className='min-h-screen'>
       
-
-      
       <nav className='sticky top-0 z-50 bg-[#0D1D35]/95 backdrop-blur-sm border-b border-white/10 container mx-auto px-4 py-4 md:py-6 flex justify-between items-center'>
-        <h1 className='text-xl md:text-2xl font-bold text-white'>FinancIA</h1>
+        <h1 className='text-xl md:text-2xl font-bold text-white'>Finanzas Consulting - FinancIA</h1>
         <div className='flex items-center space-x-4 md:space-x-6'>
           <a href='#producto' className='text-white hover:text-[#5ce1e6] transition-colors text-sm md:text-base'>Producto</a>
           <a href='#plan' className='text-white hover:text-[#5ce1e6] transition-colors text-sm md:text-base'>Plan</a>
