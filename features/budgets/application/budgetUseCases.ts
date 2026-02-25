@@ -227,9 +227,13 @@ export class CategoryBudgetUseCases {
    * Obtener presupuestos por categoría del período actual
    */
   async getCurrentCategoryBudgets(userId: string): Promise<CategoryBudget[]> {
-    const period = getCurrentPeriod()
+    const dateRange = getMonthDateRange()
 
-    const entities = await categoryBudgetRepository.findByUserAndPeriod(userId, period.monthDate)
+    const entities = await categoryBudgetRepository.findByUserAndDateRange(
+      userId,
+      dateRange.monthStartISO,
+      dateRange.monthEndISO
+    )
 
     return entities.map(entity => this.mapEntityToDomain(entity))
   }
@@ -251,31 +255,33 @@ export class CategoryBudgetUseCases {
    * - El parámetro se mantiene por compatibilidad con la firma anterior
    */
   async getCategoryBudgetSummary(
-    userId: string,
-    _expensesByCategory: Record<string, number>
-  ): Promise<CategoryBudgetSummary[]> {
-    const period = getCurrentPeriod()
+  userId: string,
+  _expensesByCategory: Record<string, number>
+): Promise<CategoryBudgetSummary[]> {
+  const dateRange = getMonthDateRange()
 
-    const entities = await categoryBudgetRepository.findByUserAndPeriod(userId, period.monthDate)
+  const entities = await categoryBudgetRepository.findByUserAndDateRange(
+    userId,
+    dateRange.monthStartISO,
+    dateRange.monthEndISO
+  )
 
-    // Convertir a formato de dominio (presupuestado)
-    const domainBudgets: DomainCategoryBudget[] = entities.map(entity => ({
-      id: entity.id!,
-      categorias: entity.categorias,
-      valor: entity.valor,
-      mes: entity.mes,
-      usuario_id: entity.usuario_id
-    }))
+  const domainBudgets: DomainCategoryBudget[] = entities.map(entity => ({
+    id: entity.id!,
+    categorias: entity.categorias,
+    valor: entity.valor,
+    mes: entity.mes,
+    usuario_id: entity.usuario_id
+  }))
 
-    // ✅ Construir mapa de "gastos" desde BD usando `gastado`
-    const expensesFromDB: Record<string, number> = {}
-    for (const e of entities) {
-      expensesFromDB[e.categorias] = Number(e.gastado) || 0
-    }
-
-    // Usar lógica de dominio para calcular resumen
-    return calculateCategoryBudgetSummary(domainBudgets, expensesFromDB)
+  // "actual" sale de gastado (BD)
+  const expensesFromDB: Record<string, number> = {}
+  for (const e of entities) {
+    expensesFromDB[e.categorias] = Number(e.gastado) || 0
   }
+
+  return calculateCategoryBudgetSummary(domainBudgets, expensesFromDB)
+}
 
   /**
    * Obtener estadísticas generales de presupuesto
