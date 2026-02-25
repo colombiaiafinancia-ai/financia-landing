@@ -1,0 +1,24 @@
+# FinancIA - robots.txt
+# Reduce tráfico de bots en rutas sensibles
+
+User-agent: *
+# Rutas públicas (solo lectura, sin login ni formularios)
+Allow: /terms
+Allow: /privacy
+
+# Rutas que requieren login, redirigen a dashboard o llenar datos
+Disallow: /
+Disallow: /login
+Disallow: /register
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-email
+
+# Bloquear rutas que bots maliciosos suelen probar
+Disallow: /xmlrpc.php
+Disallow: /.env
+Disallow: /wp-admin
+Disallow: /wp-login.php
