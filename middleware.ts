@@ -29,18 +29,20 @@ export async function middleware(request: NextRequest) {
 
   // Si no necesita verificación de auth, continuar
   if (!needsAuth && !isAuthPage && !isLandingPage) {
-    return addSecurityHeaders(NextResponse.next())
+    return addSecurityHeaders(response)
   }
 
   // Verificar autenticación usando nueva infraestructura
-  const authResult = await verifyMiddlewareAuth(request)
+  let response = NextResponse.next()
+  
+  const authResult = await verifyMiddlewareAuth(request, response)
   const isAuthenticated = !!authResult.user && !authResult.error
 
   // Manejar errores de refresh token limpiando cookies
   if (authResult.error && authResult.error.message?.includes('refresh token')) {
     let response = NextResponse.next()
-    response = clearMiddlewareAuthCookies(response)
-    return addSecurityHeaders(response)
+    const authResult = await verifyMiddlewareAuth(request, response)
+    const isAuthenticated = !!authResult.user && !authResult.error
   }
 
   // Lógica de redirección mejorada
@@ -109,4 +111,10 @@ export const config = {
      */
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
+}
+function withCookies(from: NextResponse, to: NextResponse) {
+  from.cookies.getAll().forEach((c) => {
+    to.cookies.set(c.name, c.value, c)
+  })
+  return to
 }
