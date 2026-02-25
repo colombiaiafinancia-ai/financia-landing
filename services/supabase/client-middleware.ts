@@ -117,26 +117,30 @@ export async function verifyMiddlewareAuth(
     const client = getMiddlewareSupabaseClient(request, response)
     
     // Intentar obtener usuario actual
-    const { data: { user }, error } = await client.auth.getUser()
-    
-    if (error) {
-      if (isRefreshTokenError(error)) {
-        logDebug('Refresh token error in middleware, user not authenticated')
-        return { user: null, session: null, error: null }
-      }
-      
-      logError('Auth error in middleware', error)
-      return { user: null, session: null, error }
+    // 1) En middleware: primero sesión (NO revienta si no hay)
+  const { data: { session }, error: sessionError } = await client.auth.getSession()
+  
+  // Si hay error real (no "missing session"), lo reportas
+  if (sessionError) {
+    if (isRefreshTokenError(sessionError)) {
+      logDebug('Refresh token error in middleware, user not authenticated')
+      return { user: null, session: null, error: null }
     }
-    
-    // Si hay usuario, también obtener sesión
-    let session = null
-    if (user) {
-      const { data: { session: userSession }, error: sessionError } = await client.auth.getSession()
-      if (!sessionError) {
-        session = userSession
-      }
-    }
+  
+    logError('Auth error in middleware', sessionError)
+    return { user: null, session: null, error: sessionError }
+  }
+  
+  // 2) Si no hay sesión, simplemente no está autenticado
+  if (!session) {
+    return { user: null, session: null, error: null }
+  }
+  
+  // 3) Si hay sesión, el user viene ahí mismo
+  const user = session.user ?? null
+  
+  logDebug('Auth verification completed', { hasUser: !!user, hasSession: !!session })
+  return { user, session, error: null }
     
     logDebug('Auth verification completed', { 
       hasUser: !!user, 
