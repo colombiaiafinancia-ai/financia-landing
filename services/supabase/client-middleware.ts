@@ -130,10 +130,19 @@ export async function verifyMiddlewareAuth(
     }
 
     // 3) Con sesión => user disponible
-    const user = session.user ?? null
+    const { data: { user }, error: userError } = await client.auth.getUser()
+    
+    if (userError) {
+      if (isRefreshTokenError(userError)) {
+        logDebug('Refresh token error in middleware while fetching user')
+        return { user: null, session: null, error: null }
+      }
+      logError('Auth error in middleware (getUser)', userError)
+      return { user: null, session: null, error: userError }
+    }
 
-    logDebug('Auth verification completed', { hasUser: !!user, hasSession: !!session })
-    return { user, session, error: null }
+logDebug('Auth verification completed', { hasUser: !!user, hasSession: !!session })
+return { user: user ?? null, session, error: null }
 
   } catch (error) {
     logError('Unexpected error during auth verification', error)
