@@ -520,23 +520,69 @@ export class CategoryBudgetRepository {
     return data
   }
 
-  /**
-   * Eliminar presupuesto por categoría
-   */
-  async delete(userId: string, monthDate: string, categoria: string): Promise<void> {
-    const client = await this.getClient()
+/**
+ * Elimina el presupuesto de una categoría del mes indicado
+ * SIN importar el día exacto guardado en "mes".
+ *
+ * Funciona con:
+ * - DATE (YYYY-MM-DD)
+ * - TIMESTAMP (YYYY-MM-DDTHH:mm:ss...)
+ * - TEXT/VARCHAR con cualquiera de los formatos anteriores
+ *
+ * monthDate esperado como YYYY-MM-01
+ */
+async delete(
+  userId: string,
+  monthDate: string,
+  categoria: string
+): Promise<void> {
+  const client = await this.getClient()
 
-    const { error } = await client
-      .from('presupuestos')
-      .delete()
-      .eq('usuario_id', userId)
-      .eq('mes', monthDate)
-      .eq('categorias', categoria)
+  const safeCategory = (categoria || '').trim()
+  if (!userId || !safeCategory) return
 
-    if (error) {
-      throw new Error(`Error deleting category budget: ${error.message}`)
-    }
+  // Normalizar a YYYY-MM
+  const ym = monthDate?.slice(0, 7) // YYYY-MM
+  if (!ym || ym.length !== 7) {
+    throw new Error(`Invalid monthDate: ${monthDate}`)
   }
+
+  const year = Number(ym.slice(0, 4))
+  const month = Number(ym.slice(5, 7))
+  if (!Number.isFinite(year) || !Number.isFinite(month)) {
+    throw new Error(`Invalid monthDate: ${monthDate}`)
+  }
+
+  const monthStartISO = `${year}-${String(month).padStart(2, '0')}-01`
+  const nextMonth = month === 12 ? 1 : month + 1
+  const nextYear = month === 12 ? year + 1 : year
+  const nextMonthStartISO = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
+
+  // 1️⃣ Intento principal: DELETE por rango de fechas
+  let { error } = await client
+    .from('presupuestos')
+    .delete()
+    .eq('usuario_id', userId)
+    .eq('categorias', safeCategory)
+    .gte('mes', monthStartISO)
+    .lt('mes', nextMonthStartISO)
+
+  if (!error) return
+
+  console.warn('⚠️ delete category budget range failed, trying fallback:', error.message)
+
+  // 2️⃣ Fallback: DELETE por prefijo YYYY-MM%
+  const fallback = await client
+    .from('presupuestos')
+    .delete()
+    .eq('usuario_id', userId)
+    .eq('categorias', safeCategory)
+    .like('mes', `${ym}%`)
+
+  if (fallback.error) {
+    throw new Error(`Error deleting category budget: ${fallback.error.message}`)
+  }
+}
   /**
  * Resta el valor de una transacción (gasto) al campo gastado
  * del presupuesto de esa categoría en el mes indicado,
