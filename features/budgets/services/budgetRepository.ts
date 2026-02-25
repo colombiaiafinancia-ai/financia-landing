@@ -280,46 +280,106 @@ export class CategoryBudgetRepository {
     return data || []
   }
 
+  /**
+   * Suma el valor al campo gastado del presupuesto de esa categoría
+   * del mes actual SIN importar el día exacto guardado en "mes".
+   *
+   * Robusto ante:
+   * - mes tipo DATE (YYYY-MM-DD)
+   * - mes tipo TIMESTAMP (YYYY-MM-DDTHH:mm:ss...)
+   * - mes tipo TEXT/VARCHAR con cualquiera de los formatos anteriores
+   *
+   * Recibe monthDate esperado como YYYY-MM-01 (string).
+   */
   async addSpentToCategoryBudget(
     userId: string,
-    monthDate: string, // YYYY-MM-01
+    monthDate: string, // normalmente YYYY-MM-01
     categoria: string,
     amount: number
   ): Promise<void> {
     const client = await this.getClient()
 
-    // 1) Buscar presupuesto de esa categoría en ese mes
-    const { data: budget, error: findError } = await client
-      .from('presupuestos')
-      .select('id, gastado')
-      .eq('usuario_id', userId)
-      .eq('mes', monthDate)
-      .eq('categorias', categoria)
-      .maybeSingle()
+    // Sanitizar inputs básicos
+    const safeCategory = (categoria || '').trim()
+    if (!userId || !safeCategory || !Number.isFinite(amount) || amount <= 0) return
 
-    if (findError) {
-      throw new Error(`Error fetching category budget: ${findError.message}`)
+    // Normaliza a YYYY-MM (prefijo del mes)
+    const ym = monthDate?.slice(0, 7) // "YYYY-MM"
+    if (!ym || ym.length !== 7) {
+      throw new Error(`Invalid monthDate: ${monthDate}`)
     }
 
-    // Si no existe budget para esa categoría, no hacemos nada
+    // Construir rangos: [monthStart, nextMonthStart)
+    const year = Number(ym.slice(0, 4))
+    const month = Number(ym.slice(5, 7)) // 1-12
+    if (!Number.isFinite(year) || !Number.isFinite(month)) {
+      throw new Error(`Invalid monthDate: ${monthDate}`)
+    }
+
+    const monthStartISO = `${year}-${String(month).padStart(2, '0')}-01` // YYYY-MM-01
+    const nextMonth = month === 12 ? 1 : month + 1
+    const nextYear = month === 12 ? year + 1 : year
+    const nextMonthStartISO = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
+
+    // 1) Intento principal: rango por fecha (funciona si mes es DATE/TIMESTAMP bien tipado)
+    let budget: { id: string; gastado: number | null } | null = null
+
+    {
+      const { data, error } = await client
+        .from('presupuestos')
+        .select('id, gastado, mes')
+        .eq('usuario_id', userId)
+        .eq('categorias', safeCategory)
+        .gte('mes', monthStartISO)
+        .lt('mes', nextMonthStartISO)
+        .order('mes', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) {
+        // NO fallamos aún: puede ser que "mes" sea TEXT y el filtro no aplique como esperas
+        console.warn('⚠️ addSpentToCategoryBudget range query failed:', error.message)
+      } else if (data?.id) {
+        budget = { id: data.id, gastado: (data as any).gastado ?? null }
+      }
+    }
+
+    // 2) Fallback: búsqueda por prefijo YYYY-MM% (funciona si mes es TEXT o TIMESTAMP serializado a string)
+    if (!budget) {
+      const { data, error } = await client
+        .from('presupuestos')
+        .select('id, gastado, mes')
+        .eq('usuario_id', userId)
+        .eq('categorias', safeCategory)
+        .like('mes', `${ym}%`)
+        .order('mes', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) {
+        throw new Error(`Error fetching category budget: ${error.message}`)
+      }
+      if (data?.id) {
+        budget = { id: data.id, gastado: (data as any).gastado ?? null }
+      }
+    }
+
+    // Si no hay budget, no hacemos nada (tu regla)
     if (!budget?.id) return
 
     const currentSpent = Number(budget.gastado) || 0
     const newSpent = currentSpent + amount
 
-    // 2) Actualizar gastado
     const { error: updateError } = await client
       .from('presupuestos')
-      .update({
-        gastado: newSpent,
-      })
+      .update({ gastado: newSpent })
       .eq('id', budget.id)
 
     if (updateError) {
       throw new Error(`Error updating gastado: ${updateError.message}`)
     }
   }
-  /**
+/**
    * Eliminar todos los presupuestos de un período específico
    */
   async deleteAllByUserAndPeriod(userId: string, monthDate: string): Promise<void> {
@@ -479,45 +539,104 @@ export class CategoryBudgetRepository {
   }
   /**
  * Resta el valor de una transacción (gasto) al campo gastado
- * del presupuesto de esa categoría en el mes indicado.
+ * del presupuesto de esa categoría en el mes indicado,
+ * SIN importar el día exacto guardado en "mes".
+ *
+ * Robusto ante:
+ * - mes tipo DATE (YYYY-MM-DD)
+ * - mes tipo TIMESTAMP (YYYY-MM-DDTHH:mm:ss...)
+ * - mes tipo TEXT/VARCHAR con cualquiera de los formatos anteriores
+ *
+ * Recibe monthDate esperado como YYYY-MM-01 (string).
  */
-  async subtractSpentFromCategoryBudget(
-    userId: string,
-    monthDate: string,
-    categoria: string,
-    amount: number
-  ): Promise<void> {
-    const client = await this.getClient()
+async subtractSpentFromCategoryBudget(
+  userId: string,
+  monthDate: string, // normalmente YYYY-MM-01
+  categoria: string,
+  amount: number
+): Promise<void> {
+  const client = await this.getClient()
 
-    // 1. Buscar el presupuesto
-    const { data: budget, error: findError } = await client
+  // Sanitizar inputs básicos
+  const safeCategory = (categoria || '').trim()
+  if (!userId || !safeCategory || !Number.isFinite(amount) || amount <= 0) return
+
+  // Normaliza a YYYY-MM (prefijo del mes)
+  const ym = monthDate?.slice(0, 7) // "YYYY-MM"
+  if (!ym || ym.length !== 7) {
+    throw new Error(`Invalid monthDate: ${monthDate}`)
+  }
+
+  // Construir rangos: [monthStart, nextMonthStart)
+  const year = Number(ym.slice(0, 4))
+  const month = Number(ym.slice(5, 7)) // 1-12
+  if (!Number.isFinite(year) || !Number.isFinite(month)) {
+    throw new Error(`Invalid monthDate: ${monthDate}`)
+  }
+
+  const monthStartISO = `${year}-${String(month).padStart(2, '0')}-01`
+  const nextMonth = month === 12 ? 1 : month + 1
+  const nextYear = month === 12 ? year + 1 : year
+  const nextMonthStartISO = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
+
+  // 1) Intento principal: rango por fecha (funciona si mes es DATE/TIMESTAMP)
+  let budget: { id: string; gastado: number | null } | null = null
+
+  {
+    const { data, error } = await client
       .from('presupuestos')
-      .select('id, gastado')
+      .select('id, gastado, mes')
       .eq('usuario_id', userId)
-      .eq('mes', monthDate)
-      .eq('categorias', categoria)
+      .eq('categorias', safeCategory)
+      .gte('mes', monthStartISO)
+      .lt('mes', nextMonthStartISO)
+      .order('mes', { ascending: false })
+      .limit(1)
       .maybeSingle()
 
-    if (findError) {
-      throw new Error(`Error fetching category budget: ${findError.message}`)
-    }
-
-    // Si no existe presupuesto, no hay nada que restar
-    if (!budget?.id) return
-
-    const currentSpent = Number(budget.gastado) || 0
-    const newSpent = Math.max(0, currentSpent - amount)
-
-    // 2. Actualizar gastado
-    const { error: updateError } = await client
-      .from('presupuestos')
-      .update({ gastado: newSpent })
-      .eq('id', budget.id)
-
-    if (updateError) {
-      throw new Error(`Error updating gastado: ${updateError.message}`)
+    if (error) {
+      console.warn('⚠️ subtractSpentFromCategoryBudget range query failed:', error.message)
+    } else if (data?.id) {
+      budget = { id: data.id, gastado: (data as any).gastado ?? null }
     }
   }
+
+  // 2) Fallback: búsqueda por prefijo YYYY-MM% (si mes es TEXT o TIMESTAMP serializado)
+  if (!budget) {
+    const { data, error } = await client
+      .from('presupuestos')
+      .select('id, gastado, mes')
+      .eq('usuario_id', userId)
+      .eq('categorias', safeCategory)
+      .like('mes', `${ym}%`)
+      .order('mes', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) {
+      throw new Error(`Error fetching category budget: ${error.message}`)
+    }
+    if (data?.id) {
+      budget = { id: data.id, gastado: (data as any).gastado ?? null }
+    }
+  }
+
+  // Si no existe presupuesto, no hay nada que restar
+  if (!budget?.id) return
+
+  const currentSpent = Number(budget.gastado) || 0
+  const newSpent = Math.max(0, currentSpent - amount)
+
+  // Actualizar gastado
+  const { error: updateError } = await client
+    .from('presupuestos')
+    .update({ gastado: newSpent })
+    .eq('id', budget.id)
+
+  if (updateError) {
+    throw new Error(`Error updating gastado: ${updateError.message}`)
+  }
+}
   /**
    * Suscribirse a cambios en tiempo real
    */

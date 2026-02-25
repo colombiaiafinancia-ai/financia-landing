@@ -161,6 +161,7 @@ export const useTransactionsUnified = (): AsyncState<TransactionSummaryDTO> & {
           transactionData.category,
           transactionData.amount
         )
+        
       } catch (e) {
         // No rompas la creación de transacción si falla el budget
         console.warn('⚠️ Budget gastado no actualizado (transacción sí creada):', e)

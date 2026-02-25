@@ -219,7 +219,6 @@ export class CategoryBudgetUseCases {
   async addSpentFromTransaction(userId: string, categoria: string, amount: number): Promise<void> {
     const dateRange = getMonthDateRange()
     const monthDate = dateRange.monthStartISO // YYYY-MM-01
-
     await categoryBudgetRepository.addSpentToCategoryBudget(userId, monthDate, categoria, amount)
   }
 
