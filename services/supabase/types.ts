@@ -150,20 +150,30 @@ export function isSupabaseError(error: any): error is SupabaseError {
  * Utilidad para verificar si un error es de refresh token
  */
 export function isRefreshTokenError(error: any): boolean {
+  // 1) Si es nuestro wrapper
   if (isSupabaseError(error)) {
-    return error.type === SUPABASE_ERRORS.INVALID_REFRESH_TOKEN ||
-           error.type === SUPABASE_ERRORS.REFRESH_TOKEN_NOT_FOUND
+    return (
+      error.type === SUPABASE_ERRORS.INVALID_REFRESH_TOKEN ||
+      error.type === SUPABASE_ERRORS.REFRESH_TOKEN_NOT_FOUND
+    )
   }
-  
-  if (error?.message) {
-    const message = error.message.toLowerCase()
-    return message.includes('refresh token') && 
-           (message.includes('invalid') || message.includes('not found'))
-  }
-  
-  return false
-}
 
+  // 2) Si viene de supabase-js: AuthApiError suele traer "code"
+  const code = error?.code
+  if (code) {
+    return (
+      code === 'refresh_token_not_found' ||
+      code === 'invalid_refresh_token'
+    )
+  }
+
+  // 3) Fallback por mensaje
+  const message = String(error?.message || '').toLowerCase()
+  return (
+    message.includes('refresh token') &&
+    (message.includes('invalid') || message.includes('not found'))
+  )
+}
 /**
  * Configuración de logging para diferentes entornos
  */
