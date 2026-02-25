@@ -1,92 +1,70 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { 
-  verifyMiddlewareAuth, 
+import {
+  verifyMiddlewareAuth,
   clearMiddlewareAuthCookies,
   isProtectedRoute,
-  isAuthRoute 
+  isAuthRoute,
 } from '@/services/supabase/client-middleware'
+import { isRefreshTokenError } from '@/services/supabase/types'
 
-/**
- * Middleware de Next.js con infraestructura Supabase refactorizada
- * 
- * CAMBIOS EN FASE 1:
- * ✅ Usa nueva infraestructura de services/supabase/
- * ✅ Manejo robusto de errores de refresh token
- * ✅ Lógica de rutas más clara y mantenible
- * ✅ Compatibilidad total con código legacy
- * 
- * @author Tech Lead - Refactor Arquitectónico
- * @since Fase 1 - Infraestructura
- */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Verificar si la ruta necesita autenticación usando nueva utilidad
   const needsAuth = isProtectedRoute(pathname)
   const isAuthPage = isAuthRoute(pathname)
   const isLandingPage = pathname === '/'
 
-  // Si no necesita verificación de auth, continuar
+  // Si no requiere lógica de auth, continuar sin tocar Supabase
   if (!needsAuth && !isAuthPage && !isLandingPage) {
-    return addSecurityHeaders(response)
+    return addSecurityHeaders(NextResponse.next())
   }
 
-  // Verificar autenticación usando nueva infraestructura
+  // Response compartido para que Supabase pueda setear cookies (refresh, etc.)
   let response = NextResponse.next()
-  
+
   const authResult = await verifyMiddlewareAuth(request, response)
   const isAuthenticated = !!authResult.user && !authResult.error
 
-  // Manejar errores de refresh token limpiando cookies
-  if (authResult.error && authResult.error.message?.includes('refresh token')) {
-    let response = NextResponse.next()
-    const authResult = await verifyMiddlewareAuth(request, response)
-    const isAuthenticated = !!authResult.user && !authResult.error
+  // Si el refresh token es inválido/no existe, limpiamos cookies y seguimos como NO auth
+  if (authResult.error && isRefreshTokenError(authResult.error)) {
+    response = clearMiddlewareAuthCookies(response)
+    return addSecurityHeaders(response)
   }
 
-  // Lógica de redirección mejorada
-  return handleAuthRedirects(request, pathname, isAuthenticated)
-
+  // Redirecciones preservando cookies
+  return handleAuthRedirects(request, pathname, isAuthenticated, response)
 }
 
-/**
- * Manejar redirecciones basadas en estado de autenticación
- * 
- * Lógica centralizada y clara para redirecciones según el estado
- * de autenticación del usuario.
- */
 function handleAuthRedirects(
-  request: NextRequest, 
-  pathname: string, 
-  isAuthenticated: boolean
+  request: NextRequest,
+  pathname: string,
+  isAuthenticated: boolean,
+  response: NextResponse
 ): NextResponse {
-  // Usuario autenticado en páginas de auth o landing → redirigir a dashboard
-  // Excepción: /reset-password no se redirige para permitir el flujo del link del correo
-  if (isAuthenticated && (isAuthRoute(pathname) || pathname === '/') && pathname !== '/reset-password') {
-    if (pathname === '/reset-password') {
-      return addSecurityHeaders(NextResponse.next())
-    }
+  // Usuario autenticado en páginas de auth o landing → dashboard
+  // Excepción: /reset-password para permitir flujo de link del correo
+  if (
+    isAuthenticated &&
+    (isAuthRoute(pathname) || pathname === '/') &&
+    pathname !== '/reset-password'
+  ) {
     const dashboardUrl = new URL('/dashboard', request.url)
-    return addSecurityHeaders(NextResponse.redirect(dashboardUrl))
+    const redirect = NextResponse.redirect(dashboardUrl)
+    return addSecurityHeaders(withCookies(response, redirect))
   }
 
-  // Usuario NO autenticado en rutas protegidas → redirigir a login
+  // Usuario NO autenticado en rutas protegidas → login
   if (!isAuthenticated && isProtectedRoute(pathname)) {
     const loginUrl = new URL('/login', request.url)
-    return addSecurityHeaders(NextResponse.redirect(loginUrl))
+    const redirect = NextResponse.redirect(loginUrl)
+    return addSecurityHeaders(withCookies(response, redirect))
   }
 
-  // En cualquier otro caso, continuar normalmente
-  return addSecurityHeaders(NextResponse.next())
+  // En cualquier otro caso, continuar usando el response compartido
+  return addSecurityHeaders(response)
 }
 
-/**
- * Añadir headers de seguridad y rendimiento
- * 
- * Centraliza la configuración de headers para mantener
- * consistencia y facilitar mantenimiento.
- */
 function addSecurityHeaders(response: NextResponse): NextResponse {
   // Headers de seguridad
   response.headers.set('X-Frame-Options', 'DENY')
@@ -96,25 +74,17 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 
   // Headers de rendimiento
   response.headers.set('X-DNS-Prefetch-Control', 'on')
-  
+
   return response
 }
 
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
-}
 function withCookies(from: NextResponse, to: NextResponse) {
   from.cookies.getAll().forEach((c) => {
     to.cookies.set(c.name, c.value, c)
   })
   return to
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 }
