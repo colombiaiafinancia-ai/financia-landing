@@ -69,11 +69,6 @@ export function getMiddlewareSupabaseClient(
             return request.cookies.getAll()
           },
           setAll(cookiesToSet) {
-            // Setear cookies en el request para uso inmediato
-            cookiesToSet.forEach(({ name, value }) => {
-              request.cookies.set(name, value)
-            })
-
             // Si hay response, también setear ahí para el cliente
             if (response) {
               cookiesToSet.forEach(({ name, value, options }) => {
@@ -115,50 +110,40 @@ export async function verifyMiddlewareAuth(
 ): Promise<AuthResult> {
   try {
     const client = getMiddlewareSupabaseClient(request, response)
-    
-    // Intentar obtener usuario actual
-    // 1) En middleware: primero sesión (NO revienta si no hay)
-  const { data: { session }, error: sessionError } = await client.auth.getSession()
-  
-  // Si hay error real (no "missing session"), lo reportas
-  if (sessionError) {
-    if (isRefreshTokenError(sessionError)) {
-      logDebug('Refresh token error in middleware, user not authenticated')
+
+    // 1) En middleware: usar sesión (no revienta si no hay)
+    const { data: { session }, error: sessionError } = await client.auth.getSession()
+
+    if (sessionError) {
+      if (isRefreshTokenError(sessionError)) {
+        logDebug('Refresh token error in middleware, user not authenticated')
+        return { user: null, session: null, error: null }
+      }
+
+      logError('Auth error in middleware', sessionError)
+      return { user: null, session: null, error: sessionError }
+    }
+
+    // 2) Sin sesión => no autenticado (sin error)
+    if (!session) {
       return { user: null, session: null, error: null }
     }
-  
-    logError('Auth error in middleware', sessionError)
-    return { user: null, session: null, error: sessionError }
-  }
-  
-  // 2) Si no hay sesión, simplemente no está autenticado
-  if (!session) {
-    return { user: null, session: null, error: null }
-  }
-  
-  // 3) Si hay sesión, el user viene ahí mismo
-  const user = session.user ?? null
-  
-  logDebug('Auth verification completed', { hasUser: !!user, hasSession: !!session })
-  return { user, session, error: null }
-    
-    logDebug('Auth verification completed', { 
-      hasUser: !!user, 
-      hasSession: !!session 
-    })
-    
+
+    // 3) Con sesión => user disponible
+    const user = session.user ?? null
+
+    logDebug('Auth verification completed', { hasUser: !!user, hasSession: !!session })
     return { user, session, error: null }
 
   } catch (error) {
     logError('Unexpected error during auth verification', error)
-    return { 
-      user: null, 
-      session: null, 
-      error: error instanceof Error ? error : new Error(String(error))
+    return {
+      user: null,
+      session: null,
+      error: error instanceof Error ? error : new Error(String(error)),
     }
   }
 }
-
 /**
  * Actualizar sesión en middleware
  * 
