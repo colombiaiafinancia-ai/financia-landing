@@ -1,0 +1,7 @@
+# Bloqueos de seguridad comunes
+/.env                /404   404
+/.git                /404   404
+/.git/*              /404   404
+/wp-admin/*          /404   404
+/admin/*             /404   404
+/phpmyadmin/*        /404   404
