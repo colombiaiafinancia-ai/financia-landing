@@ -23,12 +23,25 @@ useEffect(() => {
 
   async function init() {
     try {
-      // detectar code del URL
       const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
 
+      const code = params.get('code')
+      const tokenHash = params.get('token_hash')
+      const type = params.get('type')
+
+      // CASO 1: PKCE flow
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) throw error
+      }
+
+      // CASO 2: token_hash flow (TU CASO)
+      if (tokenHash && type === 'recovery') {
+        const { error } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: 'recovery',
+        })
+
         if (error) throw error
       }
 
@@ -36,10 +49,7 @@ useEffect(() => {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (!session) {
-        setVerificationError(
-          'Enlace inválido o expirado. Solicita uno nuevo.'
-        )
-        return
+        throw new Error('No session')
       }
 
       setSessionReady(true)
