@@ -15,7 +15,14 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = isAuthRoute(pathname)
   const isLandingPage = pathname === '/'
 
-  // Si no requiere lógica de auth, continuar sin tocar Supabase
+// Reset-password: dejar pasar sin verificar auth para permitir el flujo del link del correo.
+  if (pathname === '/reset-password') {
+    return addSecurityHeaders(NextResponse.next())
+  }
+
+ 
+
+  
   if (!needsAuth && !isAuthPage && !isLandingPage) {
     return addSecurityHeaders(NextResponse.next())
   }
