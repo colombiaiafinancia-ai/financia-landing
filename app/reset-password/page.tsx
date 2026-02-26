@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { resetPassword } from '@/actions/auth'
@@ -15,58 +15,61 @@ export default function ResetPasswordPage() {
   const [sessionReady, setSessionReady] = useState(false)
   const [verificationError, setVerificationError] = useState<string | null>(null)
   const router = useRouter()
-  const [isRecoverySession, setIsRecoverySession] = useState(false)
 
-  // Procesar el token del enlace: Supabase PKCE envía token_hash en query (?token_hash=...&type=recovery).
-  // El formato antiguo usa hash (#access_token=...) que getSession() detecta automáticamente.
-useEffect(() => {
-  const supabase = getBrowserSupabaseClient()
+  // Ref para saber si el reset se completó exitosamente
+  // Usamos ref en lugar de state para que el cleanup del useEffect lo lea correctamente
+  const completedRef = useRef(false)
 
-  async function init() {
-    try {
-      let { data: { session } } = await supabase.auth.getSession()
-      const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
-      const type = params.get('type')
-
-      if (type === 'recovery') {
-        setIsRecoverySession(true)
-      }
-
-      if (!session && code) {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) throw error
-        session = data.session
-      }
-
-      if (!session) {
-        setVerificationError('Enlace inválido o expirado. Solicita uno nuevo.')
-        return
-      }
-
-      setSessionReady(true)
-      window.history.replaceState({}, '', '/reset-password')
-
-    } catch (err) {
-      console.error(err)
-      setVerificationError('Enlace inválido o expirado. Solicita uno nuevo.')
-    }
-  }
-
-  init()
-
-  // Cerrar sesión si el usuario abandona la página sin cambiar contraseña
-  const handleBeforeUnload = () => {
+  // Inicializar sesión desde el link de recuperación
+  useEffect(() => {
     const supabase = getBrowserSupabaseClient()
-    supabase.auth.signOut()
-  }
 
-  window.addEventListener('beforeunload', handleBeforeUnload)
+    async function init() {
+      try {
+        let { data: { session } } = await supabase.auth.getSession()
 
-  return () => {
-    window.removeEventListener('beforeunload', handleBeforeUnload)
-  }
-}, [])
+        const params = new URLSearchParams(window.location.search)
+        const code = params.get('code')
+
+        if (!session && code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+          if (error) throw error
+          session = data.session
+        }
+
+        if (!session) {
+          setVerificationError('Enlace inválido o expirado. Solicita uno nuevo.')
+          return
+        }
+
+        setSessionReady(true)
+        window.history.replaceState({}, '', '/reset-password')
+
+      } catch (err) {
+        console.error(err)
+        setVerificationError('Enlace inválido o expirado. Solicita uno nuevo.')
+      }
+    }
+
+    init()
+
+    // Cerrar sesión si el usuario cierra/recarga la pestaña sin completar el reset
+    const handleBeforeUnload = () => {
+      if (!completedRef.current) {
+        getBrowserSupabaseClient().auth.signOut()
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    // Cerrar sesión si el usuario navega internamente (Next.js) sin completar el reset
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      if (!completedRef.current) {
+        getBrowserSupabaseClient().auth.signOut()
+      }
+    }
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
@@ -81,6 +84,8 @@ useEffect(() => {
       if (result?.error) {
         setError(result.error)
       } else if (result?.success) {
+        // Marcar como completado ANTES de hacer signOut y redirigir
+        completedRef.current = true
         setSuccess(result.success)
         const supabase = getBrowserSupabaseClient()
         await supabase.auth.signOut()
@@ -94,6 +99,7 @@ useEffect(() => {
   }
 
   const handleGoToLogin = async () => {
+    completedRef.current = true // evitar doble signOut en el cleanup
     const supabase = getBrowserSupabaseClient()
     await supabase.auth.signOut()
     router.push('/login')
@@ -102,7 +108,17 @@ useEffect(() => {
   return (
     <main className="min-h-screen bg-[#0D1D35] flex flex-col">
       <nav className="sticky top-0 z-50 bg-[#0D1D35]/95 backdrop-blur-sm border-b border-white/10 container mx-auto px-4 py-4 md:py-6 flex justify-between items-center">
-        <Link href="/" className="text-xl md:text-2xl font-bold text-white hover:text-[#9DFAD7] transition-colors">
+        <Link
+          href="/"
+          onClick={() => {
+            // Si el usuario clickea el logo sin completar, cerrar sesión
+            if (!completedRef.current) {
+              completedRef.current = true
+              getBrowserSupabaseClient().auth.signOut()
+            }
+          }}
+          className="text-xl md:text-2xl font-bold text-white hover:text-[#9DFAD7] transition-colors"
+        >
           Finanzas Consulting - FinancIA
         </Link>
         <button
@@ -141,76 +157,76 @@ useEffect(() => {
                 Verificando enlace...
               </div>
             ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-                  <p className="text-red-400 text-sm">{error}</p>
-                </div>
-              )}
-              {success && (
-                <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                  <p className="text-green-400 text-sm">{success}</p>
-                </div>
-              )}
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                  <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                    <p className="text-red-400 text-sm">{error}</p>
+                  </div>
+                )}
+                {success && (
+                  <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                    <p className="text-green-400 text-sm">{success}</p>
+                  </div>
+                )}
 
-              <div>
-                <label htmlFor="password" className="block text-white font-medium mb-2">
-                  Contraseña nueva
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    id="password"
-                    name="password"
-                    required
-                    minLength={6}
-                    disabled={isLoading}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-[#9DFAD7] transition-colors pr-12"
-                    placeholder="Mínimo 6 caracteres"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
-                  >
-                    {showPassword ? '👁️' : '👁️‍🗨️'}
-                  </button>
+                <div>
+                  <label htmlFor="password" className="block text-white font-medium mb-2">
+                    Contraseña nueva
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      id="password"
+                      name="password"
+                      required
+                      minLength={6}
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-[#9DFAD7] transition-colors pr-12"
+                      placeholder="Mínimo 6 caracteres"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
+                    >
+                      {showPassword ? '👁️' : '👁️‍🗨️'}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label htmlFor="confirmPassword" className="block text-white font-medium mb-2">
-                  Confirmar contraseña
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirm ? 'text' : 'password'}
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    required
-                    minLength={6}
-                    disabled={isLoading}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-[#9DFAD7] transition-colors pr-12"
-                    placeholder="Repite la contraseña"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
-                  >
-                    {showConfirm ? '👁️' : '👁️‍🗨️'}
-                  </button>
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-white font-medium mb-2">
+                    Confirmar contraseña
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirm ? 'text' : 'password'}
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      required
+                      minLength={6}
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-[#9DFAD7] transition-colors pr-12"
+                      placeholder="Repite la contraseña"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm(!showConfirm)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
+                    >
+                      {showConfirm ? '👁️' : '👁️‍🗨️'}
+                    </button>
+                  </div>
                 </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-[#9DFAD7] to-[#D4FFB5] text-[#0D1D35] font-semibold py-3 px-6 rounded-lg hover:opacity-90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#9DFAD7]/20"
-              >
-                {isLoading ? 'Guardando...' : 'Guardar contraseña'}
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-gradient-to-r from-[#9DFAD7] to-[#D4FFB5] text-[#0D1D35] font-semibold py-3 px-6 rounded-lg hover:opacity-90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#9DFAD7]/20"
+                >
+                  {isLoading ? 'Guardando...' : 'Guardar contraseña'}
+                </button>
+              </form>
             )}
           </div>
 
