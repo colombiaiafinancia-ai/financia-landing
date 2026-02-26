@@ -15,6 +15,7 @@ export default function ResetPasswordPage() {
   const [sessionReady, setSessionReady] = useState(false)
   const [verificationError, setVerificationError] = useState<string | null>(null)
   const router = useRouter()
+  const [isRecoverySession, setIsRecoverySession] = useState(false)
 
   // Procesar el token del enlace: Supabase PKCE envía token_hash en query (?token_hash=...&type=recovery).
   // El formato antiguo usa hash (#access_token=...) que getSession() detecta automáticamente.
@@ -23,24 +24,28 @@ useEffect(() => {
 
   async function init() {
     try {
-     
       let { data: { session } } = await supabase.auth.getSession()
 
-      
-      if (!session) {
-        const params = new URLSearchParams(window.location.search)
-        const code = params.get('code')
+      // Obtener parámetros UNA sola vez
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get('code')
+      const type = params.get('type')
 
-        if (code) {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-
-          if (error) throw error
-
-          session = data.session
-        }
+      // Detectar si es sesión de recovery
+      if (type === 'recovery') {
+        setIsRecoverySession(true)
       }
 
-      
+      // Si no hay sesión, intentar intercambiar el code
+      if (!session && code) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+        if (error) throw error
+
+        session = data.session
+      }
+
+      // Si aún no hay sesión, error
       if (!session) {
         setVerificationError(
           'Enlace inválido o expirado. Solicita uno nuevo.'
@@ -48,10 +53,10 @@ useEffect(() => {
         return
       }
 
-      
+      // Sesión lista
       setSessionReady(true)
 
-      
+      // Limpiar URL
       window.history.replaceState({}, '', '/reset-password')
 
     } catch (err) {
