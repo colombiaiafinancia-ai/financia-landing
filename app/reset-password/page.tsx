@@ -23,37 +23,35 @@ useEffect(() => {
 
   async function init() {
     try {
-      const params = new URLSearchParams(window.location.search)
+     
+      let { data: { session } } = await supabase.auth.getSession()
 
-      const code = params.get('code')
-      const tokenHash = params.get('token_hash')
-      const type = params.get('type')
-
-      // CASO 1: PKCE flow
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) throw error
-      }
-
-      // CASO 2: token_hash flow (TU CASO)
-      if (tokenHash && type === 'recovery') {
-        const { error } = await supabase.auth.verifyOtp({
-          token_hash: tokenHash,
-          type: 'recovery',
-        })
-
-        if (error) throw error
-      }
-
-      // ahora verificar sesión
-      const { data: { session } } = await supabase.auth.getSession()
-
+      
       if (!session) {
-        throw new Error('No session')
+        const params = new URLSearchParams(window.location.search)
+        const code = params.get('code')
+
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+          if (error) throw error
+
+          session = data.session
+        }
       }
 
+      
+      if (!session) {
+        setVerificationError(
+          'Enlace inválido o expirado. Solicita uno nuevo.'
+        )
+        return
+      }
+
+      
       setSessionReady(true)
 
+      
       window.history.replaceState({}, '', '/reset-password')
 
     } catch (err) {
