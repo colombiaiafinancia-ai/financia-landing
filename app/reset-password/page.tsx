@@ -13,15 +13,39 @@ export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [sessionReady, setSessionReady] = useState(false)
+  const [verificationError, setVerificationError] = useState<string | null>(null)
   const router = useRouter()
 
-  // Procesar el hash del URL (#access_token=...) para establecer la sesión en cookies.
-  // El cliente browser debe ejecutarse para que Supabase lea el token y lo persista.
+  // Procesar el token del enlace: Supabase PKCE envía token_hash en query (?token_hash=...&type=recovery).
+  // El formato antiguo usa hash (#access_token=...) que getSession() detecta automáticamente.
   useEffect(() => {
     const supabase = getBrowserSupabaseClient()
-    supabase.auth.getSession().then(() => {
-      setSessionReady(true)
-    })
+    const params = new URLSearchParams(window.location.search)
+    const tokenHash = params.get('token_hash')
+    const type = params.get('type')
+
+    async function verifyAndSetupSession() {
+      try {
+        if (tokenHash && type === 'recovery') {
+          const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
+          if (error) throw error
+          // Limpiar la URL del token sin recargar
+          window.history.replaceState({}, '', '/reset-password')
+        } else {
+          // Flujo antiguo con hash (#access_token=...) - getSession lo procesa
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session && !window.location.hash?.includes('access_token')) {
+            throw new Error('Enlace inválido')
+          }
+        }
+        setSessionReady(true)
+      } catch (err) {
+        console.error('Error verificando enlace:', err)
+        setVerificationError('Enlace inválido o expirado. Solicita uno nuevo desde "Olvidé mi contraseña".')
+      }
+    }
+
+    verifyAndSetupSession()
   }, [])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -83,7 +107,17 @@ export default function ResetPasswordPage() {
           </div>
 
           <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6 md:p-8">
-            {!sessionReady ? (
+            {verificationError ? (
+              <div className="text-center py-8 space-y-4">
+                <p className="text-red-400">{verificationError}</p>
+                <Link
+                  href="/forgot-password"
+                  className="inline-block text-[#9DFAD7] hover:text-[#D4FFB5] font-medium underline"
+                >
+                  Solicitar nuevo enlace
+                </Link>
+              </div>
+            ) : !sessionReady ? (
               <div className="text-center py-8 text-white/80">
                 Verificando enlace...
               </div>
