@@ -25,51 +25,48 @@ useEffect(() => {
   async function init() {
     try {
       let { data: { session } } = await supabase.auth.getSession()
-
-      // Obtener parámetros UNA sola vez
       const params = new URLSearchParams(window.location.search)
       const code = params.get('code')
       const type = params.get('type')
 
-      // Detectar si es sesión de recovery
       if (type === 'recovery') {
         setIsRecoverySession(true)
       }
 
-      // Si no hay sesión, intentar intercambiar el code
       if (!session && code) {
         const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-
         if (error) throw error
-
         session = data.session
       }
 
-      // Si aún no hay sesión, error
       if (!session) {
-        setVerificationError(
-          'Enlace inválido o expirado. Solicita uno nuevo.'
-        )
+        setVerificationError('Enlace inválido o expirado. Solicita uno nuevo.')
         return
       }
 
-      // Sesión lista
       setSessionReady(true)
-
-      // Limpiar URL
       window.history.replaceState({}, '', '/reset-password')
 
     } catch (err) {
       console.error(err)
-      setVerificationError(
-        'Enlace inválido o expirado. Solicita uno nuevo.'
-      )
+      setVerificationError('Enlace inválido o expirado. Solicita uno nuevo.')
     }
   }
 
   init()
-}, [])
 
+  // Cerrar sesión si el usuario abandona la página sin cambiar contraseña
+  const handleBeforeUnload = () => {
+    const supabase = getBrowserSupabaseClient()
+    supabase.auth.signOut()
+  }
+
+  window.addEventListener('beforeunload', handleBeforeUnload)
+
+  return () => {
+    window.removeEventListener('beforeunload', handleBeforeUnload)
+  }
+}, [])
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setError('')
