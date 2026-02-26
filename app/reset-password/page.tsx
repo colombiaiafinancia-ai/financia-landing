@@ -18,26 +18,43 @@ export default function ResetPasswordPage() {
 
   // Procesar el token del enlace: Supabase PKCE envía token_hash en query (?token_hash=...&type=recovery).
   // El formato antiguo usa hash (#access_token=...) que getSession() detecta automáticamente.
- useEffect(() => {
+useEffect(() => {
   const supabase = getBrowserSupabaseClient()
 
-  async function checkSession() {
-    const { data, error } = await supabase.auth.getSession()
+  async function init() {
+    try {
+      // detectar code del URL
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get('code')
 
-    if (error || !data.session) {
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) throw error
+      }
+
+      // ahora verificar sesión
+      const { data: { session } } = await supabase.auth.getSession()
+
+      if (!session) {
+        setVerificationError(
+          'Enlace inválido o expirado. Solicita uno nuevo.'
+        )
+        return
+      }
+
+      setSessionReady(true)
+
+      window.history.replaceState({}, '', '/reset-password')
+
+    } catch (err) {
+      console.error(err)
       setVerificationError(
-        'Enlace inválido o expirado. Solicita uno nuevo desde "Olvidé mi contraseña".'
+        'Enlace inválido o expirado. Solicita uno nuevo.'
       )
-      return
     }
-
-    setSessionReady(true)
-
-    // limpiar la URL
-    window.history.replaceState({}, '', '/reset-password')
   }
 
-  checkSession()
+  init()
 }, [])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
