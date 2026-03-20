@@ -21,7 +21,8 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
   const [budgetValue, setBudgetValue] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const { gastoCategories, loading: categoriesLoading } = useCategories(userId)
+  // ✅ No pasar userId a useCategories
+  const { gastoCategories, loading: categoriesLoading } = useCategories()
   const { budgetSummary, loading: budgetsLoading, refreshing, error, saveCategoryBudget, deleteCategoryBudget } =
     useCategoryBudget(userId)
 
