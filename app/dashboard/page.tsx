@@ -52,7 +52,7 @@ export default function DashboardPage() {
 
     const {
       data: { subscription }
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) {
         router.push('/login')
         return
@@ -81,7 +81,7 @@ export default function DashboardPage() {
     console.log('Semana seleccionada:', week)
   }
 
-  if (isLoading || transactionsLoading) {
+  if (isLoading || transactionsLoading || !user) {
     return (
       <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="text-center">
@@ -107,10 +107,11 @@ export default function DashboardPage() {
                 Finanzas Consulting - FinancIA
               </Link>
             </div>
+
             <div className="flex items-center space-x-2 sm:space-x-4">
               <ThemeToggle />
               <div className="text-muted-foreground text-xs sm:text-sm">
-                ¡Hola, {user?.user_metadata?.full_name || 'Usuario'}!
+                ¡Hola, {user.user_metadata?.full_name || 'Usuario'}!
               </div>
               <button
                 onClick={handleLogout}
@@ -121,6 +122,7 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
+
           {transactionsError && (
             <div className="mt-3 text-sm text-red-600 dark:text-red-400">
               {String(transactionsError)}
@@ -143,6 +145,7 @@ export default function DashboardPage() {
               />
             </div>
           </div>
+
           <div className="order-2">
             <WeeklyTrendChart
               weeklyData={weeklyTrend}
@@ -160,7 +163,7 @@ export default function DashboardPage() {
 
         <div className="mb-6 sm:mb-8">
           <BudgetByCategory
-            userId={user?.id || ''}
+            userId={user.id}
             onBudgetUpdate={() => window.location.reload()}
           />
         </div>
@@ -178,6 +181,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-1 lg:h-[100%]">
             <AddTransactionForm onTransactionAdded={refetchTransactions} />
           </div>
+
           <div className="lg:col-span-2">
             <div className="rounded-2xl p-4 sm:p-6 border bg-card text-card-foreground border-border dark:bg-transparent dark:bg-gradient-to-br dark:from-white/5 dark:to-white/2 dark:backdrop-blur-sm dark:border-white/10 dark:text-white">
               <div className="text-center py-8 sm:py-12">
