@@ -3,7 +3,13 @@
 import { useState } from 'react'
 import { Plus, Edit3, DollarSign, TrendingUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useCategories } from '@/hooks/useCategories'
@@ -14,17 +20,29 @@ interface BudgetByCategoryProps {
   onBudgetUpdate: () => void
 }
 
-export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryProps) => {
+export const BudgetByCategory = ({
+  userId,
+  onBudgetUpdate
+}: BudgetByCategoryProps) => {
   const [showAddModal, setShowAddModal] = useState(false)
-  const [editingBudget, setEditingBudget] = useState<{ categoryId: string; categoryName: string; amount: number } | null>(null)
+  const [editingBudget, setEditingBudget] = useState<{
+    categoryId: string
+    categoryName: string
+    amount: number
+  } | null>(null)
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [budgetValue, setBudgetValue] = useState('')
   const [saving, setSaving] = useState(false)
 
-  // ✅ No pasar userId a useCategories
   const { gastoCategories, loading: categoriesLoading } = useCategories()
-  const { budgetSummary, loading: budgetsLoading, refreshing, error, saveCategoryBudget, deleteCategoryBudget } =
-    useCategoryBudget(userId)
+  const {
+    budgetSummary,
+    loading: budgetsLoading,
+    refreshing,
+    error,
+    saveCategoryBudget,
+    deleteCategoryBudget
+  } = useCategoryBudget(userId)
 
   const loading = categoriesLoading || budgetsLoading
 
@@ -49,7 +67,10 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
       setEditingBudget(null)
       onBudgetUpdate()
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error al guardar el presupuesto'
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Error al guardar el presupuesto'
       alert(errorMessage)
     } finally {
       setSaving(false)
@@ -57,19 +78,30 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
   }
 
   const handleDelete = async (categoryId: string) => {
-    const category = budgetSummary.find(b => b.categoryId === categoryId)
+    const category = budgetSummary.find((b) => b.categoryId === categoryId)
     if (!category) return
-    if (!confirm(`¿Estás seguro de que quieres eliminar el presupuesto de ${category.categoryName}?`)) return
+
+    if (
+      !confirm(
+        `¿Estás seguro de que quieres eliminar el presupuesto de ${category.categoryName}?`
+      )
+    ) {
+      return
+    }
+
     try {
       await deleteCategoryBudget(categoryId)
       onBudgetUpdate()
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error al eliminar el presupuesto'
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Error al eliminar el presupuesto'
       alert(errorMessage)
     }
   }
 
-  const handleEdit = (budget: typeof budgetSummary[0]) => {
+  const handleEdit = (budget: (typeof budgetSummary)[0]) => {
     setEditingBudget({
       categoryId: budget.categoryId,
       categoryName: budget.categoryName,
@@ -88,9 +120,10 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
   }
 
   const wrapperClass = `
-    rounded-lg p-6
+    rounded-2xl p-4 sm:p-6
     bg-card border border-border text-card-foreground
-    dark:bg-white/10 dark:backdrop-blur-sm dark:border-white/20 dark:text-white
+    dark:bg-transparent dark:bg-gradient-to-br dark:from-white/5 dark:to-white/2
+    dark:backdrop-blur-sm dark:border-white/10 dark:text-white
   `
 
   if (loading) {
@@ -102,11 +135,15 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
             Presupuesto por Categorías
           </h3>
         </div>
+
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="flex justify-between items-center p-3 rounded-lg animate-pulse bg-muted dark:bg-white/5">
-              <div className="h-4 bg-slate-300/70 dark:bg-white/15 rounded w-24"></div>
-              <div className="h-4 bg-slate-300/70 dark:bg-white/15 rounded w-16"></div>
+            <div
+              key={i}
+              className="flex justify-between items-center p-3 rounded-xl animate-pulse bg-muted dark:bg-white/5 border border-border dark:border-white/10"
+            >
+              <div className="h-4 rounded w-24 bg-slate-300/70 dark:bg-white/15" />
+              <div className="h-4 rounded w-16 bg-slate-300/70 dark:bg-white/15" />
             </div>
           ))}
         </div>
@@ -123,9 +160,15 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
             Presupuesto por Categorías
           </h3>
         </div>
+
         <div className="text-center py-8">
           <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+          <Button
+            onClick={() => window.location.reload()}
+            variant="outline"
+            size="sm"
+            className="dark:bg-transparent dark:text-white dark:border-white/15 dark:hover:bg-white/5"
+          >
             Reintentar
           </Button>
         </div>
@@ -143,7 +186,7 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
 
         {refreshing && (
           <div className="absolute right-0 top-0 mt-1 mr-1 z-10">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
           </div>
         )}
 
@@ -161,10 +204,17 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
             </Button>
           </DialogTrigger>
 
-          <DialogContent className="bg-card border border-border text-card-foreground dark:bg-[#0D1D35] dark:border-white/20 dark:text-white">
+          <DialogContent
+            className="
+              bg-card text-card-foreground border border-border shadow-xl
+              dark:bg-[#0D1D35] dark:text-white dark:border-white/10
+            "
+          >
             <DialogHeader>
               <DialogTitle className="text-slate-900 dark:text-white">
-                {editingBudget ? `Editar Presupuesto - ${editingBudget.categoryName}` : 'Agregar Presupuesto por Categoría'}
+                {editingBudget
+                  ? `Editar Presupuesto - ${editingBudget.categoryName}`
+                  : 'Agregar Presupuesto por Categoría'}
               </DialogTitle>
             </DialogHeader>
 
@@ -173,25 +223,40 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
                 <Label htmlFor="category" className="text-slate-900 dark:text-white">
                   Categoría
                 </Label>
-                <select
-                  id="category"
-                  value={selectedCategoryId}
-                  onChange={(e) => setSelectedCategoryId(e.target.value)}
-                  disabled={!!editingBudget}
-                  className="
-                    mt-1 w-full p-2 rounded-md outline-none border
-                    bg-white text-slate-900 border-slate-200
-                    dark:bg-white/5 dark:text-white dark:border-white/20
-                    focus:ring-2 focus:ring-primary
-                  "
-                >
-                  <option value="">Seleccionar categoría</option>
-                  {gastoCategories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.nombre}
-                    </option>
-                  ))}
-                </select>
+
+                {categoriesLoading ? (
+                  <div
+                    className="
+                      mt-1 w-full p-2 rounded-md border text-sm
+                      bg-muted text-muted-foreground border-border
+                      dark:bg-white/5 dark:text-white/70 dark:border-white/10
+                    "
+                  >
+                    Cargando categorías...
+                  </div>
+                ) : (
+                  <select
+                    id="category"
+                    value={selectedCategoryId}
+                    onChange={(e) => setSelectedCategoryId(e.target.value)}
+                    disabled={!!editingBudget}
+                    className="
+                      mt-1 w-full p-2 rounded-md border outline-none
+                      bg-background text-foreground border-border
+                      dark:bg-white/5 dark:text-white dark:border-white/10
+                      dark:[color-scheme:dark]
+                      focus:ring-2 focus:ring-primary
+                      disabled:opacity-60 disabled:cursor-not-allowed
+                    "
+                  >
+                    <option value="">Seleccionar categoría</option>
+                    {gastoCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.nombre}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -207,25 +272,41 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
                   className="
                     mt-1
                     bg-background text-foreground border border-border
-                    dark:bg-white/5 dark:text-white dark:border-white/20
+                    dark:bg-white/5 dark:text-white dark:border-white/10
+                    dark:placeholder:text-white/40
                     focus-visible:ring-primary
                   "
                 />
               </div>
 
               <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={handleCancel} disabled={saving}>
+                <Button
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="dark:bg-transparent dark:text-white dark:border-white/15 dark:hover:bg-white/5"
+                >
                   Cancelar
                 </Button>
+
                 <Button
                   onClick={handleSave}
-                  disabled={saving || !selectedCategoryId || !budgetValue}
+                  disabled={
+                    saving ||
+                    !selectedCategoryId ||
+                    !budgetValue ||
+                    categoriesLoading
+                  }
                   className="
                     bg-primary hover:bg-primary/90 text-primary-foreground
                     dark:bg-[#5ce1e6] dark:hover:bg-[#4dd0e1] dark:text-[#0D1D35]
                   "
                 >
-                  {saving ? 'Guardando...' : editingBudget ? 'Actualizar' : 'Guardar'}
+                  {saving
+                    ? 'Guardando...'
+                    : editingBudget
+                    ? 'Actualizar'
+                    : 'Guardar'}
                 </Button>
               </div>
             </div>
@@ -252,9 +333,9 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
               <div
                 key={budget.categoryId}
                 className="
-                  flex justify-between items-center p-4 rounded-lg transition-colors
+                  flex justify-between items-center p-4 rounded-xl transition-colors
                   bg-muted hover:bg-muted/80 border border-border
-                  dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/10
+                  dark:bg-white/[0.04] dark:hover:bg-white/[0.07] dark:border-white/[0.08]
                 "
               >
                 <div className="flex-1">
@@ -269,8 +350,16 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
 
                   <div className="mt-2">
                     <div className="flex justify-between text-sm mb-1 text-slate-700 dark:text-white/70">
-                      <span>Gastado: ${budget.actual.toLocaleString('es-CO')}</span>
-                      <span className={budget.excedente >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                      <span>
+                        Gastado: ${budget.actual.toLocaleString('es-CO')}
+                      </span>
+                      <span
+                        className={
+                          budget.excedente >= 0
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-red-600 dark:text-red-400'
+                        }
+                      >
                         {budget.excedente >= 0 ? 'Disponible' : 'Excedido'}: $
                         {Math.abs(budget.excedente).toLocaleString('es-CO')}
                       </span>

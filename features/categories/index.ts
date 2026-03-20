@@ -2,14 +2,12 @@
  * CATEGORIES FEATURE - Public API
  * 
  * Punto de entrada único para la funcionalidad de categorías.
- * Exporta únicamente lo necesario para el resto de la aplicación.
  */
 
-// DTOs (contratos para la UI)
+// DTOs
 export type { CategoryDTO } from './application/categoryUseCases'
-export { categoryUseCases as CategoryService } from './application/categoryUseCases'
 
-// Domain types and logic (solo tipos y funciones puras)
+// Domain types and logic
 export type { Category, CategoryType } from './domain/categoryLogic'
 export { 
   validateCategoryName, 
@@ -20,43 +18,27 @@ export {
   getCategoryStats 
 } from './domain/categoryLogic'
 
-// Application layer (casos de uso)
+// Application layer
 export { categoryUseCases } from './application/categoryUseCases'
 export type { 
   CategoryFilters, 
-  CategoryCreationData, 
-  CategoryUpdateData 
+  CategoryCreationData
 } from './application/categoryUseCases'
 
-// Infrastructure layer (solo para casos especiales)
+// Infrastructure layer
 export { categoryRepository } from './services/categoryRepository'
 
-// Import para uso interno en este archivo
+// Convenience exports
 import { categoryUseCases } from './application/categoryUseCases'
+import type { CategoryFilters, CategoryCreationData } from './application/categoryUseCases'
 
-// Convenience exports para facilitar el uso
 export const CategoryService = {
-  // Consultas
-  getAll: (filters?: import('./application/categoryUseCases').CategoryFilters) => 
-    categoryUseCases.getCategories(filters),
+  getCategoriesForUser: (userId: string, filters?: CategoryFilters) => 
+    categoryUseCases.getCategoriesForUser(userId, filters),
   
-  getByType: () => 
-    categoryUseCases.getCategoriesByType(),
+  getCategoriesByType: (userId: string) => 
+    categoryUseCases.getCategoriesByType(userId),
   
-  getById: (id: string) => 
-    categoryUseCases.getCategoryById(id),
-  
-  getStats: () => 
-    categoryUseCases.getCategoryStatistics(),
-  
-  // Operaciones
-  create: (data: import('./application/categoryUseCases').CategoryCreationData) => 
+  create: (data: CategoryCreationData) => 
     categoryUseCases.createCategory(data),
-  
-  update: (id: string, data: import('./application/categoryUseCases').CategoryUpdateData) => 
-    categoryUseCases.updateCategory(id, data),
-  
-  delete: (id: string) => 
-    categoryUseCases.deleteCategory(id)
 }
-

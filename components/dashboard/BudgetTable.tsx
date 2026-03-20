@@ -11,7 +11,6 @@ import { useCategoryBudget } from '@/hooks/useCategoryBudget'
 import { useCategories } from '@/hooks/useCategories'
 import { Settings, TrendingUp, TrendingDown, DollarSign, Calculator } from 'lucide-react'
 
-// Función de formateo local
 const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',
@@ -27,34 +26,32 @@ interface BudgetTableProps {
 
 export const BudgetTable = ({ userId }: BudgetTableProps) => {
   const { totalSpent, totalIncome, user } = useTransactionsUnified()
-  const { budgetSummary, saveBudget, deleteBudget } = useCategoryBudget(userId || user?.id || '')
+  const { budgetSummary, saveCategoryBudget, deleteCategoryBudget } = useCategoryBudget(userId || user?.id || '')
   const { gastoCategories } = useCategories()
   
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<string>('')
+  const [editingCategoryId, setEditingCategoryId] = useState<string>('')
   const [editingAmount, setEditingAmount] = useState('')
 
-  // Calcular presupuesto total de todas las categorías
   const totalBudgeted = budgetSummary.reduce((sum, item) => sum + item.presupuestado, 0)
   const balanceReal = totalIncome - totalSpent
-  const balancePresupuestado = totalIncome - totalBudgeted
 
-  const handleEditBudget = (categoria: string, currentAmount: number) => {
-    setEditingCategory(categoria)
+  const handleEditBudget = (categoryId: string, currentAmount: number) => {
+    setEditingCategoryId(categoryId)
     setEditingAmount(currentAmount.toString())
     setIsBudgetModalOpen(true)
   }
 
   const handleSaveBudget = async () => {
-    if (editingCategory && editingAmount) {
+    if (editingCategoryId && editingAmount) {
       const amount = parseFloat(editingAmount)
       if (amount > 0) {
-        await saveBudget(editingCategory, amount)
+        await saveCategoryBudget(editingCategoryId, amount)
       } else {
-        await deleteBudget(editingCategory)
+        await deleteCategoryBudget(editingCategoryId)
       }
       setIsBudgetModalOpen(false)
-      setEditingCategory('')
+      setEditingCategoryId('')
       setEditingAmount('')
     }
   }
@@ -82,7 +79,6 @@ export const BudgetTable = ({ userId }: BudgetTableProps) => {
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {/* Resumen Principal - Ingresos vs Gastos */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-gradient-to-r from-[#9DFAD7]/20 to-[#A78BFA]/20 rounded-lg border border-white/10">
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
@@ -114,7 +110,6 @@ export const BudgetTable = ({ userId }: BudgetTableProps) => {
           </div>
         </div>
 
-        {/* Comparación con Presupuesto */}
         {totalBudgeted > 0 && (
           <div className="p-4 rounded-lg border border-white/20 bg-white/5">
             <h3 className="text-lg font-semibold text-white mb-4 text-center">
@@ -146,7 +141,6 @@ export const BudgetTable = ({ userId }: BudgetTableProps) => {
               </div>
             </div>
 
-            {/* Barra de progreso del presupuesto */}
             <div className="mt-4">
               <div className="flex justify-between text-sm text-white/70 mb-2">
                 <span>Progreso del Presupuesto</span>
@@ -166,22 +160,21 @@ export const BudgetTable = ({ userId }: BudgetTableProps) => {
         )}
       </CardContent>
 
-      {/* Modal de Configuración de Presupuestos por Categoría */}
       <Dialog open={isBudgetModalOpen} onOpenChange={setIsBudgetModalOpen}>
         <DialogContent className="bg-[#0D1D35] border border-white/20 max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-white">
-              {editingCategory ? `Editar Presupuesto - ${editingCategory}` : 'Configurar Presupuestos por Categoría'}
+              {editingCategoryId ? 'Editar Presupuesto' : 'Configurar Presupuestos por Categoría'}
             </DialogTitle>
             <DialogDescription className="text-white/70">
-              {editingCategory ? 
-                'Establece el monto mensual que planeas gastar en esta categoría.' :
-                'Configura cuánto planeas gastar cada mes en cada categoría de gastos.'
+              {editingCategoryId 
+                ? 'Establece el monto mensual que planeas gastar en esta categoría.'
+                : 'Configura cuánto planeas gastar cada mes en cada categoría de gastos.'
               }
             </DialogDescription>
           </DialogHeader>
           
-          {editingCategory ? (
+          {editingCategoryId ? (
             <div className="space-y-4">
               <div>
                 <Label htmlFor="amount" className="text-white">Monto Mensual</Label>
@@ -200,7 +193,7 @@ export const BudgetTable = ({ userId }: BudgetTableProps) => {
                   variant="outline" 
                   onClick={() => {
                     setIsBudgetModalOpen(false)
-                    setEditingCategory('')
+                    setEditingCategoryId('')
                     setEditingAmount('')
                   }}
                   className="bg-transparent border-white/30 text-white hover:bg-white/10"
@@ -219,7 +212,7 @@ export const BudgetTable = ({ userId }: BudgetTableProps) => {
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-80 overflow-y-auto">
                 {gastoCategories.map((category) => {
-                  const currentBudget = budgetSummary.find(b => b.categoria === category.nombre)?.presupuestado || 0
+                  const currentBudget = budgetSummary.find(b => b.categoryId === category.id)?.presupuestado || 0
                   return (
                     <div
                       key={category.id}
@@ -235,7 +228,7 @@ export const BudgetTable = ({ userId }: BudgetTableProps) => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleEditBudget(category.nombre, currentBudget)}
+                        onClick={() => handleEditBudget(category.id, currentBudget)}
                         className="w-full text-[#9DFAD7] hover:text-[#9DFAD7]/80 hover:bg-white/10 border border-[#9DFAD7]/30"
                       >
                         {currentBudget > 0 ? 'Editar' : 'Configurar'}
@@ -259,4 +252,4 @@ export const BudgetTable = ({ userId }: BudgetTableProps) => {
       </Dialog>
     </Card>
   )
-} 
+}

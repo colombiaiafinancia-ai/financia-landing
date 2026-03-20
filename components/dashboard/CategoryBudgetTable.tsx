@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useCategoryBudget } from '@/hooks/useCategoryBudget'
+import { useCategories } from '@/hooks/useCategories'
 import { Edit3, Check, X, Plus, Trash2 } from 'lucide-react'
 
 interface CategoryBudgetTableProps {
@@ -10,23 +11,16 @@ interface CategoryBudgetTableProps {
 
 export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
   const { budgetSummary, stats, loading, error, saveCategoryBudget, deleteCategoryBudget } = useCategoryBudget(userId)
-  const [editingCategory, setEditingCategory] = useState<string | null>(null)
+  const { gastoCategories, loading: categoriesLoading } = useCategories()
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState<string>('')
   const [showAddForm, setShowAddForm] = useState(false)
-  const [newCategory, setNewCategory] = useState<string>('')
+  const [newCategoryId, setNewCategoryId] = useState<string>('')
   const [newAmount, setNewAmount] = useState<string>('')
 
-  // Categorías disponibles para agregar (solo gastos)
-  const expenseCategories = [
-    'Alimentación', 'Vivienda', 'Transporte', 'Educación', 
-    'Entretenimiento y Ocio', 'Deudas', 'Compras personales', 
-    'Salud', 'Otros'
-  ]
-
-  // Filtrar categorías ya usadas
-  const availableCategories = expenseCategories.filter(
-    cat => !budgetSummary.some(item => item.categoria === cat)
-  )
+  // Categorías disponibles para agregar (excluir las que ya tienen presupuesto)
+  const usedCategoryIds = new Set(budgetSummary.map(b => b.categoryId))
+  const availableCategories = gastoCategories.filter(cat => !usedCategoryIds.has(cat.id))
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -37,18 +31,18 @@ export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
     }).format(amount)
   }
 
-  const startEdit = (categoria: string, currentAmount: number) => {
-    setEditingCategory(categoria)
+  const startEdit = (categoryId: string, currentAmount: number) => {
+    setEditingCategoryId(categoryId)
     setEditValue(currentAmount.toString())
   }
 
   const cancelEdit = () => {
-    setEditingCategory(null)
+    setEditingCategoryId(null)
     setEditValue('')
   }
 
   const saveEdit = async () => {
-    if (!editingCategory) return
+    if (!editingCategoryId) return
 
     const amount = parseFloat(editValue)
     if (isNaN(amount) || amount < 0) {
@@ -57,18 +51,20 @@ export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
     }
 
     try {
-      await saveCategoryBudget(editingCategory, amount)
-      setEditingCategory(null)
+      await saveCategoryBudget(editingCategoryId, amount)
+      setEditingCategoryId(null)
       setEditValue('')
     } catch (error) {
       alert('Error al guardar el presupuesto')
     }
   }
 
-  const handleDelete = async (categoria: string) => {
-    if (confirm(`¿Estás seguro de eliminar el presupuesto para ${categoria}?`)) {
+  const handleDelete = async (categoryId: string) => {
+    const category = gastoCategories.find(c => c.id === categoryId)
+    if (!category) return
+    if (confirm(`¿Estás seguro de eliminar el presupuesto para ${category.nombre}?`)) {
       try {
-        await deleteCategoryBudget(categoria)
+        await deleteCategoryBudget(categoryId)
       } catch (error) {
         alert('Error al eliminar el presupuesto')
       }
@@ -76,7 +72,7 @@ export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
   }
 
   const handleAddNew = async () => {
-    if (!newCategory || !newAmount) {
+    if (!newCategoryId || !newAmount) {
       alert('Por favor completa todos los campos')
       return
     }
@@ -88,16 +84,16 @@ export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
     }
 
     try {
-      await saveCategoryBudget(newCategory, amount)
+      await saveCategoryBudget(newCategoryId, amount)
       setShowAddForm(false)
-      setNewCategory('')
+      setNewCategoryId('')
       setNewAmount('')
     } catch (error) {
       alert('Error al agregar el presupuesto')
     }
   }
 
-  if (loading) {
+  if (loading || categoriesLoading) {
     return (
       <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
         <div className="animate-pulse">
@@ -178,13 +174,15 @@ export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
           <h4 className="text-white font-medium mb-3">Agregar Nueva Categoría</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <select
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
+              value={newCategoryId}
+              onChange={(e) => setNewCategoryId(e.target.value)}
               className="bg-white/10 border border-white/20 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="" className="bg-[#0D1D35] text-white">Seleccionar categoría</option>
               {availableCategories.map(cat => (
-                <option key={cat} value={cat} className="bg-[#0D1D35] text-white">{cat}</option>
+                <option key={cat.id} value={cat.id} className="bg-[#0D1D35] text-white">
+                  {cat.nombre}
+                </option>
               ))}
             </select>
             <input
@@ -204,7 +202,7 @@ export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
               <button
                 onClick={() => {
                   setShowAddForm(false)
-                  setNewCategory('')
+                  setNewCategoryId('')
                   setNewAmount('')
                 }}
                 className="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
@@ -233,13 +231,13 @@ export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
                 <th className="text-right text-white font-semibold py-3 px-2">Excedente</th>
                 <th className="text-center text-white font-semibold py-3 px-2">%</th>
                 <th className="text-center text-white font-semibold py-3 px-2">Acciones</th>
-              </tr>
+               </tr>
             </thead>
             <tbody>
               {budgetSummary.map((item) => (
-                <tr key={item.categoria} className="border-b border-white/10 hover:bg-white/5 transition-colors">
+                <tr key={item.categoryId} className="border-b border-white/10 hover:bg-white/5 transition-colors">
                   <td className="py-3 px-2">
-                    <span className="text-white font-medium">{item.categoria}</span>
+                    <span className="text-white font-medium">{item.categoryName}</span>
                   </td>
                   <td className="py-3 px-2 text-right">
                     <span className="text-orange-400 font-medium">
@@ -247,7 +245,7 @@ export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
                     </span>
                   </td>
                   <td className="py-3 px-2 text-right">
-                    {editingCategory === item.categoria ? (
+                    {editingCategoryId === item.categoryId ? (
                       <div className="flex items-center justify-end gap-2">
                         <input
                           type="number"
@@ -298,14 +296,14 @@ export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
                   <td className="py-3 px-2 text-center">
                     <div className="flex items-center justify-center gap-2">
                       <button
-                        onClick={() => startEdit(item.categoria, item.presupuestado)}
+                        onClick={() => startEdit(item.categoryId, item.presupuestado)}
                         className="text-blue-400 hover:text-blue-300 p-1"
                         title="Editar presupuesto"
                       >
                         <Edit3 className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(item.categoria)}
+                        onClick={() => handleDelete(item.categoryId)}
                         className="text-red-400 hover:text-red-300 p-1"
                         title="Eliminar presupuesto"
                       >
@@ -330,4 +328,4 @@ export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
       )}
     </div>
   )
-} 
+}

@@ -60,26 +60,11 @@ export interface CategoriesByTypeDTO {
 }
 
 /**
- * Mappers para convertir entre domain models y DTOs
+ * Mappers para convertir entre modelos de infraestructura y DTOs
  */
 export class CategoryDTOMapper {
   /**
-   * Convierte del modelo de dominio a DTO
-   */
-  static toDTO(category: {
-    id: string
-    nombre: string
-    tipo: 'Gasto' | 'Ingreso'
-  }): CategoryDTO {
-    return {
-      id: category.id,
-      nombre: category.nombre,
-      tipo: category.tipo
-    }
-  }
-  
-  /**
-   * Convierte múltiples categorías a DTOs
+   * Convierte una entidad de base de datos (con campos name y direction) a DTO de UI
    */
   static toDTO(category: { id: string; name: string; direction: string }): CategoryDTO {
     return {
@@ -87,6 +72,13 @@ export class CategoryDTOMapper {
       nombre: category.name,
       tipo: category.direction === 'ingreso' ? 'Ingreso' : 'Gasto'
     }
+  }
+
+  /**
+   * Convierte múltiples entidades a DTOs
+   */
+  static toDTOs(categories: Array<{ id: string; name: string; direction: string }>): CategoryDTO[] {
+    return categories.map(c => this.toDTO(c))
   }
   
   /**
@@ -112,8 +104,8 @@ export class CategoryDTOMapper {
    * Convierte categorías agrupadas a DTO
    */
   static groupedToDTO(grouped: {
-    gastos: Array<{ id: string; nombre: string; tipo: 'Gasto' | 'Ingreso' }>
-    ingresos: Array<{ id: string; nombre: string; tipo: 'Gasto' | 'Ingreso' }>
+    gastos: Array<{ id: string; name: string; direction: string }>
+    ingresos: Array<{ id: string; name: string; direction: string }>
   }): CategoriesByTypeDTO {
     return {
       gastos: this.toDTOs(grouped.gastos),
