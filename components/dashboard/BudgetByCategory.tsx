@@ -1,7 +1,16 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Edit3, DollarSign, TrendingUp, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  Plus,
+  Edit3,
+  DollarSign,
+  TrendingUp,
+  Trash2,
+  Wallet,
+  ChevronDown,
+  Check
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -33,6 +42,9 @@ export const BudgetByCategory = ({
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [budgetValue, setBudgetValue] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+
+  const dropdownRef = useRef<HTMLDivElement | null>(null)
 
   const { gastoCategories, loading: categoriesLoading } = useCategories()
   const {
@@ -46,13 +58,42 @@ export const BudgetByCategory = ({
 
   const loading = categoriesLoading || budgetsLoading
 
+  const selectedCategory = gastoCategories.find(
+    (cat) => cat.id === selectedCategoryId
+  )
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowCategoryDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const formatCurrency = (value: string) => {
+    const numericValue = value.replace(/[^\d]/g, '')
+    if (!numericValue) return ''
+    return `$${new Intl.NumberFormat('es-CO').format(Number(numericValue))}`
+  }
+
+  const handleBudgetValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/[^\d]/g, '')
+    setBudgetValue(rawValue)
+  }
+
   const handleSave = async () => {
     if (!selectedCategoryId || !budgetValue || !userId) {
       alert('Por favor completa todos los campos')
       return
     }
 
-    const valorNumerico = parseFloat(budgetValue.replace(/[^0-9.-]/g, ''))
+    const valorNumerico = parseFloat(budgetValue)
     if (isNaN(valorNumerico) || valorNumerico <= 0) {
       alert('Por favor ingresa un valor válido')
       return
@@ -63,6 +104,7 @@ export const BudgetByCategory = ({
       await saveCategoryBudget(selectedCategoryId, valorNumerico)
       setSelectedCategoryId('')
       setBudgetValue('')
+      setShowCategoryDropdown(false)
       setShowAddModal(false)
       setEditingBudget(null)
       onBudgetUpdate()
@@ -109,21 +151,23 @@ export const BudgetByCategory = ({
     })
     setSelectedCategoryId(budget.categoryId)
     setBudgetValue(budget.presupuestado.toString())
+    setShowCategoryDropdown(false)
     setShowAddModal(true)
   }
 
   const handleCancel = () => {
     setSelectedCategoryId('')
     setBudgetValue('')
+    setShowCategoryDropdown(false)
     setShowAddModal(false)
     setEditingBudget(null)
   }
 
   const wrapperClass = `
-    rounded-2xl p-4 sm:p-6
+    rounded-2xl p-6
     bg-card border border-border text-card-foreground
-    dark:bg-transparent dark:bg-gradient-to-br dark:from-white/5 dark:to-white/2
-    dark:backdrop-blur-sm dark:border-white/10 dark:text-white
+    dark:bg-transparent dark:bg-gradient-to-br dark:from-white/10 dark:to-white/5
+    dark:backdrop-blur-lg dark:border-white/20 dark:text-white
   `
 
   if (loading) {
@@ -140,10 +184,10 @@ export const BudgetByCategory = ({
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="flex justify-between items-center p-3 rounded-xl animate-pulse bg-muted dark:bg-white/5 border border-border dark:border-white/10"
+              className="flex justify-between items-center p-3 rounded-xl animate-pulse bg-muted dark:bg-white/5"
             >
-              <div className="h-4 rounded w-24 bg-slate-300/70 dark:bg-white/15" />
-              <div className="h-4 rounded w-16 bg-slate-300/70 dark:bg-white/15" />
+              <div className="h-4 bg-slate-300/70 dark:bg-white/15 rounded w-24" />
+              <div className="h-4 bg-slate-300/70 dark:bg-white/15 rounded w-16" />
             </div>
           ))}
         </div>
@@ -167,7 +211,7 @@ export const BudgetByCategory = ({
             onClick={() => window.location.reload()}
             variant="outline"
             size="sm"
-            className="dark:bg-transparent dark:text-white dark:border-white/15 dark:hover:bg-white/5"
+            className="border-border text-foreground hover:bg-muted dark:border-white/20 dark:text-white dark:hover:bg-white/10"
           >
             Reintentar
           </Button>
@@ -194,119 +238,152 @@ export const BudgetByCategory = ({
           <DialogTrigger asChild>
             <Button
               size="sm"
-              className="
-                bg-primary hover:bg-primary/90 text-primary-foreground
-                dark:bg-[#5ce1e6] dark:hover:bg-[#4dd0e1] dark:text-[#0D1D35]
-              "
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               <Plus className="mr-2 h-4 w-4" />
               Agregar
             </Button>
           </DialogTrigger>
 
-          <DialogContent
-            className="
-              bg-card text-card-foreground border border-border shadow-xl
-              dark:bg-[#0D1D35] dark:text-white dark:border-white/10
-            "
-          >
+          <DialogContent className="max-w-md bg-card border border-border text-card-foreground dark:bg-[#071224] dark:border-white/15 dark:text-white">
             <DialogHeader>
-              <DialogTitle className="text-slate-900 dark:text-white">
+              <DialogTitle className="text-center text-xl font-semibold text-slate-900 dark:text-white">
                 {editingBudget
                   ? `Editar Presupuesto - ${editingBudget.categoryName}`
-                  : 'Agregar Presupuesto por Categoría'}
+                  : 'Agregar presupuesto'}
               </DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="category" className="text-slate-900 dark:text-white">
+            <div className="space-y-5">
+              <div className="space-y-2" ref={dropdownRef}>
+                <Label className="text-slate-900 dark:text-white/80 text-sm">
                   Categoría
                 </Label>
 
                 {categoriesLoading ? (
-                  <div
-                    className="
-                      mt-1 w-full p-2 rounded-md border text-sm
-                      bg-muted text-muted-foreground border-border
-                      dark:bg-white/5 dark:text-white/70 dark:border-white/10
-                    "
-                  >
+                  <div className="w-full p-2 rounded-md border bg-muted text-muted-foreground text-sm text-center">
                     Cargando categorías...
                   </div>
                 ) : (
-                  <select
-                    id="category"
-                    value={selectedCategoryId}
-                    onChange={(e) => setSelectedCategoryId(e.target.value)}
-                    disabled={!!editingBudget}
-                    className="
-                      mt-1 w-full p-2 rounded-md border outline-none
-                      bg-background text-foreground border-border
-                      dark:bg-white/5 dark:text-white dark:border-white/10
-                      dark:[color-scheme:dark]
-                      focus:ring-2 focus:ring-primary
-                      disabled:opacity-60 disabled:cursor-not-allowed
-                    "
-                  >
-                    <option value="">Seleccionar categoría</option>
-                    {gastoCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.nombre}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      disabled={!!editingBudget}
+                      onClick={() =>
+                        !editingBudget &&
+                        setShowCategoryDropdown((prev) => !prev)
+                      }
+                      className="
+                        w-full rounded-xl px-3 py-2.5 text-sm border
+                        bg-background text-foreground border-border
+                        flex items-center justify-between
+                        hover:bg-muted/60
+                        focus:outline-none focus:ring-2 focus:ring-primary
+                        disabled:opacity-70 disabled:cursor-not-allowed
+                        dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white/15
+                      "
+                    >
+                      <span className={selectedCategory ? '' : 'text-muted-foreground dark:text-white/50'}>
+                        {selectedCategory?.nombre || 'Seleccionar categoría'}
+                      </span>
+                      <ChevronDown
+                        className={`h-4 w-4 text-muted-foreground dark:text-white/60 transition-transform ${
+                          showCategoryDropdown ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+
+                    {showCategoryDropdown && !editingBudget && (
+                      <div
+                        className="
+                          absolute z-50 mt-2 w-full overflow-hidden rounded-xl border shadow-xl
+                          bg-popover text-popover-foreground border-border
+                          dark:bg-[#0b1730] dark:text-white dark:border-white/15
+                        "
+                      >
+                        <div className="max-h-60 overflow-y-auto py-1">
+                          {gastoCategories.length === 0 ? (
+                            <div className="px-3 py-2 text-sm text-muted-foreground dark:text-white/60">
+                              No hay categorías
+                            </div>
+                          ) : (
+                            gastoCategories.map((cat) => {
+                              const isSelected = selectedCategoryId === cat.id
+
+                              return (
+                                <button
+                                  key={cat.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedCategoryId(cat.id)
+                                    setShowCategoryDropdown(false)
+                                  }}
+                                  className="
+                                    w-full px-3 py-2.5 text-left text-sm
+                                    flex items-center justify-between
+                                    hover:bg-accent hover:text-accent-foreground
+                                    dark:hover:bg-white/10 dark:hover:text-white
+                                  "
+                                >
+                                  <span>{cat.nombre}</span>
+                                  {isSelected && (
+                                    <Check className="h-4 w-4 text-primary dark:text-cyan-400" />
+                                  )}
+                                </button>
+                              )
+                            })
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="budget" className="text-slate-900 dark:text-white">
+              <div className="space-y-2">
+                <Label
+                  htmlFor="budget"
+                  className="text-slate-900 dark:text-white/80 text-sm"
+                >
                   Presupuesto
                 </Label>
-                <Input
-                  id="budget"
-                  type="number"
-                  value={budgetValue}
-                  onChange={(e) => setBudgetValue(e.target.value)}
-                  placeholder="Ej: 500000"
-                  className="
-                    mt-1
-                    bg-background text-foreground border border-border
-                    dark:bg-white/5 dark:text-white dark:border-white/10
-                    dark:placeholder:text-white/40
-                    focus-visible:ring-primary
-                  "
-                />
+
+                <div className="relative">
+                  <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-white/40" />
+                  <Input
+                    id="budget"
+                    type="text"
+                    value={formatCurrency(budgetValue)}
+                    onChange={handleBudgetValueChange}
+                    placeholder="$0"
+                    className="
+                      pl-10
+                      bg-background border-border text-foreground placeholder:text-slate-400
+                      dark:bg-white/10 dark:border-white/20 dark:text-white dark:placeholder:text-white/40
+                      focus-visible:ring-primary
+                    "
+                  />
+                </div>
               </div>
 
-              <div className="flex justify-end space-x-2">
+              <div className="flex gap-3 pt-2">
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={handleCancel}
                   disabled={saving}
-                  className="dark:bg-transparent dark:text-white dark:border-white/15 dark:hover:bg-white/5"
+                  className="flex-1 border-border text-foreground hover:bg-muted dark:border-white/20 dark:text-white dark:hover:bg-white/10"
                 >
                   Cancelar
                 </Button>
 
                 <Button
+                  type="button"
                   onClick={handleSave}
-                  disabled={
-                    saving ||
-                    !selectedCategoryId ||
-                    !budgetValue ||
-                    categoriesLoading
-                  }
-                  className="
-                    bg-primary hover:bg-primary/90 text-primary-foreground
-                    dark:bg-[#5ce1e6] dark:hover:bg-[#4dd0e1] dark:text-[#0D1D35]
-                  "
+                  disabled={saving || !selectedCategoryId || !budgetValue}
+                  className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
-                  {saving
-                    ? 'Guardando...'
-                    : editingBudget
-                    ? 'Actualizar'
-                    : 'Guardar'}
+                  {saving ? 'Guardando...' : editingBudget ? 'Actualizar' : 'Guardar'}
                 </Button>
               </div>
             </div>
@@ -335,7 +412,7 @@ export const BudgetByCategory = ({
                 className="
                   flex justify-between items-center p-4 rounded-xl transition-colors
                   bg-muted hover:bg-muted/80 border border-border
-                  dark:bg-white/[0.04] dark:hover:bg-white/[0.07] dark:border-white/[0.08]
+                  dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/10
                 "
               >
                 <div className="flex-1">
@@ -350,9 +427,7 @@ export const BudgetByCategory = ({
 
                   <div className="mt-2">
                     <div className="flex justify-between text-sm mb-1 text-slate-700 dark:text-white/70">
-                      <span>
-                        Gastado: ${budget.actual.toLocaleString('es-CO')}
-                      </span>
+                      <span>Gastado: ${budget.actual.toLocaleString('es-CO')}</span>
                       <span
                         className={
                           budget.excedente >= 0
@@ -389,7 +464,7 @@ export const BudgetByCategory = ({
                     variant="ghost"
                     size="sm"
                     onClick={() => handleEdit(budget)}
-                    className="text-blue-600 hover:text-blue-800 dark:text-[#5ce1e6] dark:hover:text-[#4dd0e1]"
+                    className="text-blue-600 hover:text-blue-800 dark:text-cyan-400 dark:hover:text-cyan-300"
                   >
                     <Edit3 className="h-4 w-4" />
                   </Button>
