@@ -11,10 +11,9 @@ import { useCategories } from '@/hooks/useCategories'
 
 interface AddTransactionFormProps {
   onTransactionAdded?: () => void
-  userId: string  // 👈 añadimos userId como prop
 }
 
-export const AddTransactionForm = ({ onTransactionAdded, userId }: AddTransactionFormProps) => {
+export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [tipo, setTipo] = useState<'gasto' | 'ingreso'>('gasto')
@@ -23,7 +22,7 @@ export const AddTransactionForm = ({ onTransactionAdded, userId }: AddTransactio
   const [descripcion, setDescripcion] = useState('')
 
   const { createTransaction } = useTransactionsUnified()
-  const { gastoCategories, ingresoCategories, loading: categoriesLoading } = useCategories(userId) // 👈 pasamos userId
+  const { gastoCategories, ingresoCategories, loading: categoriesLoading } = useCategories()
 
   const availableCategories = tipo === 'gasto' ? gastoCategories : ingresoCategories
 

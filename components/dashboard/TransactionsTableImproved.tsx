@@ -36,7 +36,7 @@ export const TransactionsTableImproved = ({
   // 🔥 OPTIMISTIC UPDATE: Estado local para UI instantánea
   const [localTransactions, setLocalTransactions] = useState<TransactionDTO[]>(transactions)
 
-  const { gastoCategories, ingresoCategories } = useCategories()
+  const { gastoCategories, ingresoCategories } = useCategories() // ✅ Sin argumentos
 
   // 🔥 OPTIMISTIC UPDATE: Sync con props cuando cambian
   useEffect(() => {
