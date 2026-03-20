@@ -10,8 +10,8 @@
  */
 export interface CategoryDTO {
   readonly id: string
-  readonly nombre: string
-  readonly tipo: 'Gasto' | 'Ingreso'
+  readonly nombre: string   // mapea a 'name'
+  readonly tipo: 'Gasto' | 'Ingreso'  // mapea a direction capitalizado
 }
 
 /**
@@ -81,12 +81,12 @@ export class CategoryDTOMapper {
   /**
    * Convierte múltiples categorías a DTOs
    */
-  static toDTOs(categories: Array<{
-    id: string
-    nombre: string
-    tipo: 'Gasto' | 'Ingreso'
-  }>): readonly CategoryDTO[] {
-    return categories.map(this.toDTO)
+  static toDTO(category: { id: string; name: string; direction: string }): CategoryDTO {
+    return {
+      id: category.id,
+      nombre: category.name,
+      tipo: category.direction === 'ingreso' ? 'Ingreso' : 'Gasto'
+    }
   }
   
   /**

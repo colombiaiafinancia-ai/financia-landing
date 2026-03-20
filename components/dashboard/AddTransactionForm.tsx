@@ -11,42 +11,33 @@ import { useCategories } from '@/hooks/useCategories'
 
 interface AddTransactionFormProps {
   onTransactionAdded?: () => void
+  userId: string  // 👈 añadimos userId como prop
 }
 
-export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormProps) => {
+export const AddTransactionForm = ({ onTransactionAdded, userId }: AddTransactionFormProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [tipo, setTipo] = useState<'gasto' | 'ingreso'>('gasto')
   const [valor, setValor] = useState('')
-  const [categoria, setCategoria] = useState('')
+  const [categoriaId, setCategoriaId] = useState('')
   const [descripcion, setDescripcion] = useState('')
 
   const { createTransaction } = useTransactionsUnified()
-  const { gastoCategories, ingresoCategories, loading: categoriesLoading } = useCategories()
+  const { gastoCategories, ingresoCategories, loading: categoriesLoading } = useCategories(userId) // 👈 pasamos userId
 
-  const gastosCategories =
-    gastoCategories.length > 0
-      ? gastoCategories.map((cat) => cat.nombre)
-      : ['Alimentación', 'Transporte', 'Entretenimiento', 'Servicios', 'Salud', 'Educación', 'Ropa', 'Otros']
-
-  const ingresosCategories =
-    ingresoCategories.length > 0
-      ? ingresoCategories.map((cat) => cat.nombre)
-      : ['Salario', 'Freelance', 'Bonos', 'Inversiones', 'Otros']
-
-  const availableCategories = tipo === 'gasto' ? gastosCategories : ingresosCategories
+  const availableCategories = tipo === 'gasto' ? gastoCategories : ingresoCategories
 
   const resetForm = () => {
     setTipo('gasto')
     setValor('')
-    setCategoria('')
+    setCategoriaId('')
     setDescripcion('')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!valor || !categoria) {
+    if (!valor || !categoriaId) {
       alert('Por favor completa todos los campos requeridos')
       return
     }
@@ -62,7 +53,7 @@ export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormPro
     try {
       await createTransaction({
         amount: valorNumerico,
-        category: categoria,
+        category: categoriaId,
         type: tipo,
         description: descripcion || undefined
       })
@@ -71,7 +62,6 @@ export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormPro
       setIsOpen(false)
 
       onTransactionAdded?.()
-      alert(`${tipo === 'gasto' ? 'Gasto' : 'Ingreso'} registrado exitosamente`)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       alert(`Error al guardar la transacción: ${message}`)
@@ -95,12 +85,8 @@ export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormPro
   const wrapperClass = `
     w-full h-full rounded-2xl p-4 sm:p-6 border
     bg-card text-card-foreground border-border
-
-    dark:bg-transparent
-    dark:bg-gradient-to-br dark:from-white/10 dark:to-white/5
-    dark:backdrop-blur-lg
-    dark:border-white/20
-    dark:text-white
+    dark:bg-transparent dark:bg-gradient-to-br dark:from-white/10 dark:to-white/5
+    dark:backdrop-blur-lg dark:border-white/20 dark:text-white
   `
 
   return (
@@ -121,7 +107,6 @@ export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormPro
             className="
               w-full py-2 sm:py-3 text-sm sm:text-base
               transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]
-
               bg-primary text-primary-foreground hover:bg-primary/90
               dark:bg-gradient-to-r dark:from-[#5ce1e6] dark:to-[#4dd0e1]
               dark:text-[#0D1D35] dark:hover:opacity-90
@@ -217,26 +202,33 @@ export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormPro
               </Label>
               <select
                 id="categoria"
-                value={categoria}
-                onChange={(e) => setCategoria(e.target.value)}
+                value={categoriaId}
+                onChange={(e) => setCategoriaId(e.target.value)}
                 required
                 disabled={categoriesLoading}
                 className="
                   w-full rounded-lg px-3 py-2 sm:py-3 text-sm sm:text-base outline-none border
                   bg-background text-foreground border-border
                   focus:ring-2 focus:ring-primary
-
                   dark:bg-white/10 dark:text-white dark:border-white/20
                 "
               >
-                <option value="" className="bg-white text-slate-900 dark:bg-[#0D1D35] dark:text-white">
-                  {categoriesLoading ? 'Cargando...' : 'Selecciona una categoría'}
-                </option>
-                {availableCategories.map((cat) => (
-                  <option key={cat} value={cat} className="bg-white text-slate-900 dark:bg-[#0D1D35] dark:text-white">
-                    {cat}
+                {categoriesLoading ? (
+                  <option value="" disabled>
+                    Cargando categorías...
                   </option>
-                ))}
+                ) : (
+                  <>
+                    <option value="" disabled>
+                      Selecciona una categoría
+                    </option>
+                    {availableCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id} className="bg-white text-slate-900 dark:bg-[#0D1D35] dark:text-white">
+                        {cat.nombre}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </div>
 
@@ -282,7 +274,7 @@ export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormPro
 
               <Button
                 type="submit"
-                disabled={isLoading || !valor || !categoria}
+                disabled={isLoading || !valor || !categoriaId}
                 className="
                   text-sm sm:text-base py-2 sm:py-3
                   bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50
@@ -302,7 +294,6 @@ export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormPro
         className="
           mt-4 sm:mt-6 p-3 sm:p-4 rounded-xl border
           bg-muted border-border
-
           dark:bg-white/5 dark:border-white/10
         "
       >

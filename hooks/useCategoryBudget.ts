@@ -1,219 +1,105 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import {
-  CategoryBudgetService,
-  BudgetDTOMapper,
-  type CategoryBudgetSummaryDTO,
-  type BudgetStatsDTO
-} from '@/features/budgets'
-import { AsyncState, AsyncStateUtils } from '@/types/asyncState'
-import { ErrorHandler } from '@/types/errors'
+import { useState, useEffect, useCallback } from 'react'
+import { categoryBudgetService, type CategoryBudgetWithSpent } from '@/features/budgets/application/categoryBudgetService'
 
-/**
- * Hook refactorizado para presupuestos por categoría - Usa AsyncState y DTOs
- *
- * Fix: memoriza expensesByCategory para que recargas (realtime/save/delete/refetch)
- * no vuelvan a calcular el summary con {} y "pierdan" categorías.
- */
-
-export const useCategoryBudget = (
-  userId: string
-): AsyncState<CategoryBudgetSummaryDTO[]> & {
-  budgetSummary: CategoryBudgetSummaryDTO[]
-  stats: BudgetStatsDTO
-  saveBudget: (categoria: string, amount: number) => Promise<void>
-  deleteBudget: (categoria: string) => Promise<void>
-  saveCategoryBudget: (categoria: string, amount: number) => Promise<void>
-  deleteCategoryBudget: (categoria: string) => Promise<void>
-  loadBudgetSummary: (expensesByCategory?: Record<string, number>) => Promise<void>
-  // Aliases de compatibilidad
+interface UseCategoryBudgetResult {
+  budgetSummary: Array<{
+    categoryId: string
+    categoryName: string
+    presupuestado: number
+    actual: number
+    excedente: number
+    porcentajeUsado: number
+  }>
+  stats: {
+    totalPresupuestado: number
+    totalGastado: number
+    totalExcedente: number
+    categoriasConPresupuesto: number
+    categoriasSobrepasadas: number
+    categoriasBajoPresupuesto: number
+  }
   loading: boolean
+  refreshing: boolean
   error: string | null
+  saveCategoryBudget: (categoryId: string, amount: number) => Promise<void>
+  deleteCategoryBudget: (categoryId: string) => Promise<void>
   refetch: () => Promise<void>
-} => {
-  const [state, setState] = useState<AsyncState<CategoryBudgetSummaryDTO[]>>(
-    AsyncStateUtils.createInitial<CategoryBudgetSummaryDTO[]>()
-  )
+}
 
-  const [stats, setStats] = useState<BudgetStatsDTO>({
-    totalPresupuestado: 0,
-    totalGastado: 0,
-    totalExcedente: 0,
-    categoriasConPresupuesto: 0,
-    categoriasSobrepasadas: 0,
-    categoriasBajoPresupuesto: 0,
-    porcentajeEjecucion: 0
-  })
+export const useCategoryBudget = (userId: string): UseCategoryBudgetResult => {
+  const [budgets, setBudgets] = useState<CategoryBudgetWithSpent[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const errorHandler = ErrorHandler
+  const currentMonth = new Date().toISOString().slice(0, 10).replace(/-/g, '-').substring(0, 7) + '-01' // YYYY-MM-01
 
-  // ✅ Guarda el último expensesByCategory que haya llegado al hook
-  const lastExpensesRef = useRef<Record<string, number>>({})
-
-  // Cargar resumen de presupuesto por categorías
-  const loadBudgetSummary = useCallback(
-    async (expensesByCategory?: Record<string, number>) => {
-      if (!userId) return
-      const raw = await CategoryBudgetService.getCurrent(userId)
-      console.log('💥 DEBUG getCurrentCategoryBudgets:', raw)
-
-      // ✅ si te pasan un mapa, lo memorizas
-      if (expensesByCategory) {
-        lastExpensesRef.current = expensesByCategory
-      }
-
-      // ✅ si NO te pasan nada, reutilizas el último conocido (evita caer en {})
-      const effectiveExpenses = expensesByCategory ?? lastExpensesRef.current
-
-      try {
-        setState(prev => ({ ...prev, isLoading: true, error: null }))
-
-        console.log('💰 HOOK - Loading category budget summary for user:', userId)
-        console.log('💰 HOOK - expensesByCategory keys:', Object.keys(effectiveExpenses).length)
-        const raw = await CategoryBudgetService.getCurrent(userId)
-        console.log('💥 DEBUG - RAW getCurrentCategoryBudgets:', raw)
-        const [summaryData, statsData] = await Promise.all([
-          CategoryBudgetService.getSummary(userId, effectiveExpenses),
-          CategoryBudgetService.getStats(userId, effectiveExpenses)
-        ])
-
-        const summaryDTOs = summaryData.map(BudgetDTOMapper.categoryBudgetSummaryToDTO)
-        const statsDTO = BudgetDTOMapper.statsToDTO(statsData)
-
-        console.log('✅ HOOK - Category budget summary loaded:', {
-          categories: summaryDTOs.length,
-          totalPresupuestado: statsDTO.totalPresupuestado,
-          totalGastado: statsDTO.totalGastado
-        })
-
-        // ✅ Importante: refetch NO debe capturar el expenses viejo; usa el último memoizado
-        setState(AsyncStateUtils.createWithData(summaryDTOs, () => loadBudgetSummary()))
-        setStats(statsDTO)
-      } catch (err) {
-        console.error('❌ HOOK - Error loading category budget summary:', err)
-
-        const errorMessage = errorHandler.handle(err, 'categoryBudget', {
-          action: 'load',
-          userId,
-          expensesCategoriesCount: Object.keys(effectiveExpenses).length
-        })
-
-        // ✅ refetch igual: recarga usando el último memoizado
-        setState(AsyncStateUtils.createWithError(errorMessage, () => loadBudgetSummary()))
-
-        // Reset stats on error
-        setStats({
-          totalPresupuestado: 0,
-          totalGastado: 0,
-          totalExcedente: 0,
-          categoriasConPresupuesto: 0,
-          categoriasSobrepasadas: 0,
-          categoriasBajoPresupuesto: 0,
-          porcentajeEjecucion: 0
-        })
-      }
-    },
-    [userId, errorHandler]
-  )
-
-  // Carga inicial
-  useEffect(() => {
-    loadBudgetSummary()
-  }, [loadBudgetSummary])
-
-  // Suscribirse a cambios en tiempo real
-  useEffect(() => {
-    if (!userId) return
-
-    console.log('💰 HOOK - Setting up real-time subscription for user:', userId)
+  const fetchBudgets = useCallback(async (showLoading = true) => {
+    if (!userId) {
+      setBudgets([])
+      setLoading(false)
+      return
+    }
 
     try {
-      const subscription = CategoryBudgetService.subscribe(userId, () => {
-        console.log('💰 HOOK - Real-time change detected, reloading...')
-        // ✅ ahora recarga con el último expensesByCategory memoizado (no con {})
-        loadBudgetSummary()
-      })
+      if (showLoading) setLoading(true)
+      else setRefreshing(true)
 
-      return () => {
-        console.log('💰 HOOK - Cleaning up subscription')
-        subscription.unsubscribe()
-      }
-    } catch (error) {
-      console.error('❌ HOOK - Error setting up subscription:', error)
-      errorHandler.handle(error, 'categoryBudget', { action: 'subscribe', userId })
+      const data = await categoryBudgetService.getUserBudgetsWithSpent(userId, currentMonth)
+      setBudgets(data)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar presupuestos')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
     }
-  }, [userId, loadBudgetSummary, errorHandler])
+  }, [userId, currentMonth])
 
-  // Guardar presupuesto de una categoría
-  const saveCategoryBudget = useCallback(
-    async (categoria: string, amount: number) => {
-      try {
-        console.log('💰 HOOK - Saving category budget:', { categoria, amount })
+  useEffect(() => {
+    fetchBudgets(true)
+  }, [fetchBudgets])
 
-        await CategoryBudgetService.save(userId, categoria, amount)
+  const saveCategoryBudget = async (categoryId: string, amount: number) => {
+    if (!userId) return
+    await categoryBudgetService.saveBudget(userId, categoryId, amount)
+    await fetchBudgets(false) // refresca en segundo plano
+  }
 
-        console.log('✅ HOOK - Category budget saved successfully')
+  const deleteCategoryBudget = async (categoryId: string) => {
+    if (!userId) return
+    await categoryBudgetService.deleteBudget(userId, categoryId)
+    await fetchBudgets(false)
+  }
 
-        // ✅ recarga con lastExpensesRef, no con {}
-        await loadBudgetSummary()
-      } catch (err) {
-        console.error('❌ HOOK - Error saving category budget:', err)
+  const stats = {
+    totalPresupuestado: budgets.reduce((sum, b) => sum + b.budgeted, 0),
+    totalGastado: budgets.reduce((sum, b) => sum + b.spent, 0),
+    totalExcedente: budgets.reduce((sum, b) => sum + b.remaining, 0),
+    categoriasConPresupuesto: budgets.length,
+    categoriasSobrepasadas: budgets.filter(b => b.status === 'danger').length,
+    categoriasBajoPresupuesto: budgets.filter(b => b.status === 'safe').length
+  }
 
-        const errorMessage = errorHandler.handle(err, 'categoryBudget', {
-          action: 'save',
-          userId,
-          categoria,
-          amount
-        })
-
-        setState(prev => ({ ...prev, error: errorMessage }))
-        throw new Error(errorMessage)
-      }
-    },
-    [userId, loadBudgetSummary, errorHandler]
-  )
-
-  // Eliminar presupuesto de una categoría
-  const deleteCategoryBudget = useCallback(
-    async (categoria: string) => {
-      try {
-        console.log('💰 HOOK - Deleting category budget:', categoria)
-
-        await CategoryBudgetService.delete(userId, categoria)
-
-        console.log('✅ HOOK - Category budget deleted successfully')
-
-        // ✅ recarga con lastExpensesRef, no con {}
-        await loadBudgetSummary()
-      } catch (err) {
-        console.error('❌ HOOK - Error deleting category budget:', err)
-
-        const errorMessage = errorHandler.handle(err, 'categoryBudget', {
-          action: 'delete',
-          userId,
-          categoria
-        })
-
-        setState(prev => ({ ...prev, error: errorMessage }))
-        throw new Error(errorMessage)
-      }
-    },
-    [userId, loadBudgetSummary, errorHandler]
-  )
+  const budgetSummary = budgets.map(b => ({
+    categoryId: b.categoryId,
+    categoryName: b.categoryName,
+    presupuestado: b.budgeted,
+    actual: b.spent,
+    excedente: b.remaining,
+    porcentajeUsado: b.percentage
+  }))
 
   return {
-    ...state,
-    budgetSummary: state.data || [],
+    budgetSummary,
     stats,
-    saveBudget: saveCategoryBudget,
-    deleteBudget: deleteCategoryBudget,
+    loading,
+    refreshing,
+    error,
     saveCategoryBudget,
     deleteCategoryBudget,
-    loadBudgetSummary,
-    // Aliases de compatibilidad
-    loading: state.isLoading,
-    error: state.error,
-    refetch: state.refetch
+    refetch: () => fetchBudgets(true)
   }
 }

@@ -14,25 +14,21 @@ interface BudgetByCategoryProps {
   onBudgetUpdate: () => void
 }
 
-/**
- * Dark: debe verse como tu dashboard actual (cards translucidas, texto blanco, borde blanco/20).
- * Light: texto negro + surfaces con tokens.
- */
 export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryProps) => {
   const [showAddModal, setShowAddModal] = useState(false)
-  const [editingBudget, setEditingBudget] = useState<{ id: string; categorias: string; valor: number } | null>(null)
-  const [selectedCategory, setSelectedCategory] = useState('')
+  const [editingBudget, setEditingBudget] = useState<{ categoryId: string; categoryName: string; amount: number } | null>(null)
+  const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [budgetValue, setBudgetValue] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const { gastoCategories, loading: categoriesLoading } = useCategories()
-  const { budgetSummary, loading: budgetsLoading, error, saveCategoryBudget, deleteCategoryBudget } =
+  const { gastoCategories, loading: categoriesLoading } = useCategories(userId)
+  const { budgetSummary, loading: budgetsLoading, refreshing, error, saveCategoryBudget, deleteCategoryBudget } =
     useCategoryBudget(userId)
 
   const loading = categoriesLoading || budgetsLoading
 
   const handleSave = async () => {
-    if (!selectedCategory || !budgetValue || !userId) {
+    if (!selectedCategoryId || !budgetValue || !userId) {
       alert('Por favor completa todos los campos')
       return
     }
@@ -45,8 +41,8 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
 
     try {
       setSaving(true)
-      await saveCategoryBudget(selectedCategory, valorNumerico)
-      setSelectedCategory('')
+      await saveCategoryBudget(selectedCategoryId, valorNumerico)
+      setSelectedCategoryId('')
       setBudgetValue('')
       setShowAddModal(false)
       setEditingBudget(null)
@@ -59,10 +55,12 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
     }
   }
 
-  const handleDelete = async (categoria: string) => {
-    if (!confirm(`¿Estás seguro de que quieres eliminar el presupuesto de ${categoria}?`)) return
+  const handleDelete = async (categoryId: string) => {
+    const category = budgetSummary.find(b => b.categoryId === categoryId)
+    if (!category) return
+    if (!confirm(`¿Estás seguro de que quieres eliminar el presupuesto de ${category.categoryName}?`)) return
     try {
-      await deleteCategoryBudget(categoria)
+      await deleteCategoryBudget(categoryId)
       onBudgetUpdate()
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error al eliminar el presupuesto'
@@ -70,25 +68,24 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
     }
   }
 
-  const handleEdit = (budget: { categoria: string; presupuestado: number }) => {
+  const handleEdit = (budget: typeof budgetSummary[0]) => {
     setEditingBudget({
-      id: budget.categoria,
-      categorias: budget.categoria,
-      valor: budget.presupuestado
+      categoryId: budget.categoryId,
+      categoryName: budget.categoryName,
+      amount: budget.presupuestado
     })
-    setSelectedCategory(budget.categoria)
+    setSelectedCategoryId(budget.categoryId)
     setBudgetValue(budget.presupuestado.toString())
     setShowAddModal(true)
   }
 
   const handleCancel = () => {
-    setSelectedCategory('')
+    setSelectedCategoryId('')
     setBudgetValue('')
     setShowAddModal(false)
     setEditingBudget(null)
   }
 
-  // Wrapper styles: LIGHT base + DARK exact look
   const wrapperClass = `
     rounded-lg p-6
     bg-card border border-border text-card-foreground
@@ -104,16 +101,9 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
             Presupuesto por Categorías
           </h3>
         </div>
-
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="
-                flex justify-between items-center p-3 rounded-lg animate-pulse
-                bg-muted dark:bg-white/5
-              "
-            >
+            <div key={i} className="flex justify-between items-center p-3 rounded-lg animate-pulse bg-muted dark:bg-white/5">
               <div className="h-4 bg-slate-300/70 dark:bg-white/15 rounded w-24"></div>
               <div className="h-4 bg-slate-300/70 dark:bg-white/15 rounded w-16"></div>
             </div>
@@ -132,7 +122,6 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
             Presupuesto por Categorías
           </h3>
         </div>
-
         <div className="text-center py-8">
           <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
           <Button onClick={() => window.location.reload()} variant="outline" size="sm">
@@ -145,11 +134,17 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
 
   return (
     <div className={wrapperClass}>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 relative">
         <h3 className="text-lg font-semibold flex items-center text-slate-900 dark:text-white">
           <DollarSign className="mr-2 h-5 w-5" />
           Presupuesto por Categorías
         </h3>
+
+        {refreshing && (
+          <div className="absolute right-0 top-0 mt-1 mr-1 z-10">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+          </div>
+        )}
 
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
           <DialogTrigger asChild>
@@ -165,15 +160,10 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
             </Button>
           </DialogTrigger>
 
-          <DialogContent
-            className="
-              bg-card border border-border text-card-foreground
-              dark:bg-[#0D1D35] dark:border-white/20 dark:text-white
-            "
-          >
+          <DialogContent className="bg-card border border-border text-card-foreground dark:bg-[#0D1D35] dark:border-white/20 dark:text-white">
             <DialogHeader>
               <DialogTitle className="text-slate-900 dark:text-white">
-                {editingBudget ? 'Editar Presupuesto' : 'Agregar Presupuesto por Categoría'}
+                {editingBudget ? `Editar Presupuesto - ${editingBudget.categoryName}` : 'Agregar Presupuesto por Categoría'}
               </DialogTitle>
             </DialogHeader>
 
@@ -184,37 +174,23 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
                 </Label>
                 <select
                   id="category"
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  value={selectedCategoryId}
+                  onChange={(e) => setSelectedCategoryId(e.target.value)}
                   disabled={!!editingBudget}
                   className="
-                    mt-1 w-full p-2 rounded-md outline-none
-                    border
-
-                    /* LIGHT */
+                    mt-1 w-full p-2 rounded-md outline-none border
                     bg-white text-slate-900 border-slate-200
-
-                    /* DARK */
                     dark:bg-white/5 dark:text-white dark:border-white/20
-
                     focus:ring-2 focus:ring-primary
                   "
                 >
-                  <option value="" className="text-slate-900 bg-white dark:text-white dark:bg-[#0D1D35]">
-                    Seleccionar categoría
-                  </option>
-
+                  <option value="">Seleccionar categoría</option>
                   {gastoCategories.map((cat) => (
-                    <option
-                      key={cat.id}
-                      value={cat.nombre}
-                      className="text-slate-900 bg-white dark:text-white dark:bg-[#0D1D35]"
-                    >
+                    <option key={cat.id} value={cat.id}>
                       {cat.nombre}
                     </option>
                   ))}
                 </select>
-
               </div>
 
               <div>
@@ -242,7 +218,7 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
                 </Button>
                 <Button
                   onClick={handleSave}
-                  disabled={saving || !selectedCategory || !budgetValue}
+                  disabled={saving || !selectedCategoryId || !budgetValue}
                   className="
                     bg-primary hover:bg-primary/90 text-primary-foreground
                     dark:bg-[#5ce1e6] dark:hover:bg-[#4dd0e1] dark:text-[#0D1D35]
@@ -273,7 +249,7 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
 
             return (
               <div
-                key={budget.categoria}
+                key={budget.categoryId}
                 className="
                   flex justify-between items-center p-4 rounded-lg transition-colors
                   bg-muted hover:bg-muted/80 border border-border
@@ -283,7 +259,7 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-slate-900 dark:text-white">
-                      {budget.categoria}
+                      {budget.categoryName}
                     </span>
                     <span className="text-lg font-bold text-green-600 dark:text-green-400">
                       ${budget.presupuestado.toLocaleString('es-CO')}
@@ -331,7 +307,7 @@ export const BudgetByCategory = ({ userId, onBudgetUpdate }: BudgetByCategoryPro
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDelete(budget.categoria)}
+                    onClick={() => handleDelete(budget.categoryId)}
                     className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                   >
                     <Trash2 className="h-4 w-4" />

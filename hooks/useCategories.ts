@@ -1,87 +1,55 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { CategoryService, CategoryDTOMapper, type CategoryDTO, type CategoriesByTypeDTO } from '@/features/categories'
-import { AsyncState, AsyncStateUtils } from '@/types/asyncState'
-import { ErrorHandler } from '@/types/errors'
+import { useState, useEffect } from 'react'
+import { categoryUseCases } from '@/features/categories/application/categoryUseCases'
+import { getCurrentUser } from '@/services/supabase'
 
-/**
- * Hook refactorizado para categorías - Usa AsyncState y DTOs
- * 
- * ✅ Solo maneja UI state
- * ✅ Usa DTOs en lugar de entidades directas
- * ✅ Sigue el contrato AsyncState estándar
- * ✅ Manejo de errores estandarizado
- */
-export const useCategories = (): AsyncState<CategoriesByTypeDTO> & {
-  allCategories: CategoryDTO[]
-  gastoCategories: CategoryDTO[]
-  ingresoCategories: CategoryDTO[]
-  categories: CategoryDTO[] // Alias de compatibilidad
-  loading: boolean // Alias de compatibilidad
-  error: string | null // Alias de compatibilidad
-  refetch: () => Promise<void> // Alias de compatibilidad
-} => {
-  const [state, setState] = useState<AsyncState<CategoriesByTypeDTO>>(
-    AsyncStateUtils.createInitial<CategoriesByTypeDTO>()
-  )
-  
-  const [allCategories, setAllCategories] = useState<CategoryDTO[]>([])
+interface UseCategoriesResult {
+  gastoCategories: Array<{ id: string; nombre: string }>
+  ingresoCategories: Array<{ id: string; nombre: string }>
+  loading: boolean
+  error: string | null
+  refetch: () => Promise<void>
+}
 
-  const errorHandler = ErrorHandler
+export const useCategories = (): UseCategoriesResult => {
+  const [gastoCategories, setGastoCategories] = useState<Array<{ id: string; nombre: string }>>([])
+  const [ingresoCategories, setIngresoCategories] = useState<Array<{ id: string; nombre: string }>>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const fetchCategories = useCallback(async () => {
+  const fetchCategories = async () => {
     try {
-      setState(AsyncStateUtils.createLoading(fetchCategories))
-      
-      console.log('🏷️ HOOK - Loading categories...')
-      
-      // ✅ Usar caso de uso en lugar de acceso directo a Supabase
-      const categoriesByType = await CategoryService.getByType()
-      
-      // ✅ Convertir a DTOs usando mapper
-      const dto = CategoryDTOMapper.groupedToDTO(categoriesByType)
-      
-      // Mantener lista completa para compatibilidad
-      const allCategoriesArray = [...dto.gastos, ...dto.ingresos]
-      setAllCategories(allCategoriesArray)
-      
-      console.log('✅ HOOK - Categories loaded:', {
-        gastos: dto.gastos.length,
-        ingresos: dto.ingresos.length,
-        total: allCategoriesArray.length
-      })
-      
-      setState(AsyncStateUtils.createWithData(dto, fetchCategories))
+      setLoading(true)
+      console.log('🔍 useCategories - obteniendo usuario actual...')
+      const user = await getCurrentUser()
+      console.log('🔍 useCategories - usuario:', user?.id)
+
+      if (!user) {
+        console.warn('⚠️ useCategories - usuario no autenticado')
+        setError('Usuario no autenticado')
+        setLoading(false)
+        return
+      }
+
+      console.log('🔍 useCategories - llamando a categoryUseCases.getCategoriesByType con userId:', user.id)
+      const { gastos, ingresos } = await categoryUseCases.getCategoriesByType(user.id)
+      console.log('🔍 useCategories - respuesta:', { gastos, ingresos })
+
+      setGastoCategories(gastos.map(c => ({ id: c.id, nombre: c.nombre })))
+      setIngresoCategories(ingresos.map(c => ({ id: c.id, nombre: c.nombre })))
+      setError(null)
     } catch (err) {
-      console.error('❌ HOOK - Error loading categories:', err)
-      const errorMessage = errorHandler.handle(err, 'categories', { action: 'fetch' })
-      setState(AsyncStateUtils.createWithError(errorMessage, fetchCategories))
-      setAllCategories([])
+      console.error('❌ useCategories - error:', err)
+      setError(err instanceof Error ? err.message : 'Error al cargar categorías')
+    } finally {
+      setLoading(false)
     }
-  }, [errorHandler])
+  }
 
   useEffect(() => {
     fetchCategories()
-  }, [fetchCategories])
+  }, [])
 
-  return {
-    ...state,
-    allCategories,
-    gastoCategories: state.data?.gastos || [],
-    ingresoCategories: state.data?.ingresos || [],
-    // Alias para compatibilidad con código existente
-    categories: allCategories,
-    loading: state.isLoading,
-    error: state.error,
-    refetch: state.refetch
-  } as AsyncState<CategoriesByTypeDTO> & {
-    allCategories: CategoryDTO[]
-    gastoCategories: CategoryDTO[]
-    ingresoCategories: CategoryDTO[]
-    categories: CategoryDTO[] // Alias de compatibilidad
-    loading: boolean // Alias de compatibilidad
-    error: string | null // Alias de compatibilidad
-    refetch: () => Promise<void> // Alias de compatibilidad
-  }
+  return { gastoCategories, ingresoCategories, loading, error, refetch: fetchCategories }
 }

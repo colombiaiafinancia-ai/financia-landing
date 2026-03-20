@@ -9,19 +9,8 @@
  */
 
 // DTOs (contratos para la UI)
-export type {
-  BudgetDTO,
-  CategoryBudgetDTO,
-  CategoryBudgetSummaryDTO,
-  BudgetStatsDTO,
-  BudgetPeriodDTO,
-  BudgetSummaryDTO,
-  CreateBudgetDTO,
-  CreateCategoryBudgetDTO,
-  UpdateBudgetDTO,
-  LegacyBudgetDataDTO
-} from './dto/budgetDTO'
-export { BudgetDTOMapper } from './dto/budgetDTO'
+export type { CategoryBudgetWithSpent } from './application/categoryBudgetService'
+export { categoryBudgetService as CategoryBudgetService } from './application/categoryBudgetService'
 
 // Casos de uso (capa de aplicación) - API pública
 export {

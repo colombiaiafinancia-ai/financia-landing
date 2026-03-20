@@ -5,7 +5,7 @@ import { Trash2, Filter, Search, TrendingUp, TrendingDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { TransactionDTO } from '@/features/transactions'
+import { TransactionDTO } from '@/features/transactions/dto/transactionDTO'
 import { useCategories } from '@/hooks/useCategories'
 import { DeleteErrorHandler } from './DeleteErrorHandler'
 

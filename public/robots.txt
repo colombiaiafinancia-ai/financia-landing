@@ -1,5 +1,15 @@
-# FinancIA - robots.txt
 # Reduce tráfico de bots en rutas sensibles
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
 
 User-agent: *
 # Rutas públicas (solo lectura, sin login ni formularios)

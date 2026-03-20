@@ -6,15 +6,8 @@
  */
 
 // DTOs (contratos para la UI)
-export type { 
-  CategoryDTO,
-  CategoryStatsDTO,
-  CategoryFiltersDTO,
-  CreateCategoryDTO,
-  UpdateCategoryDTO,
-  CategoriesByTypeDTO
-} from './dto/categoryDTO'
-export { CategoryDTOMapper } from './dto/categoryDTO'
+export type { CategoryDTO } from './application/categoryUseCases'
+export { categoryUseCases as CategoryService } from './application/categoryUseCases'
 
 // Domain types and logic (solo tipos y funciones puras)
 export type { Category, CategoryType } from './domain/categoryLogic'

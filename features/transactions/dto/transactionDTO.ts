@@ -5,18 +5,13 @@
  * La UI NUNCA debe acceder a entidades de Supabase directamente.
  */
 
-/**
- * Habilita o deshabilita logs de depuración para transacciones
- */
 const DEBUG_TRANSACTIONS = false
 
-/**
- * DTO principal para transacciones
- */
 export interface TransactionDTO {
   readonly id: string
   readonly userId: string
   readonly amount: number
+  readonly categoryId: string
   readonly category: string | null
   readonly type: 'gasto' | 'ingreso' | null
   readonly description: string | null
@@ -25,9 +20,6 @@ export interface TransactionDTO {
   readonly formattedDate: string
 }
 
-/**
- * DTO para resumen de transacciones
- */
 export interface TransactionSummaryDTO {
   readonly totalSpent: number
   readonly totalIncome: number
@@ -43,9 +35,6 @@ export interface TransactionSummaryDTO {
   readonly formattedBalance: string
 }
 
-/**
- * DTO para gastos por categoría
- */
 export interface CategoryExpenseDTO {
   readonly categoria: string
   readonly total: number
@@ -54,9 +43,6 @@ export interface CategoryExpenseDTO {
   readonly formattedTotal: string
 }
 
-/**
- * DTO para datos semanales
- */
 export interface WeeklyDataDTO {
   readonly week: string
   readonly amount: number
@@ -65,9 +51,6 @@ export interface WeeklyDataDTO {
   readonly formattedDate: string
 }
 
-/**
- * DTO para estadísticas de transacciones
- */
 export interface TransactionStatsDTO {
   readonly totalTransactions: number
   readonly totalSpent: number
@@ -76,15 +59,12 @@ export interface TransactionStatsDTO {
   readonly mostUsedCategory: string | null
   readonly thisWeekSpent: number
   readonly lastWeekSpent: number
-  readonly weeklyGrowth: number // Porcentaje de crecimiento semanal
+  readonly weeklyGrowth: number
   readonly formattedAverageTransaction: string
   readonly formattedThisWeekSpent: string
   readonly formattedLastWeekSpent: string
 }
 
-/**
- * DTO para creación de transacciones
- */
 export interface CreateTransactionDTO {
   readonly amount: number
   readonly category: string
@@ -92,9 +72,6 @@ export interface CreateTransactionDTO {
   readonly description?: string
 }
 
-/**
- * DTO para actualización de transacciones
- */
 export interface UpdateTransactionDTO {
   readonly amount?: number
   readonly category?: string
@@ -102,9 +79,6 @@ export interface UpdateTransactionDTO {
   readonly description?: string
 }
 
-/**
- * DTO para filtros de transacciones
- */
 export interface TransactionFiltersDTO {
   readonly type?: 'gasto' | 'ingreso'
   readonly category?: string
@@ -114,95 +88,68 @@ export interface TransactionFiltersDTO {
   readonly amountMax?: number
 }
 
-/**
- * DTO para período de transacciones
- */
 export interface TransactionPeriodDTO {
   readonly year: number
   readonly month: number
-  readonly displayName: string // "Enero 2025"
+  readonly displayName: string
   readonly startDate: string
   readonly endDate: string
 }
 
-/**
- * Mappers para convertir entre domain models y DTOs
- */
 export class TransactionDTOMapper {
-  /**
-   * Formatea una fecha
-   */
-  private static formatDate(dateString: string | null): string {
-    if (!dateString) return 'Sin fecha'
-
-    try {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('es-CO', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
-    } catch {
-      return 'Fecha inválida'
-    }
-  }
-
-  /**
-   * Convierte transacción a DTO
-   */
-  static transactionToDTO(transaction: {
+  static transactionToDTO(t: {
     id: string
-    usuario_id: string
-    valor: number
-    categoria: string | null
-    tipo: 'gasto' | 'ingreso' | null
-    descripcion: string | null
-    creado_en: string | null
+    userId: string
+    amount: number
+    categoryId: string
+    categoryName: string
+    direction: 'gasto' | 'ingreso'
+    description: string | null
+    occurredAt: string
+    formattedAmount: string
+    formattedDate: string
   }): TransactionDTO {
     if (DEBUG_TRANSACTIONS) {
       console.log('[TransactionDTOMapper] Convirtiendo transacción:', {
-        id: transaction.id,
-        valor: transaction.valor,
-        categoria: transaction.categoria,
-        tipo: transaction.tipo,
+        id: t.id,
+        amount: t.amount,
+        categoryName: t.categoryName,
+        direction: t.direction,
       })
     }
 
     return {
-      id: transaction.id,
-      userId: transaction.usuario_id,
-      amount: transaction.valor,
-      category: transaction.categoria,
-      type: transaction.tipo,
-      description: transaction.descripcion,
-      createdAt: transaction.creado_en,
-      formattedAmount: transaction.valor.toString(),
-      formattedDate: this.formatDate(transaction.creado_en),
+      id: t.id,
+      userId: t.userId,
+      amount: t.amount,
+      categoryId: t.categoryId,
+      category: t.categoryName,
+      type: t.direction,
+      description: t.description,
+      createdAt: t.occurredAt,
+      formattedAmount: t.formattedAmount,
+      formattedDate: t.formattedDate,
     }
   }
 
-  /**
-   * Convierte múltiples transacciones a DTOs
-   */
   static transactionsToDTOs(transactions: Array<{
     id: string
-    usuario_id: string
-    valor: number
-    categoria: string | null
-    tipo: 'gasto' | 'ingreso' | null
-    descripcion: string | null
-    creado_en: string | null
-  }>): readonly TransactionDTO[] {
+    userId: string
+    amount: number
+    categoryId: string
+    categoryName: string
+    direction: 'gasto' | 'ingreso'
+    description: string | null
+    occurredAt: string
+    formattedAmount: string
+    formattedDate: string
+  }>): TransactionDTO[] {  // 👈 Cambiado de readonly a mutable
     if (DEBUG_TRANSACTIONS) {
       console.log('[TransactionDTOMapper] Convirtiendo', transactions.length, 'transacciones a DTOs')
     }
-
-    return transactions.map(transaction => TransactionDTOMapper.transactionToDTO(transaction))
+    return transactions.map(t => this.transactionToDTO(t))
   }
 
-  /**
-   * Convierte gastos por categoría a DTO
-   */
   static categoryExpenseToDTO(
     categoria: string,
     total: number,
@@ -210,16 +157,6 @@ export class TransactionDTOMapper {
     totalExpenses: number
   ): CategoryExpenseDTO {
     const percentage = totalExpenses > 0 ? Math.round((total / totalExpenses) * 10000) / 100 : 0
-
-    if (DEBUG_TRANSACTIONS) {
-      console.log('[TransactionDTOMapper] Gasto por categoría:', {
-        categoria,
-        total,
-        count,
-        percentage,
-      })
-    }
-
     return {
       categoria,
       total,
@@ -229,18 +166,11 @@ export class TransactionDTOMapper {
     }
   }
 
-  /**
-   * Convierte datos semanales a DTO
-   */
   static weeklyDataToDTO(weeklyData: {
     week: string
     amount: number
     date: string
   }): WeeklyDataDTO {
-    if (DEBUG_TRANSACTIONS) {
-      console.log('[TransactionDTOMapper] Datos semanales:', weeklyData)
-    }
-
     return {
       week: weeklyData.week,
       amount: weeklyData.amount,
@@ -250,9 +180,6 @@ export class TransactionDTOMapper {
     }
   }
 
-  /**
-   * Convierte resumen de transacciones a DTO
-   */
   static summaryToDTO(
     summary: {
       totalSpent: number
@@ -265,20 +192,6 @@ export class TransactionDTOMapper {
     transactionCount: number
   ): TransactionSummaryDTO {
     const balance = summary.totalIncome - summary.totalSpent
-
-    if (DEBUG_TRANSACTIONS) {
-      console.log('[TransactionDTOMapper] Resumen de transacciones:', {
-        totalSpent: summary.totalSpent,
-        totalIncome: summary.totalIncome,
-        balance,
-        todayExpenses: summary.todayExpenses,
-        weekExpenses: summary.weekExpenses,
-        monthExpenses: summary.monthExpenses,
-        transactionCount,
-      })
-    }
-
-    // Convertir gastos por categoría a DTOs
     const categoryExpenses = Object.entries(summary.expensesByCategory)
       .map(([categoria, total]) =>
         this.categoryExpenseToDTO(categoria, total, 0, summary.totalSpent)
@@ -294,16 +207,13 @@ export class TransactionDTOMapper {
       monthExpenses: summary.monthExpenses,
       transactionCount,
       expensesByCategory: categoryExpenses,
-      weeklyTrend: [], // Se llena por separado
+      weeklyTrend: [],
       formattedTotalSpent: summary.totalSpent.toString(),
       formattedTotalIncome: summary.totalIncome.toString(),
       formattedBalance: balance.toString(),
     }
   }
 
-  /**
-   * Convierte estadísticas a DTO
-   */
   static statsToDTO(stats: {
     totalTransactions: number
     totalSpent: number
@@ -316,20 +226,6 @@ export class TransactionDTOMapper {
     const weeklyGrowth = stats.lastWeekSpent > 0
       ? Math.round(((stats.thisWeekSpent - stats.lastWeekSpent) / stats.lastWeekSpent) * 10000) / 100
       : 0
-
-    if (DEBUG_TRANSACTIONS) {
-      console.log('[TransactionDTOMapper] Estadísticas de transacciones:', {
-        totalTransactions: stats.totalTransactions,
-        totalSpent: stats.totalSpent,
-        totalIncome: stats.totalIncome,
-        averageTransaction: stats.averageTransaction,
-        mostUsedCategory: stats.mostUsedCategory,
-        thisWeekSpent: stats.thisWeekSpent,
-        lastWeekSpent: stats.lastWeekSpent,
-        weeklyGrowth,
-      })
-    }
-
     return {
       totalTransactions: stats.totalTransactions,
       totalSpent: stats.totalSpent,
@@ -345,37 +241,13 @@ export class TransactionDTOMapper {
     }
   }
 
-  /**
-   * Convierte período a DTO
-   */
   static periodToDTO(year: number, month: number): TransactionPeriodDTO {
     const monthNames = [
-      'Enero',
-      'Febrero',
-      'Marzo',
-      'Abril',
-      'Mayo',
-      'Junio',
-      'Julio',
-      'Agosto',
-      'Septiembre',
-      'Octubre',
-      'Noviembre',
-      'Diciembre',
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
     ]
-
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`
     const endDate = new Date(year, month, 0).toISOString().split('T')[0]
-
-    if (DEBUG_TRANSACTIONS) {
-      console.log('[TransactionDTOMapper] Período de transacciones:', {
-        year,
-        month,
-        startDate,
-        endDate,
-      })
-    }
-
     return {
       year,
       month,

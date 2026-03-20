@@ -1,47 +1,20 @@
-/**
- * APPLICATION LAYER - Transaction Use Cases
- * 
- * Orquesta la lógica de dominio y los repositorios.
- * Define los casos de uso de la aplicación para transacciones.
- */
-
-import {
-  validateTransactionCreation,
-  calculateTransactionSummary,
-  calculateTodayExpenses,
-  calculateWeekExpenses,
-  calculateMonthExpenses,
-  calculateTotalIncome,
-  calculateTotalExpenses,
-  groupExpensesByCategory,
-  calculateCategorySummary,
-  calculateWeeklyTrend,
-  formatTransactionAmount,
-  type Transaction,
-  type TransactionSummary,
-  type WeeklyData,
-  type CategorySummary,
-  type TransactionType
-} from '../domain/transactionLogic'
-
-import { 
-  transactionRepository, 
-  type TransactionEntity, 
-  type TransactionCreationData 
-} from '../services/transactionRepository'
+import { transactionRepository, TransactionEntity, CreateTransactionData } from '../infrastructure/transactionRepository'
+import { monthSummaryRepository } from '../infrastructure/monthSummaryRepository'
+import { categoryRepository } from '@/features/categories/infrastructure/categoryRepository'
+import { validateTransactionCreation } from '../domain/transactionLogic'
 
 export interface TransactionCreationRequest {
-  valor: number
-  categoria: string
-  tipo: TransactionType
-  descripcion?: string
+  amount: number
+  categoryId: string
+  direction: 'gasto' | 'ingreso'
+  description?: string
 }
 
 export interface TransactionUpdateRequest {
-  valor?: number
-  categoria?: string
-  tipo?: TransactionType
-  descripcion?: string
+  amount?: number
+  categoryId?: string
+  direction?: 'gasto' | 'ingreso'
+  description?: string
 }
 
 export interface TransactionStats {
@@ -54,322 +27,213 @@ export interface TransactionStats {
   lastWeekSpent: number
 }
 
+// DTO de salida (usado internamente)
+export interface TransactionDTO {
+  id: string
+  userId: string
+  amount: number
+  categoryId: string
+  categoryName: string
+  direction: 'gasto' | 'ingreso'
+  description: string | null
+  occurredAt: string
+  formattedAmount: string
+  formattedDate: string
+}
+
+export interface TransactionSummaryDTO {
+  totalSpent: number
+  totalIncome: number
+  balance: number
+  monthExpenses: number
+  monthIncome: number
+  expensesByCategory: Array<{
+    categoryId: string
+    categoryName: string
+    total: number
+    percentage: number
+  }>
+  weeklyTrend: Array<{ week: string; amount: number; date: string }>
+}
+
 export class TransactionUseCases {
-  /**
-   * Mapear entidad de BD a modelo de dominio
-   */
-  private mapEntityToDomain(entity: TransactionEntity): Transaction {
+  private async getCategoryMap(userId: string, categoryIds: string[]): Promise<Map<string, string>> {
+    if (categoryIds.length === 0) return new Map()
+    // Obtener todas las categorías de una sola vez
+    const categories = await Promise.all(categoryIds.map(id => categoryRepository.findById(id)))
+    const map = new Map()
+    categories.forEach(c => { if (c) map.set(c.id, c.name) })
+    return map
+  }
+
+  private mapEntityToDTO = async (entity: TransactionEntity): Promise<TransactionDTO> => {
+    const category = await categoryRepository.findById(entity.category_id)
     return {
       id: entity.id,
-      usuario_id: entity.usuario_id,
-      valor: entity.valor,
-      categoria: entity.categoria,
-      tipo: entity.tipo as 'gasto' | 'ingreso' | null,
-      descripcion: entity.descripcion,
-      creado_en: entity.creado_en
+      userId: entity.user_id,
+      amount: entity.amount,
+      categoryId: entity.category_id,
+      categoryName: category?.name || 'Sin categoría',
+      direction: entity.direction,
+      description: entity.description,
+      occurredAt: entity.occurred_at,
+      formattedAmount: new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(entity.amount),
+      formattedDate: new Date(entity.occurred_at).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })
     }
   }
 
-  /**
-   * Obtener todas las transacciones de un usuario
-   */
-  async getAllTransactions(userId: string): Promise<Transaction[]> {
-    try {
-      console.log('💰 TRANSACTION_USE_CASE - Loading all transactions for user:', userId)
-      
-      const entities = await transactionRepository.findAllByUser(userId)
-      const transactions = entities.map(this.mapEntityToDomain)
-      
-      console.log('✅ TRANSACTION_USE_CASE - Transactions loaded:', transactions.length)
-      return transactions
-    } catch (error) {
-      console.error('❌ TRANSACTION_USE_CASE - Error loading transactions:', error)
-      throw error
-    }
+  async getAllTransactions(userId: string): Promise<TransactionDTO[]> {
+    const entities = await transactionRepository.findAllByUser(userId)
+    return Promise.all(entities.map(e => this.mapEntityToDTO(e)))
   }
 
-  /**
-   * Obtener transacciones del mes actual
-   */
-  async getMonthlyTransactions(userId: string, year?: number, month?: number): Promise<Transaction[]> {
-    try {
-      console.log('💰 TRANSACTION_USE_CASE - Loading monthly transactions:', { userId, year, month })
-      
-      const entities = await transactionRepository.findByUserAndPeriod(userId, year, month)
-      const transactions = entities.map(this.mapEntityToDomain)
-      
-      console.log('✅ TRANSACTION_USE_CASE - Monthly transactions loaded:', transactions.length)
-      return transactions
-    } catch (error) {
-      console.error('❌ TRANSACTION_USE_CASE - Error loading monthly transactions:', error)
-      throw error
+  async createTransaction(userId: string, data: TransactionCreationRequest): Promise<TransactionDTO> {
+    const validation = validateTransactionCreation({
+      valor: data.amount,
+      categoria: data.categoryId,
+      tipo: data.direction,
+      descripcion: data.description
+    })
+    if (!validation.isValid) {
+      throw new Error(`Datos inválidos: ${validation.errors.join(', ')}`)
     }
+
+    const createData: CreateTransactionData = {
+      user_id: userId,
+      direction: data.direction,
+      amount: data.amount,
+      category_id: data.categoryId,
+      description: data.description
+    }
+    const entity = await transactionRepository.create(createData)
+    return this.mapEntityToDTO(entity)
   }
 
-  /**
-   * Crear nueva transacción
-   */
-  async createTransaction(userId: string, transactionData: TransactionCreationRequest): Promise<Transaction> {
-    try {
-      console.log('💰 TRANSACTION_USE_CASE - Creating transaction:', { userId, transactionData })
-      
-      // Validar usando lógica de dominio
-      const validation = validateTransactionCreation({
-        valor: transactionData.valor,
-        categoria: transactionData.categoria,
-        tipo: transactionData.tipo,
-        descripcion: transactionData.descripcion
-      })
-      
-      if (!validation.isValid) {
-        throw new Error(`Datos de transacción inválidos: ${validation.errors.join(', ')}`)
-      }
-      
-      // Crear en el repositorio
-      const creationData: TransactionCreationData = {
-        usuario_id: userId,
-        valor: transactionData.valor,
-        categoria: transactionData.categoria,
-        tipo: transactionData.tipo,
-        descripcion: transactionData.descripcion || null
-      }
-      
-      const entity = await transactionRepository.create(creationData)
-      const transaction = this.mapEntityToDomain(entity)
-      
-      console.log('✅ TRANSACTION_USE_CASE - Transaction created:', transaction.id)
-      return transaction
-    } catch (error) {
-      console.error('❌ TRANSACTION_USE_CASE - Error creating transaction:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Actualizar transacción existente
-   */
-  async updateTransaction(
-    transactionId: string, 
-    userId: string, 
-    updates: TransactionUpdateRequest
-  ): Promise<Transaction> {
-    try {
-      console.log('💰 TRANSACTION_USE_CASE - Updating transaction:', { transactionId, userId, updates })
-      
-      // Validar actualizaciones si se proporcionan
-      if (Object.keys(updates).length > 0) {
-        const validation = validateTransactionCreation({
-          valor: updates.valor || 0, // Valor dummy para validación
-          categoria: updates.categoria || 'dummy',
-          tipo: updates.tipo || 'gasto',
-          descripcion: updates.descripcion
-        })
-        
-        // Solo validar campos que se están actualizando
-        if (updates.valor !== undefined || updates.categoria !== undefined || updates.tipo !== undefined) {
-          if (!validation.isValid) {
-            throw new Error(`Datos de actualización inválidos: ${validation.errors.join(', ')}`)
-          }
-        }
-      }
-      
-      const entity = await transactionRepository.update(transactionId, userId, updates)
-      const transaction = this.mapEntityToDomain(entity)
-      
-      console.log('✅ TRANSACTION_USE_CASE - Transaction updated:', transaction.id)
-      return transaction
-    } catch (error) {
-      console.error('❌ TRANSACTION_USE_CASE - Error updating transaction:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Eliminar transacción
-   */
   async deleteTransaction(transactionId: string, userId: string): Promise<void> {
-    try {
-      console.log('💰 TRANSACTION_USE_CASE - Deleting transaction:', { transactionId, userId })
-      
-      await transactionRepository.delete(transactionId, userId)
-      
-      console.log('✅ TRANSACTION_USE_CASE - Transaction deleted:', transactionId)
-    } catch (error) {
-      console.error('❌ TRANSACTION_USE_CASE - Error deleting transaction:', error)
-      throw error
+    await transactionRepository.delete(transactionId, userId)
+  }
+
+  async getTransactionSummary(userId: string): Promise<TransactionSummaryDTO> {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+
+    // Ejecutar consultas en paralelo
+    const [monthSummary, categoryExpenses, weeklyTrend] = await Promise.all([
+      monthSummaryRepository.getMonthSummary(userId, monthStart),
+      monthSummaryRepository.getMonthCategoryExpenses(userId, monthStart),
+      this.calculateWeeklyTrend(userId)
+    ])
+
+    const totalIncome = monthSummary?.income_total || 0
+    const totalSpent = monthSummary?.expense_total || 0
+    const balance = totalIncome - totalSpent
+
+    // Obtener nombres de categorías en una sola consulta
+    const categoryIds = categoryExpenses.map(ce => ce.category_id)
+    const categoryMap = await this.getCategoryMap(userId, categoryIds)
+
+    const expensesByCategory = categoryExpenses.map(ce => ({
+      categoryId: ce.category_id,
+      categoryName: categoryMap.get(ce.category_id) || 'Desconocida',
+      total: ce.total,
+      percentage: totalSpent > 0 ? (ce.total / totalSpent) * 100 : 0
+    })).sort((a, b) => b.total - a.total)
+
+    return {
+      totalSpent,
+      totalIncome,
+      balance,
+      monthExpenses: totalSpent,
+      monthIncome: totalIncome,
+      expensesByCategory,
+      weeklyTrend
     }
   }
 
-  /**
-   * Obtener resumen completo de transacciones
-   */
-  async getTransactionSummary(userId: string): Promise<TransactionSummary> {
-    try {
-      console.log('💰 TRANSACTION_USE_CASE - Calculating transaction summary for user:', userId)
-      
-      const transactions = await this.getAllTransactions(userId)
-      const summary = calculateTransactionSummary(transactions)
-      
-      console.log('✅ TRANSACTION_USE_CASE - Summary calculated:', {
-        totalSpent: summary.totalSpent,
-        totalIncome: summary.totalIncome,
-        todayExpenses: summary.todayExpenses,
-        weekExpenses: summary.weekExpenses,
-        monthExpenses: summary.monthExpenses,
-        categoriesCount: Object.keys(summary.expensesByCategory).length
+  private async calculateWeeklyTrend(userId: string): Promise<Array<{ week: string; amount: number; date: string }>> {
+    const today = new Date()
+    const endDate = today.toISOString().split('T')[0]
+    const startDate = new Date(today.getTime() - 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+    const dailyExpenses = await monthSummaryRepository.getDailyExpenses(userId, startDate, endDate)
+
+    const weeks: Array<{ week: string; amount: number; date: string }> = []
+    for (let i = 3; i >= 0; i--) {
+      const weekStart = new Date(today.getTime() - (i * 7 * 24 * 60 * 60 * 1000))
+      const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000)
+      const weekStartStr = weekStart.toISOString().split('T')[0]
+      const weekEndStr = weekEnd.toISOString().split('T')[0]
+
+      const weekTotal = dailyExpenses
+        .filter(d => d.day >= weekStartStr && d.day <= weekEndStr)
+        .reduce((sum, d) => sum + d.total, 0)
+
+      const weekLabel = i === 0 ? 'Esta semana' : `Hace ${i} semana${i > 1 ? 's' : ''}`
+      weeks.push({
+        week: weekLabel,
+        amount: weekTotal,
+        date: weekStart.toLocaleDateString('es-CO')
       })
-      
-      return summary
-    } catch (error) {
-      console.error('❌ TRANSACTION_USE_CASE - Error calculating summary:', error)
-      throw error
     }
+    return weeks
   }
 
-  /**
-   * Obtener resumen por categorías
-   */
-  async getCategorySummary(userId: string): Promise<CategorySummary[]> {
-    try {
-      console.log('💰 TRANSACTION_USE_CASE - Calculating category summary for user:', userId)
-      
-      const transactions = await this.getAllTransactions(userId)
-      const categorySummary = calculateCategorySummary(transactions)
-      
-      console.log('✅ TRANSACTION_USE_CASE - Category summary calculated:', categorySummary.length, 'categories')
-      return categorySummary
-    } catch (error) {
-      console.error('❌ TRANSACTION_USE_CASE - Error calculating category summary:', error)
-      throw error
+  async getDailyTrend(userId: string, days: number = 7): Promise<Array<{ date: string; amount: number }>> {
+    const endDate = new Date().toISOString().split('T')[0]
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const dailyExpenses = await monthSummaryRepository.getDailyExpenses(userId, startDate, endDate)
+    
+    const result: Array<{ date: string; amount: number }> = []
+    const dateMap = new Map(dailyExpenses.map(d => [d.day, d.total]))
+    
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      result.push({ date, amount: dateMap.get(date) || 0 })
     }
+    return result
   }
 
-  /**
-   * Obtener tendencia semanal
-   */
-  async getWeeklySummary(userId: string): Promise<WeeklyData[]> {
-    try {
-      console.log('💰 TRANSACTION_USE_CASE - Calculating weekly trend for user:', userId)
-      
-      const transactions = await this.getAllTransactions(userId)
-      const weeklyTrend = calculateWeeklyTrend(transactions)
-      
-      console.log('✅ TRANSACTION_USE_CASE - Weekly trend calculated:', weeklyTrend.length, 'weeks')
-      return weeklyTrend
-    } catch (error) {
-      console.error('❌ TRANSACTION_USE_CASE - Error calculating weekly trend:', error)
-      throw error
+  async getMonthlyTrend(userId: string, months: number = 12): Promise<Array<{ month: string; amount: number }>> {
+    const result: Array<{ month: string; amount: number }> = []
+    const now = new Date()
+    const promises = []
+    
+    for (let i = months - 1; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthStart = date.toISOString().split('T')[0]
+      promises.push(monthSummaryRepository.getMonthSummary(userId, monthStart).then(summary => ({
+        month: date.toLocaleDateString('es-CO', { year: 'numeric', month: 'long' }),
+        amount: summary?.expense_total || 0
+      })))
     }
+    return Promise.all(promises)
   }
 
-  /**
-   * Obtener gasto mensual total
-   */
-  async getMonthlySpent(userId: string): Promise<number> {
-    try {
-      console.log('💰 TRANSACTION_USE_CASE - Calculating monthly spent for user:', userId)
-      
-      const monthlySpent = await transactionRepository.getMonthlySpent(userId)
-      
-      console.log('✅ TRANSACTION_USE_CASE - Monthly spent calculated:', monthlySpent)
-      return monthlySpent
-    } catch (error) {
-      console.error('❌ TRANSACTION_USE_CASE - Error calculating monthly spent:', error)
-      throw error
-    }
-  }
+  async getTransactionsWithCalculations(userId: string) {
+    // Ejecutar todas las consultas en paralelo
+    const [transactions, summary, dailyTrend, monthlyTrend] = await Promise.all([
+      this.getAllTransactions(userId),
+      this.getTransactionSummary(userId),
+      this.getDailyTrend(userId, 7),
+      this.getMonthlyTrend(userId, 12)
+    ])
 
-  /**
-   * Obtener estadísticas rápidas
-   */
-  async getTransactionStats(userId: string): Promise<TransactionStats> {
-    try {
-      console.log('💰 TRANSACTION_USE_CASE - Calculating transaction stats for user:', userId)
-      
-      const transactions = await this.getAllTransactions(userId)
-      const categorySummary = calculateCategorySummary(transactions)
-      const weeklyTrend = calculateWeeklyTrend(transactions)
-      
-      const totalTransactions = transactions.length
-      const totalSpent = calculateTotalExpenses(transactions)
-      const totalIncome = calculateTotalIncome(transactions)
-      const averageTransaction = totalTransactions > 0 ? totalSpent / totalTransactions : 0
-      const mostUsedCategory = categorySummary.length > 0 ? categorySummary[0].categoria : null
-      const thisWeekSpent = weeklyTrend.length > 0 ? weeklyTrend[weeklyTrend.length - 1].amount : 0
-      const lastWeekSpent = weeklyTrend.length > 1 ? weeklyTrend[weeklyTrend.length - 2].amount : 0
-      
-      const stats: TransactionStats = {
-        totalTransactions,
-        totalSpent,
-        totalIncome,
-        averageTransaction,
-        mostUsedCategory,
-        thisWeekSpent,
-        lastWeekSpent
-      }
-      
-      console.log('✅ TRANSACTION_USE_CASE - Stats calculated:', stats)
-      return stats
-    } catch (error) {
-      console.error('❌ TRANSACTION_USE_CASE - Error calculating stats:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Suscribirse a cambios en tiempo real
-   */
-  subscribeToChanges(userId: string, callback: () => void) {
-    console.log('💰 TRANSACTION_USE_CASE - Setting up real-time subscription for user:', userId)
-    return transactionRepository.subscribeToChanges(userId, callback)
-  }
-
-  /**
-   * MÉTODOS DE COMPATIBILIDAD CON HOOKS LEGACY
-   */
-
-  /**
-   * Obtener transacciones con cálculos optimizados (para useTransactionsUnified)
-   */
-  async getTransactionsWithCalculations(userId: string): Promise<{
-    transactions: Transaction[]
-    totalSpent: number
-    totalIncome: number
-    todayExpenses: number
-    weekExpenses: number
-    monthExpenses: number
-    expensesByCategory: Record<string, number>
-    weeklyTrend: WeeklyData[]
-  }> {
-    try {
-      console.log('💰 TRANSACTION_USE_CASE - Loading transactions with calculations for user:', userId)
-      
-      const transactions = await this.getAllTransactions(userId)
-      
-      const result = {
-        transactions,
-        totalSpent: calculateTotalExpenses(transactions),
-        totalIncome: calculateTotalIncome(transactions),
-        todayExpenses: calculateTodayExpenses(transactions),
-        weekExpenses: calculateWeekExpenses(transactions),
-        monthExpenses: calculateMonthExpenses(transactions),
-        expensesByCategory: groupExpensesByCategory(transactions),
-        weeklyTrend: calculateWeeklyTrend(transactions)
-      }
-      
-      console.log('✅ TRANSACTION_USE_CASE - Transactions with calculations loaded:', {
-        transactionsCount: result.transactions.length,
-        totalSpent: result.totalSpent,
-        totalIncome: result.totalIncome
-      })
-      
-      return result
-    } catch (error) {
-      console.error('❌ TRANSACTION_USE_CASE - Error loading transactions with calculations:', error)
-      throw error
+    return {
+      transactions,
+      totalSpent: summary.totalSpent,
+      totalIncome: summary.totalIncome,
+      todayExpenses: 0,
+      weekExpenses: summary.weeklyTrend[0]?.amount || 0,
+      monthExpenses: summary.monthExpenses,
+      expensesByCategory: summary.expensesByCategory.reduce((acc, item) => {
+        acc[item.categoryName] = item.total
+        return acc
+      }, {} as Record<string, number>),
+      weeklyTrend: summary.weeklyTrend,
+      dailyTrend,
+      monthlyTrend
     }
   }
 }
 
-// Singleton instance
 export const transactionUseCases = new TransactionUseCases()
