@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard`,
         data: {
           full_name: name.trim(),
-          phone: phone.trim() // 👈 Guardar teléfono en metadata
+          phone: phone.trim(),
         }
       }
     });

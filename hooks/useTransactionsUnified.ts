@@ -26,9 +26,12 @@ export const useTransactionsUnified = () => {
     loadUser()
   }, [loadUser])
 
-  const fetchData = useCallback(async () => {
+  /** `silent`: refresco tras CRUD sin activar el loader de pantalla completa (como `fetchBudgets(false)`). */
+  const fetchData = useCallback(async (silent = false) => {
+    const refetchSilent = () => fetchData(true)
+
     if (!user) {
-      setState(AsyncStateUtils.createWithData(null, fetchData))
+      setState(AsyncStateUtils.createWithData(null, refetchSilent))
       setTransactions([])
       setDailyTrend([])
       setMonthlyTrend([])
@@ -36,7 +39,11 @@ export const useTransactionsUnified = () => {
     }
 
     try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }))
+      if (!silent) {
+        setState(prev => ({ ...prev, isLoading: true, error: null }))
+      } else {
+        setState(prev => ({ ...prev, error: null }))
+      }
 
       const result = await transactionUseCases.getTransactionsWithCalculations(user.id)
       
@@ -53,11 +60,11 @@ export const useTransactionsUnified = () => {
         monthExpenses: result.monthExpenses,
         expensesByCategory: result.expensesByCategory,
         weeklyTrend: result.weeklyTrend
-      }, fetchData))
+      }, refetchSilent))
 
     } catch (err) {
       const errorMessage = errorHandler.handle(err, 'transactions', { userId: user.id })
-      setState(AsyncStateUtils.createWithError(errorMessage, fetchData))
+      setState(AsyncStateUtils.createWithError(errorMessage, refetchSilent))
     }
   }, [user, errorHandler])
 
@@ -99,14 +106,14 @@ export const useTransactionsUnified = () => {
       direction: data.type,
       description: data.description
     })
-    await fetchData()
+    await fetchData(true)
   }, [user, fetchData])
 
   const deleteTransaction = useCallback(async (transactionId: string) => {
     if (!user) return false
     try {
       await transactionUseCases.deleteTransaction(transactionId, user.id)
-      await fetchData()
+      await fetchData(true)
       return true
     } catch (err) {
       errorHandler.handle(err, 'transactions', { action: 'delete', transactionId })

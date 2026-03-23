@@ -6,14 +6,32 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { useTransactionsUnified } from '@/hooks/useTransactionsUnified'
 import { useCategories } from '@/hooks/useCategories'
+import { OnboardingVignette, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+
+type CreateTransactionFn = (data: {
+  amount: number
+  category: string
+  type: 'gasto' | 'ingreso'
+  description?: string
+}) => Promise<void>
 
 interface AddTransactionFormProps {
+  createTransaction: CreateTransactionFn
   onTransactionAdded?: () => void
+  onboardingStep?: OnboardingStep | null
+  onSkipOnboarding?: () => void
+  /** Tras crear una transacción con éxito (onboarding: avanza al paso 3) */
+  onFirstTransactionCreated?: () => void
 }
 
-export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormProps) => {
+export const AddTransactionForm = ({
+  createTransaction,
+  onTransactionAdded,
+  onboardingStep = null,
+  onSkipOnboarding,
+  onFirstTransactionCreated,
+}: AddTransactionFormProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [tipo, setTipo] = useState<'gasto' | 'ingreso'>('gasto')
@@ -21,7 +39,6 @@ export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormPro
   const [categoriaId, setCategoriaId] = useState('')
   const [descripcion, setDescripcion] = useState('')
 
-  const { createTransaction } = useTransactionsUnified()
   const { gastoCategories, ingresoCategories, loading: categoriesLoading } = useCategories()
 
   const availableCategories = tipo === 'gasto' ? gastoCategories : ingresoCategories
@@ -61,6 +78,7 @@ export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormPro
       setIsOpen(false)
 
       onTransactionAdded?.()
+      onFirstTransactionCreated?.()
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       alert(`Error al guardar la transacción: ${message}`)
@@ -90,6 +108,18 @@ export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormPro
 
   return (
     <div className={wrapperClass}>
+      {onboardingStep === 'add-transaction' && (
+        <OnboardingVignette
+          stepLabel="Paso 2 de 3"
+          title="Registra tu primera transacción"
+          bullets={[
+            'Pulsa «Agregar Nueva Transacción» para abrir el formulario.',
+            'Indica si es gasto o ingreso, el valor y la categoría correspondiente.',
+            'Al guardar, se actualizan el resumen y el seguimiento de tus presupuestos.',
+          ]}
+          onSkip={onSkipOnboarding}
+        />
+      )}
       <div className="flex items-center gap-3 mb-4 sm:mb-6">
         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary dark:bg-gradient-to-r dark:from-[#5ce1e6] dark:to-[#4dd0e1]">
           <Plus className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground dark:text-[#0D1D35]" />
@@ -125,6 +155,7 @@ export const AddTransactionForm = ({ onTransactionAdded }: AddTransactionFormPro
             bg-card border border-border text-card-foreground
             dark:bg-[#0D1D35] dark:border-white/20 dark:text-white
           "
+          onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl font-bold text-center text-slate-900 dark:text-white">

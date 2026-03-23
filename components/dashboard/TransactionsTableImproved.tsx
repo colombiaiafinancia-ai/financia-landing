@@ -33,30 +33,13 @@ export const TransactionsTableImproved = ({
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
 
-  // 🔥 OPTIMISTIC UPDATE: Estado local para UI instantánea
   const [localTransactions, setLocalTransactions] = useState<TransactionDTO[]>(transactions)
 
-  const { gastoCategories, ingresoCategories } = useCategories() // ✅ Sin argumentos
+  const { gastoCategories, ingresoCategories } = useCategories()
 
-  // 🔥 OPTIMISTIC UPDATE: Sync con props cuando cambian
   useEffect(() => {
-    console.log('🔥 [OPTIMISTIC] Sync localTransactions con props:', {
-      propsCount: transactions.length,
-      localCount: localTransactions.length
-    })
     setLocalTransactions(transactions)
   }, [transactions])
-
-  // 🔥 DEBUG: Track cambios en props
-  useEffect(() => {
-    console.log('🔥 [DEBUG] Transactions UPDATE:', {
-      propsCount: transactions.length,
-      localCount: localTransactions.length,
-      firstIds: transactions.slice(0, 3).map(t => t.id),
-      hasOnDeleteTransaction: !!onDeleteTransaction,
-      onTransactionDeleted: typeof onTransactionDeleted
-    })
-  }, [transactions, localTransactions, onDeleteTransaction, onTransactionDeleted])
 
   const formatCOP = (amount: number) =>
     new Intl.NumberFormat('es-CO', {
@@ -66,7 +49,6 @@ export const TransactionsTableImproved = ({
       maximumFractionDigits: 0
     }).format(amount)
 
-  // 🔥 OPTIMISTIC UPDATE: Usar localTransactions en lugar de transactions
   const filteredTransactions = useMemo(() => {
     let filtered = localTransactions.filter((transaction) => {
       const matchesSearch =
@@ -102,74 +84,40 @@ export const TransactionsTableImproved = ({
   }, [localTransactions, searchTerm, typeFilter, categoryFilter, sortBy, sortOrder])
 
   const handleDeleteClick = (transaction: TransactionDTO) => {
-    console.log('🖱️ [DEBUG] CLICK DELETE:', {
-      id: transaction.id,
-      amount: transaction.amount,
-      description: transaction.description
-    })
     setTransactionToDelete(transaction)
     setShowDeleteModal(true)
   }
 
-  // 🔥 OPTIMISTIC UPDATE: Nueva lógica optimista
   const handleDeleteConfirm = useCallback(async () => {
     if (!transactionToDelete) {
-      console.log('❌ [OPTIMISTIC] No transactionToDelete')
       return
     }
 
     const transactionId = transactionToDelete.id
-    console.log('🚀 [OPTIMISTIC] INICIANDO DELETE OPTIMISTA:', transactionId)
-
-    // 1. UI INSTANTÁNEA: Remover inmediatamente de localTransactions
-    console.log('⚡ [OPTIMISTIC] PASO 1: Removiendo de localTransactions (UI instantánea)')
     const prevLocalTransactions = localTransactions
     setLocalTransactions(prev => prev.filter(t => t.id !== transactionId))
-    console.log('✅ [OPTIMISTIC] LocalTransactions ahora:', localTransactions.length - 1)
 
     setDeletingId(transactionId)
     setDeleteError(null)
 
     try {
-      let success = false
-
-      if (onDeleteTransaction) {
-        console.log('📞 [OPTIMISTIC] PASO 2: Llamando backend onDeleteTransaction...')
-        const startTime = Date.now()
-        success = await onDeleteTransaction(transactionId)
-        const duration = Date.now() - startTime
-        console.log('✅ [OPTIMISTIC] Backend resultado:', {
-          success,
-          duration: `${duration}ms`,
-          transactionId
-        })
-      } else {
-        console.error('💥 [OPTIMISTIC] ❌ NO HAY onDeleteTransaction PROP!')
-        success = false
-      }
+      const success = onDeleteTransaction
+        ? await onDeleteTransaction(transactionId)
+        : false
 
       if (success) {
-        console.log('🎉 [OPTIMISTIC] DELETE EXITOSO - Todo OK')
         setShowDeleteModal(false)
         setTransactionToDelete(null)
-        console.log('🔔 [OPTIMISTIC] Llamando onTransactionDeleted() para sync final')
         onTransactionDeleted()
-        console.log('✅ [OPTIMISTIC] PROCESO COMPLETADO - Lista queda en', localTransactions.length - 1)
       } else {
-        // 3. REVERTIR si backend falla
-        console.error('🔄 [OPTIMISTIC] Backend falló - REVIERTIENDO cambios locales')
         setLocalTransactions(prevLocalTransactions)
         setDeleteError('Backend falló. Transacción restaurada.')
-        console.log('🔙 [OPTIMISTIC] Revertido a:', prevLocalTransactions.length)
       }
     } catch (error) {
-      // 3. REVERTIR en caso de error
-      console.error('💥 [OPTIMISTIC] ERROR - REVIERTIENDO:', error)
       setLocalTransactions(prevLocalTransactions)
       const message = error instanceof Error ? error.message : String(error)
       setDeleteError(`Error: ${message}. Transacción restaurada.`)
     } finally {
-      console.log('🔚 [OPTIMISTIC] FIN PROCESO OPTIMISTA')
       setDeletingId(null)
     }
   }, [transactionToDelete, localTransactions, onDeleteTransaction, onTransactionDeleted])
@@ -208,7 +156,7 @@ export const TransactionsTableImproved = ({
   return (
     <>
       <div className={wrapperClass}>
-        {/* Header - 🔥 OPTIMISTIC UPDATE: Usar localTransactions */}
+        {/* Header */}
         <div className="flex flex-col lg:flex-row gap-4 mb-6">
           <div className="flex-1">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Mis Transacciones</h2>
@@ -335,7 +283,7 @@ export const TransactionsTableImproved = ({
           </div>
         )}
 
-        {/* Lista - 🔥 OPTIMISTIC UPDATE: empty state con localTransactions */}
+        {/* Lista */}
         {filteredTransactions.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-muted dark:bg-white/10">

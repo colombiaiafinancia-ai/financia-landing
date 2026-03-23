@@ -23,15 +23,22 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useCategories } from '@/hooks/useCategories'
 import { useCategoryBudget } from '@/hooks/useCategoryBudget'
+import { OnboardingVignette, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 
 interface BudgetByCategoryProps {
   userId: string
-  onBudgetUpdate: () => void
+  /** Onboarding: paso activo (null si no aplica) */
+  onboardingStep?: OnboardingStep | null
+  onSkipOnboarding?: () => void
+  /** Tras guardar un presupuesto nuevo (no al editar) */
+  onFirstBudgetCreated?: () => void
 }
 
 export const BudgetByCategory = ({
   userId,
-  onBudgetUpdate
+  onboardingStep = null,
+  onSkipOnboarding,
+  onFirstBudgetCreated,
 }: BudgetByCategoryProps) => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingBudget, setEditingBudget] = useState<{
@@ -43,6 +50,14 @@ export const BudgetByCategory = ({
   const [budgetValue, setBudgetValue] = useState('')
   const [saving, setSaving] = useState(false)
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+  const [budgetToDelete, setBudgetToDelete] = useState<{
+    categoryId: string
+    categoryName: string
+    presupuestado: number
+  } | null>(null)
+  const [deletingBudgetId, setDeletingBudgetId] = useState<string | null>(null)
+  const [deleteBudgetError, setDeleteBudgetError] = useState<string | null>(null)
 
   const dropdownRef = useRef<HTMLDivElement | null>(null)
 
@@ -106,8 +121,19 @@ export const BudgetByCategory = ({
       setBudgetValue('')
       setShowCategoryDropdown(false)
       setShowAddModal(false)
+      const wasEditing = !!editingBudget
       setEditingBudget(null)
-      onBudgetUpdate()
+      if (!onboardingStep) {
+        setSuccessMessage(
+          wasEditing
+            ? 'Tu presupuesto se actualizó con éxito.'
+            : 'Tu presupuesto se guardó con éxito.'
+        )
+        window.setTimeout(() => setSuccessMessage(''), 3500)
+      }
+      if (!wasEditing) {
+        onFirstBudgetCreated?.()
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error
@@ -119,27 +145,30 @@ export const BudgetByCategory = ({
     }
   }
 
-  const handleDelete = async (categoryId: string) => {
-    const category = budgetSummary.find((b) => b.categoryId === categoryId)
-    if (!category) return
+  const handleDeleteClick = (budget: (typeof budgetSummary)[0]) => {
+    setDeleteBudgetError(null)
+    setBudgetToDelete({
+      categoryId: budget.categoryId,
+      categoryName: budget.categoryName,
+      presupuestado: budget.presupuestado
+    })
+  }
 
-    if (
-      !confirm(
-        `¿Estás seguro de que quieres eliminar el presupuesto de ${category.categoryName}?`
-      )
-    ) {
-      return
-    }
-
+  const handleDeleteBudgetConfirm = async () => {
+    if (!budgetToDelete) return
+    setDeletingBudgetId(budgetToDelete.categoryId)
+    setDeleteBudgetError(null)
     try {
-      await deleteCategoryBudget(categoryId)
-      onBudgetUpdate()
+      await deleteCategoryBudget(budgetToDelete.categoryId)
+      setBudgetToDelete(null)
     } catch (error) {
       const errorMessage =
         error instanceof Error
           ? error.message
           : 'Error al eliminar el presupuesto'
-      alert(errorMessage)
+      setDeleteBudgetError(errorMessage)
+    } finally {
+      setDeletingBudgetId(null)
     }
   }
 
@@ -221,7 +250,20 @@ export const BudgetByCategory = ({
   }
 
   return (
+    <>
     <div className={wrapperClass}>
+      {onboardingStep === 'budgets' && (
+        <OnboardingVignette
+          stepLabel="Paso 1 de 3"
+          title="Configura tu primer presupuesto"
+          bullets={[
+            'Elige una categoría de gasto y el monto que quieres destinar.',
+            'Pulsa «Agregar», completa categoría y valor; luego podrás editar o borrar.',
+            'La barra de progreso muestra cuánto llevas gastado frente al límite.',
+          ]}
+          onSkip={onSkipOnboarding}
+        />
+      )}
       <div className="flex items-center justify-between mb-4 relative">
         <h3 className="text-lg font-semibold flex items-center text-slate-900 dark:text-white">
           <DollarSign className="mr-2 h-5 w-5" />
@@ -390,6 +432,11 @@ export const BudgetByCategory = ({
           </DialogContent>
         </Dialog>
       </div>
+      {successMessage && (
+        <div className="mb-4 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-700 dark:text-green-300 sm:text-sm">
+          {successMessage}
+        </div>
+      )}
 
       {budgetSummary.length === 0 ? (
         <div className="text-center py-8">
@@ -472,7 +519,7 @@ export const BudgetByCategory = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDelete(budget.categoryId)}
+                    onClick={() => handleDeleteClick(budget)}
                     className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -484,5 +531,100 @@ export const BudgetByCategory = ({
         </div>
       )}
     </div>
+
+    <Dialog
+      open={budgetToDelete !== null}
+      onOpenChange={(open) => {
+        if (!open) {
+          setBudgetToDelete(null)
+          setDeleteBudgetError(null)
+        }
+      }}
+    >
+      <DialogContent
+        className="
+          max-w-md mx-auto
+          bg-card border border-border text-card-foreground
+          dark:bg-[#0D1D35] dark:border-white/20 dark:text-white
+        "
+      >
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold text-center text-red-600 dark:text-red-400">
+            ¿Eliminar Presupuesto?
+          </DialogTitle>
+        </DialogHeader>
+
+        {budgetToDelete && (
+          <div className="space-y-4">
+            <div className="text-center">
+              <p className="text-slate-700 dark:text-white/80 mb-2">
+                ¿Estás seguro de que quieres eliminar este presupuesto?
+              </p>
+
+              <div
+                className="
+                  rounded-lg p-4 border
+                  bg-muted border-border
+                  dark:bg-white/5 dark:border-white/10
+                "
+              >
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Wallet className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <span className="font-bold text-lg text-green-600 dark:text-green-400">
+                    ${budgetToDelete.presupuestado.toLocaleString('es-CO')}
+                  </span>
+                </div>
+
+                <p className="text-slate-700 dark:text-white/70 text-sm">
+                  {budgetToDelete.categoryName}
+                </p>
+              </div>
+            </div>
+
+            {deleteBudgetError && (
+              <p className="text-center text-sm text-red-600 dark:text-red-400">
+                {deleteBudgetError}
+              </p>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setBudgetToDelete(null)
+                  setDeleteBudgetError(null)
+                }}
+                className="
+                  flex-1 border-border text-foreground hover:bg-muted
+                  dark:border-white/20 dark:text-white dark:hover:bg-white/10
+                "
+                disabled={deletingBudgetId === budgetToDelete.categoryId}
+              >
+                Cancelar
+              </Button>
+
+              <Button
+                onClick={handleDeleteBudgetConfirm}
+                disabled={deletingBudgetId === budgetToDelete.categoryId}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white"
+              >
+                {deletingBudgetId === budgetToDelete.categoryId ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Eliminando...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Eliminar
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }

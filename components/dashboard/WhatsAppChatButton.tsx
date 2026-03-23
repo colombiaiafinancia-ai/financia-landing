@@ -2,8 +2,20 @@
 
 import { MessageCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { OnboardingVignette, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 
-const WhatsAppChatButton = () => {
+interface WhatsAppChatButtonProps {
+  onboardingStep?: OnboardingStep | null
+  onSkipOnboarding?: () => void
+  /** Al hacer clic en el enlace de WhatsApp (p. ej. completar onboarding) */
+  onWhatsAppOpened?: () => void
+}
+
+const WhatsAppChatButton = ({
+  onboardingStep = null,
+  onSkipOnboarding,
+  onWhatsAppOpened,
+}: WhatsAppChatButtonProps) => {
   const whatsappUrl =
     'https://wa.me/573227031301?text=👋%20Hola%20FinancIA,%20soy%20parte%20del%20combo%20💼💸%20¿Cómo%20empiezo%20para%20poner%20en%20orden%20mis%20finanzas?'
 
@@ -24,6 +36,21 @@ const WhatsAppChatButton = () => {
         dark:border-white/20
       "
     >
+      {onboardingStep === 'whatsapp' && (
+        <div className="mb-4">
+          <OnboardingVignette
+            variant="onGradient"
+            stepLabel="Paso 3 de 3"
+            title="Usa FinanciaIA por WhatsApp"
+            bullets={[
+              'Pulsa «Iniciar Chat» para abrir WhatsApp con un mensaje de bienvenida.',
+              'Puedes escribir cosas como «gasté 20 mil en transporte» o «ingreso 500 mil».',
+              'El asistente responde sin que dependas siempre del panel: ideal desde el móvil.',
+            ]}
+            onSkip={onSkipOnboarding}
+          />
+        </div>
+      )}
       <div className="flex items-center space-x-4">
         {/* Icono */}
         <div className="bg-white/20 p-3 rounded-lg">
@@ -44,6 +71,7 @@ const WhatsAppChatButton = () => {
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => onWhatsAppOpened?.()}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             className="
