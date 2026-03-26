@@ -28,6 +28,22 @@ export class MonthSummaryRepository {
   /**
    * Obtiene el resumen global del mes para un usuario
    */
+
+  // En features/transactions/infrastructure/monthSummaryRepository.ts
+// Agregar:
+
+  async getMonthlySummaries(userId: string, limitMonths: number = 6): Promise<{ month: string; expense_total: number }[]> {
+    const client = await this.getClient()
+    const { data, error } = await client
+      .from('user_month_summary')
+      .select('month, expense_total')
+      .eq('user_id', userId)
+      .order('month', { ascending: false })
+      .limit(limitMonths)
+
+    if (error) throw new Error(`Error fetching monthly summaries: ${error.message}`)
+    return data || []
+  }
   async getMonthSummary(userId: string, monthDate: string): Promise<MonthSummary | null> {
     const client = await this.getClient()
     const { data, error } = await client
