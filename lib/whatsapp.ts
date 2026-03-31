@@ -21,7 +21,6 @@ export async function sendWhatsAppMessage(
       },
     };
 
-    console.log(`📤 Sending WhatsApp template to ${cleanPhone}`);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -49,7 +48,6 @@ export async function sendWhatsAppMessage(
       const okJson = JSON.parse(responseBody);
       sentId = okJson?.messages?.[0]?.id;
     } catch {}
-    console.log(`✅ WhatsApp message sent, id: ${sentId || 'unknown'}`);
 
     return { success: true };
   } catch (error) {

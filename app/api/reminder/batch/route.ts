@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
 
     for (const userId of userIds) {
       // ========== LOGS para depurar ==========
-      console.log(`🔍 Checking user: ${userId}, force=${force}`);
 
       // 1. Revalidar elegibilidad (a menos que se fuerce)
       let eligible = false;
@@ -40,9 +39,7 @@ export async function POST(request: NextRequest) {
           .rpc('is_user_eligible_for_reminder', { user_id: userId });
         eligible = data === true;
         eligError = error;
-        console.log(`🔍 RPC result for ${userId}:`, { data, error, eligible });
       } else {
-        console.log(`⚠️ FORCE MODE: skipping eligibility check for ${userId}`);
         eligible = true;
       }
 
@@ -59,7 +56,6 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (profileError || !profile?.phone) {
-        console.log(`❌ No phone for ${userId}:`, profileError);
         results.push({ userId, status: 'failed', reason: 'no phone' });
         await supabaseAdmin
           .from('reminder_logs')
@@ -76,9 +72,9 @@ export async function POST(request: NextRequest) {
       const message = `🎯 ¡Hola! ¿Cómo va tu día? Recuerda que registrar tus gastos hoy te ayuda a mantener el control. Si ya lo hiciste, ¡felicitaciones! Si no, anota tus movimientos para que tu asistente FinancIA te dé el mejor consejo. 💸✨`;
 
       // 4. Enviar WhatsApp
-      console.log(`📤 Sending WhatsApp to ${profile.phone}...`);
+ 
+ 
       const { success, error: sendError } = await sendWhatsAppMessage(profile.phone, message);
-      console.log(`✅ WhatsApp result for ${userId}:`, { success, error: sendError });
 
       // 5. Registrar en logs
       const { error: logError } = await supabaseAdmin
