@@ -1,26 +1,62 @@
-// Aquí pondrás tu lógica real de envío de WhatsApp
-export async function sendWhatsAppMessage(phone: string, message: string): Promise<{ success: boolean; error?: string }> {
+export async function sendWhatsAppMessage(
+  phone: string
+): Promise<{ success: boolean; error?: string }> {
   try {
-    // Ejemplo: tu HTTP request existente (ajusta la URL y headers)
-    const response = await fetch(process.env.WHATSAPP_API_URL!, {
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length < 10) {
+      throw new Error('Número inválido');
+    }
+
+    const url = process.env.WHATSAPP_API_URL!;
+    const token = process.env.WHATSAPP_API_KEY!;
+
+    // Plantilla sin parámetros
+    const payload = {
+      messaging_product: 'whatsapp',
+      to: cleanPhone,
+      type: 'template',
+      template: {
+        name: 'recordatorio',       // Nombre exacto de tu plantilla en inglés
+        language: { code: 'en' },  // Idioma inglés
+      },
+    };
+
+    console.log(`📤 Sending WhatsApp template to ${cleanPhone}`);
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.WHATSAPP_API_KEY}`,
       },
-      body: JSON.stringify({
-        to: phone,
-        message: message,
-      }),
+      body: JSON.stringify(payload),
     });
 
+    const responseBody = await response.text();
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      let errorDetail = responseBody;
+      try {
+        const errorJson = JSON.parse(responseBody);
+        errorDetail = errorJson?.error?.message || JSON.stringify(errorJson);
+      } catch {}
+      console.error('❌ WhatsApp API error:', errorDetail);
+      throw new Error(`WhatsApp API error: ${errorDetail}`);
     }
+
+    let sentId = null;
+    try {
+      const okJson = JSON.parse(responseBody);
+      sentId = okJson?.messages?.[0]?.id;
+    } catch {}
+    console.log(`✅ WhatsApp message sent, id: ${sentId || 'unknown'}`);
 
     return { success: true };
   } catch (error) {
     console.error('Error sending WhatsApp:', error);
-    return { success: false, error: String(error) };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }

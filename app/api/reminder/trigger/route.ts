@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   try {
     // 1. Obtener usuarios elegibles
     const { data: users, error } = await supabaseAdmin
-      .rpc('get_users_eligible_for_reminder', {p_user_id: 'e6c5798f-e49c-4198-9833-5883005d1208'})
+      .rpc('get_users_eligible_for_reminder', {p_user_id: '0f14813e-3cfb-4e44-8d00-b4993c43cc23'})
       .select('user_id');
 
     if (error) {
