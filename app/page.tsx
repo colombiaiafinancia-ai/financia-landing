@@ -2,24 +2,36 @@ import ChatCarousel from '@/components/ChatCarousel'
 import StatsSection from '@/components/StatsSection'
 import FeaturesGrid from '@/components/FeaturesGrid'
 import PricingSection from '@/components/PricingSection'
-import { AuthNavigation } from '@/components/AuthNavigation'
+import { AuthNavigation } from '@/components/AuthNavigation'  // ✅ named import
 import { FloatingUserMessages } from '@/components/FloatingUserMessages'
 import { CommunityStats } from '@/components/CommunityStats'
-import { WhatsAppCTAButton } from '@/components/WhatsAppCTAButton'
-
 
 export default function Home() {
   return (
     <main className='min-h-screen'>
       
-      <nav className='sticky top-0 z-50 bg-[#0D1D35]/95 backdrop-blur-sm border-b border-white/10 container mx-auto px-4 py-4 md:py-6 flex justify-between items-center'>
-        <h1 className='text-xl md:text-2xl font-bold text-white'>Finanzas Consulting - FinancIA</h1>
-        <div className='flex items-center space-x-4 md:space-x-6'>
-          <a href='#producto' className='text-white hover:text-[#5ce1e6] transition-colors text-sm md:text-base'>Producto</a>
-          <a href='#plan' className='text-white hover:text-[#5ce1e6] transition-colors text-sm md:text-base'>Plan</a>
-          <a href='#inicio' className='text-white hover:text-[#5ce1e6] transition-colors text-sm md:text-base'>Inicio</a>
-          <AuthNavigation />
+      {/* Navbar - Responsive */}
+      <nav className='sticky top-0 z-50 bg-[#0D1D35]/95 backdrop-blur-sm border-b border-white/10 px-3 sm:px-4 py-2 sm:py-3 flex justify-between items-center gap-2'>
+        {/* Título completo con tamaño de fuente responsivo */}
+        <h1 className='text-xs sm:text-base md:text-xl font-bold text-white leading-tight'>
+          Finanzas Consulting - FinancIA
+        </h1>
+
+        {/* Enlaces: ocultos en móvil, visibles en md+ */}
+        <div className='hidden md:flex items-center space-x-4 lg:space-x-6'>
+          <a href='#producto' className='text-white hover:text-[#5ce1e6] transition-colors text-sm lg:text-base'>
+            Producto
+          </a>
+          <a href='#plan' className='text-white hover:text-[#5ce1e6] transition-colors text-sm lg:text-base'>
+            Plan
+          </a>
+          <a href='#inicio' className='text-white hover:text-[#5ce1e6] transition-colors text-sm lg:text-base'>
+            Inicio
+          </a>
         </div>
+
+        {/* AuthNavigation (siempre visible) */}
+        <AuthNavigation />
       </nav>
 
       {/* Hero Section with seamless transition */}
@@ -67,12 +79,12 @@ export default function Home() {
 
       {/* Chat Examples Section - seamlessly connected */}
       <div className='bg-gradient-to-b from-[#0D1D35] via-[#1a2e4a] to-[#0D1D35]'>
-      <ChatCarousel />
+        <ChatCarousel />
       </div>
 
       {/* Stats Section */}
       <div className='bg-gradient-to-b from-[#0D1D35] via-[#1a2e4a] to-[#0D1D35]'>
-      <StatsSection />
+        <StatsSection />
       </div>
 
       {/* Features Section */}
@@ -83,7 +95,7 @@ export default function Home() {
       {/* Pricing Section */}
       <div className='bg-gradient-to-b from-[#0D1D35] via-[#1a2e4a] to-[#0D1D35]'>
         <PricingSection />
-        </div>
+      </div>
 
       {/* Footer */}
       <footer className='relative py-12 md:py-16 overflow-hidden bg-gradient-to-b from-[#0D1D35] via-[#1a2e4a] to-[#0D1D35]'>

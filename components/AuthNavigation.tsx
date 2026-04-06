@@ -13,13 +13,11 @@ export const AuthNavigation = () => {
   useEffect(() => {
     const supabase = getBrowserSupabaseClient()
     
-    // Obtener el usuario actual
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user)
       setIsLoading(false)
     })
 
-    // Suscribirse a cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user || null)
@@ -40,48 +38,48 @@ export const AuthNavigation = () => {
 
   if (isLoading) {
     return (
-      <div className='flex items-center space-x-3 md:space-x-4 ml-2 md:ml-4'>
-        <div className='w-20 h-8 bg-white/10 rounded animate-pulse'></div>
+      <div className='flex items-center space-x-2 md:space-x-3 ml-1 md:ml-2'>
+        <div className='w-16 h-8 bg-white/10 rounded animate-pulse'></div>
       </div>
     )
   }
 
   if (user) {
     return (
-      <div className='flex items-center space-x-3 md:space-x-4 ml-2 md:ml-4'>
-        <span className='text-white/80 text-sm md:text-base hidden md:block'>
-          Hola, {user.user_metadata?.full_name || 'Usuario'}
+      <div className='flex items-center space-x-2 md:space-x-3 ml-1 md:ml-2'>
+        <span className='text-white/80 text-xs md:text-sm hidden sm:inline-block'>
+          Hola, {user.user_metadata?.full_name?.split(' ')[0] || 'Usuario'}
         </span>
         <Link
           href='/dashboard'
-          className='text-white hover:text-[#9DFAD7] transition-colors text-sm md:text-base font-medium'
+          className='text-white hover:text-[#9DFAD7] transition-colors text-sm md:text-base font-medium whitespace-nowrap'
         >
           Dashboard
         </Link>
         <button
           onClick={handleLogout}
-          className='text-white hover:text-red-400 transition-colors text-sm md:text-base'
+          className='text-white hover:text-red-400 transition-colors text-sm md:text-base whitespace-nowrap'
         >
-          Cerrar Sesión
+          Cerrar
         </button>
       </div>
     )
   }
 
   return (
-    <div className='flex items-center space-x-3 md:space-x-4 ml-2 md:ml-4'>
+    <div className='flex items-center space-x-2 md:space-x-3 ml-1 md:ml-2'>
       <Link
         href='/login'
-        className='text-white hover:text-[#9DFAD7] transition-colors text-sm md:text-base font-medium'
+        className='text-white hover:text-[#9DFAD7] transition-colors text-sm md:text-base font-medium whitespace-nowrap'
       >
-        Iniciar Sesión
+        Iniciar
       </Link>
       <Link
         href='/register'
-        className='bg-gradient-to-r from-[#9DFAD7] to-[#D4FFB5] text-[#0D1D35] font-semibold py-2 px-4 md:px-6 rounded-lg hover:opacity-90 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#9DFAD7]/20 text-sm md:text-base'
+        className='bg-gradient-to-r from-[#9DFAD7] to-[#D4FFB5] text-[#0D1D35] font-semibold py-1 px-3 md:py-2 md:px-5 rounded-lg hover:opacity-90 transition-all duration-300 text-sm md:text-base shadow-md whitespace-nowrap'
       >
         Registrarse
       </Link>
     </div>
   )
-} 
+}
