@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createSupabaseClient } from '@/utils/supabase/client'
 import { logOut } from '@/actions/auth'
 import { User } from '@supabase/supabase-js'
@@ -14,14 +14,17 @@ import { AddTransactionForm } from '@/components/dashboard/AddTransactionForm'
 import WhatsAppChatButton from '@/components/dashboard/WhatsAppChatButton'
 import { BudgetByCategory } from '@/components/dashboard/BudgetByCategory'
 import { TransactionsTableImproved } from '@/components/dashboard/TransactionsTableImproved'
+import { MyCategoriesSection } from '@/components/dashboard/MyCategoriesSection'
 import { useTransactionsUnified } from '@/hooks/useTransactionsUnified'
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { OnboardingWelcomeModal } from '@/components/dashboard/OnboardingWelcomeModal'
 import { FeedbackForm } from '@/components/dashboard/FeedbackForm'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import { getOnboardingLocalKeys, readStoredStep } from '@/utils/onboardingLocalStorage'
 import { smoothScrollToElement } from '@/utils/scroll'
+import { CATEGORIES_UPDATED_EVENT } from '@/utils/categorySyncEvents'
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
@@ -38,6 +41,8 @@ export default function DashboardPage() {
   const [welcomeDone, setWelcomeDone] = useState(false)
   const [onboardingStep, setOnboardingStepState] = useState<OnboardingStep>(null)
   const [transactionSuccessMessage, setTransactionSuccessMessage] = useState('')
+  const [budgetRefreshKey, setBudgetRefreshKey] = useState(0)
+  const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null)
 
   const {
     transactions,
@@ -55,7 +60,18 @@ export default function DashboardPage() {
     refetch: refetchTransactions,
     createTransaction,
     deleteTransaction,
+    updateTransaction,
   } = useTransactionsUnified()
+
+  /** Tras renombrar/editar categoría: nombres en transacciones y presupuestos vienen de `categories`; refrescamos vista. */
+  useEffect(() => {
+    const onCategoriesUpdated = () => {
+      void refetchTransactions()
+      setBudgetRefreshKey((k) => k + 1)
+    }
+    window.addEventListener(CATEGORIES_UPDATED_EVENT, onCategoriesUpdated)
+    return () => window.removeEventListener(CATEGORIES_UPDATED_EVENT, onCategoriesUpdated)
+  }, [refetchTransactions])
 
   useEffect(() => {
     const supabase = createSupabaseClient()
@@ -204,6 +220,22 @@ export default function DashboardPage() {
     }
   }, [onboardingStep, completeOnboarding])
 
+  const handleSkipCurrentOnboardingStep = useCallback(async () => {
+    if (!onboardingStep) return
+
+    if (onboardingStep === 'budgets') {
+      setOnboardingStepAndPersist('add-transaction')
+      return
+    }
+
+    if (onboardingStep === 'add-transaction') {
+      setOnboardingStepAndPersist('whatsapp')
+      return
+    }
+
+    await completeOnboarding()
+  }, [onboardingStep, setOnboardingStepAndPersist, completeOnboarding])
+
   const handleLogout = async () => {
     try {
       await logOut()
@@ -214,12 +246,70 @@ export default function DashboardPage() {
   }
 
   const handleCategoryClick = (category: string) => {
-    console.log('Categoría seleccionada:', category)
+    setSelectedCategoryName(category)
   }
 
   const handleWeekClick = (week: string) => {
     console.log('Semana seleccionada:', week)
   }
+
+  const selectedCategoryTransactions = useMemo(() => {
+    if (!selectedCategoryName) return []
+    return transactions
+      .filter((tx) => tx.type === 'gasto' && tx.category === selectedCategoryName)
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      )
+  }, [selectedCategoryName, transactions])
+
+  const selectedCategoryTotal = useMemo(
+    () => selectedCategoryTransactions.reduce((sum, tx) => sum + tx.amount, 0),
+    [selectedCategoryTransactions]
+  )
+
+  const createTransactionWithBudgetRefresh = useCallback(
+    async (data: {
+      amount: number
+      category: string
+      type: 'gasto' | 'ingreso'
+      description?: string
+    }) => {
+      await createTransaction(data)
+      setBudgetRefreshKey((prev) => prev + 1)
+    },
+    [createTransaction]
+  )
+
+  const deleteTransactionWithBudgetRefresh = useCallback(
+    async (transactionId: string) => {
+      const success = await deleteTransaction(transactionId)
+      if (success) {
+        setBudgetRefreshKey((prev) => prev + 1)
+      }
+      return success
+    },
+    [deleteTransaction]
+  )
+
+  const updateTransactionWithBudgetRefresh = useCallback(
+    async (
+      transactionId: string,
+      data: {
+        amount: number
+        categoryId: string
+        direction: 'gasto' | 'ingreso'
+        description: string | null
+      }
+    ) => {
+      const success = await updateTransaction(transactionId, data)
+      if (success) {
+        setBudgetRefreshKey((prev) => prev + 1)
+      }
+      return success
+    },
+    [updateTransaction]
+  )
 
   if (isLoading || !user || onboardingLoading) {
     return (
@@ -320,27 +410,34 @@ export default function DashboardPage() {
         >
           <BudgetByCategory
             userId={user.id}
+            refreshKey={budgetRefreshKey}
             onboardingStep={showTour ? onboardingStep : null}
-            onSkipOnboarding={completeOnboarding}
+            onSkipOnboarding={handleSkipCurrentOnboardingStep}
             onFirstBudgetCreated={handleBudgetCreatedForTour}
           />
         </div>
 
-        <div
-          data-dashboard-section="transactions-list"
-          className="mb-6 scroll-mt-24 sm:mb-8 sm:scroll-mt-28"
-        >
-          {transactionSuccessMessage && (
-            <div className="mb-4 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-700 dark:text-green-300 sm:text-sm">
-              {transactionSuccessMessage}
-            </div>
-          )}
-          <TransactionsTableImproved
-            transactions={transactions}
-            onTransactionDeleted={refetchTransactions}
-            onDeleteTransaction={deleteTransaction}
-            loading={transactionsLoading}
-          />
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:mb-8 lg:grid-cols-2 lg:gap-6">
+          <div
+            data-dashboard-section="transactions-list"
+            className="min-w-0 scroll-mt-24 sm:scroll-mt-28"
+          >
+            {transactionSuccessMessage && (
+              <div className="mb-4 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-700 dark:text-green-300 sm:text-sm">
+                {transactionSuccessMessage}
+              </div>
+            )}
+            <TransactionsTableImproved
+              transactions={transactions}
+              onTransactionDeleted={refetchTransactions}
+              onDeleteTransaction={deleteTransactionWithBudgetRefresh}
+              onUpdateTransaction={updateTransactionWithBudgetRefresh}
+              loading={transactionsLoading}
+            />
+          </div>
+          <div className="min-w-0">
+            <MyCategoriesSection />
+          </div>
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-4 lg:mb-6 lg:grid-cols-3">
@@ -354,10 +451,10 @@ export default function DashboardPage() {
             )}
           >
             <AddTransactionForm
-              createTransaction={createTransaction}
+              createTransaction={createTransactionWithBudgetRefresh}
               onTransactionAdded={handleTransactionAdded}
               onboardingStep={showTour ? onboardingStep : null}
-              onSkipOnboarding={completeOnboarding}
+              onSkipOnboarding={handleSkipCurrentOnboardingStep}
               onFirstTransactionCreated={handleFirstTransactionCreated}
             />
           </div>
@@ -391,7 +488,7 @@ export default function DashboardPage() {
         >
           <WhatsAppChatButton
             onboardingStep={showTour ? onboardingStep : null}
-            onSkipOnboarding={completeOnboarding}
+            onSkipOnboarding={handleSkipCurrentOnboardingStep}
             onWhatsAppOpened={handleWhatsAppOpenedForTour}
           />
         </div>
@@ -404,6 +501,50 @@ export default function DashboardPage() {
           />
         </div>
       </main>
+
+      <Dialog
+        open={selectedCategoryName !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedCategoryName(null)
+        }}
+      >
+        <DialogContent className="max-w-lg border border-border bg-card text-card-foreground dark:border-white/20 dark:bg-[#0D1D35] dark:text-white">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedCategoryName ? `Detalle: ${selectedCategoryName}` : 'Detalle de categoría'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5">
+              Total del mes: ${selectedCategoryTotal.toLocaleString('es-CO')}
+            </div>
+            {selectedCategoryTransactions.length === 0 ? (
+              <p className="text-sm text-muted-foreground dark:text-white/70">
+                No hay transacciones para esta categoría en el mes actual.
+              </p>
+            ) : (
+              <div className="max-h-80 space-y-2 overflow-y-auto">
+                {selectedCategoryTransactions.map((tx) => (
+                  <div
+                    key={tx.id}
+                    className="rounded-lg border border-border bg-muted px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
+                  >
+                    <p className="font-medium text-foreground dark:text-white">
+                      {tx.formattedAmount}
+                    </p>
+                    <p className="text-muted-foreground dark:text-white/70">
+                      {tx.description || 'Sin descripción'}
+                    </p>
+                    <p className="text-xs text-muted-foreground/80 dark:text-white/50">
+                      {tx.formattedDate}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

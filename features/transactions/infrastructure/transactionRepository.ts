@@ -115,6 +115,23 @@ export class TransactionRepository {
     if (error) throw new Error(`Error deleting transaction: ${error.message}`)
   }
 
+  /** Mueve todas las transacciones del usuario de una categoría a otra (p. ej. al eliminar categoría → Otros). */
+  async reassignCategoryForUser(
+    userId: string,
+    fromCategoryId: string,
+    toCategoryId: string
+  ): Promise<void> {
+    if (fromCategoryId === toCategoryId) return
+    const client = await this.getClient()
+    const { error } = await client
+      .from('transactions')
+      .update({ category_id: toCategoryId, updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('category_id', fromCategoryId)
+
+    if (error) throw new Error(`Error reasignando transacciones: ${error.message}`)
+  }
+
   subscribeToChanges(userId: string, callback: () => void) {
     if (typeof window === 'undefined') throw new Error('Real-time only in browser')
     const client = getBrowserSupabaseClient()

@@ -28,7 +28,7 @@ interface UseCategoryBudgetResult {
   refetch: () => Promise<void>
 }
 
-export const useCategoryBudget = (userId: string): UseCategoryBudgetResult => {
+export const useCategoryBudget = (userId: string, refreshKey: number = 0): UseCategoryBudgetResult => {
   const [budgets, setBudgets] = useState<CategoryBudgetWithSpent[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -60,7 +60,7 @@ export const useCategoryBudget = (userId: string): UseCategoryBudgetResult => {
 
   useEffect(() => {
     fetchBudgets(true)
-  }, [fetchBudgets])
+  }, [fetchBudgets, refreshKey])
 
   const saveCategoryBudget = async (categoryId: string, amount: number) => {
     if (!userId) return

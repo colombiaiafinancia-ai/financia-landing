@@ -31,7 +31,7 @@ export function OnboardingVignette({
           : 'border-primary/30 bg-primary/5 dark:bg-primary/10'
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div>
         <div>
           <p
             className={cn(
@@ -49,37 +49,37 @@ export function OnboardingVignette({
           >
             {title}
           </h4>
-          <ul
-            className={cn(
-              'space-y-1.5 text-xs leading-relaxed',
-              isOnGradient ? 'text-white/95' : 'text-muted-foreground'
-            )}
-          >
-            {bullets.map((b) => (
-              <li key={b} className="flex gap-2">
-                <span
-                  className={cn(
-                    'mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full',
-                    isOnGradient ? 'bg-white' : 'bg-primary'
-                  )}
-                />
-                <span>{b}</span>
-              </li>
-            ))}
-          </ul>
         </div>
+        <ul
+          className={cn(
+            'space-y-1.5 text-xs leading-relaxed',
+            isOnGradient ? 'text-white/95' : 'text-muted-foreground'
+          )}
+        >
+          {bullets.map((b) => (
+            <li key={b} className="flex gap-2">
+              <span
+                className={cn(
+                  'mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full',
+                  isOnGradient ? 'bg-white' : 'bg-primary'
+                )}
+              />
+              <span>{b}</span>
+            </li>
+          ))}
+        </ul>
         {onSkip && (
           <button
             type="button"
             onClick={onSkip}
             className={cn(
-              'flex-shrink-0 text-xs underline',
+              'mt-3 inline-flex items-center rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors',
               isOnGradient
-                ? 'text-white/90 hover:text-white'
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'border-white/45 bg-white/10 text-white hover:bg-white/20'
+                : 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/20'
             )}
           >
-            Omitir
+            Saltar paso
           </button>
         )}
       </div>

@@ -72,6 +72,49 @@ export class CategoryBudgetRepository {
     if (error) throw new Error(`Error deleting category budget: ${error.message}`)
   }
 
+  /**
+   * Fusiona el presupuesto de `fromCategoryId` en `toCategoryId` (suma importes si ya existe presupuesto en destino).
+   * Usado al eliminar una categoría personalizada cuyo presupuesto debe conservarse en «Otros».
+   */
+  async mergeBudgetsFromCategoryToCategory(
+    userId: string,
+    fromCategoryId: string,
+    toCategoryId: string
+  ): Promise<void> {
+    if (fromCategoryId === toCategoryId) return
+    const client = await this.getClient()
+    const from = await this.findByUserAndCategory(userId, fromCategoryId)
+    if (!from) return
+
+    const to = await this.findByUserAndCategory(userId, toCategoryId)
+    const now = new Date().toISOString()
+
+    if (to) {
+      const sum = Number(to.amount) + Number(from.amount)
+      const { error: mergeErr } = await client
+        .from('category_budgets')
+        .update({ amount: sum, updated_at: now })
+        .eq('id', to.id)
+        .eq('user_id', userId)
+      if (mergeErr) {
+        throw new Error(`Error fusionando presupuestos: ${mergeErr.message}`)
+      }
+      const { error: delErr } = await client
+        .from('category_budgets')
+        .delete()
+        .eq('id', from.id)
+        .eq('user_id', userId)
+      if (delErr) throw new Error(`Error al liberar presupuesto antiguo: ${delErr.message}`)
+    } else {
+      const { error } = await client
+        .from('category_budgets')
+        .update({ category_id: toCategoryId, updated_at: now })
+        .eq('id', from.id)
+        .eq('user_id', userId)
+      if (error) throw new Error(`Error reasignando presupuesto: ${error.message}`)
+    }
+  }
+
   subscribeToChanges(userId: string, callback: () => void) {
     if (typeof window === 'undefined') throw new Error('Real-time only in browser')
     const client = getBrowserSupabaseClient()

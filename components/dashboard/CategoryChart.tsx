@@ -1,8 +1,9 @@
 'use client'
 
 import { useMemo, useState, useEffect } from 'react'
-import { TrendingUp, DollarSign } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { useCategories } from '@/hooks/useCategories'
+import { CategoryGlyph } from './CategoryGlyph'
 
 interface CategoryData {
   name: string
@@ -19,6 +20,7 @@ interface CategoryChartProps {
 export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryChartProps) => {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null)
   const [showAllModal, setShowAllModal] = useState(false)
+  const { gastoCategories } = useCategories()
 
   const { theme, systemTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -26,23 +28,22 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
   const resolvedTheme = theme === 'system' ? systemTheme : theme
   const isDark = mounted ? resolvedTheme === 'dark' : true // evita flicker
 
-  const totalAmount = Object.values(expensesByCategory).reduce((sum, value) => sum + value, 0)
-
-  const categoryData: CategoryData[] = useMemo(() => {
-    const values = Object.values(expensesByCategory)
+  const { totalAmount, categoryData } = useMemo(() => {
+    const entries = Object.entries(expensesByCategory).filter(([, value]) => value > 0)
+    const total = entries.reduce((sum, [, value]) => sum + value, 0)
+    const values = entries.map(([, v]) => v)
     const max = Math.max(...values, 1)
-
-    return Object.entries(expensesByCategory)
+    const data: CategoryData[] = entries
       .map(([name, value]) => ({
         name,
         value,
-        percentage: totalAmount > 0 ? (value / totalAmount) * 100 : 0,
+        percentage: total > 0 ? (value / total) * 100 : 0,
         intensity: value / max
       }))
       .sort((a, b) => b.value - a.value)
-  }, [expensesByCategory, totalAmount])
+    return { totalAmount: total, categoryData: data }
+  }, [expensesByCategory])
 
-  const hasMoreSm = categoryData.length > 5
   const hasMoreBg = categoryData.length > 8
   const top5 = categoryData.slice(0, 5)
   const top7 = categoryData.slice(0, 7)
@@ -54,6 +55,14 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(amount)
+
+  const iconByCategoryName = useMemo(() => {
+    const map = new Map<string, string | null>()
+    for (const c of gastoCategories) {
+      map.set(c.nombre.trim().toLowerCase(), c.iconKey ?? null)
+    }
+    return map
+  }, [gastoCategories])
 
   // DARK: tu paleta original (idéntica)
   const heatmapColorsDark = [
@@ -122,8 +131,9 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
     )
   }
 
-  const HeatCard = (category: CategoryData, index: number) => {
+  const HeatCard = (category: CategoryData) => {
     const bg = getHeatmapColor(category.intensity)
+    const iconKey = iconByCategoryName.get(category.name.trim().toLowerCase()) ?? null
 
     return (
       <div
@@ -164,11 +174,10 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
               ${isDark ? (category.intensity > 0.6 ? 'bg-white/20' : 'bg-white/10') : 'bg-white/35'}
             `}
           >
-            {index === 0 ? (
-              <TrendingUp className={`h-4 w-4 sm:h-5 sm:w-5 ${textMain}`} />
-            ) : (
-              <DollarSign className={`h-4 w-4 sm:h-5 sm:w-5 ${textMain}`} />
-            )}
+            <CategoryGlyph
+              iconKey={iconKey}
+              className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${textMain}`}
+            />
           </div>
         </div>
 

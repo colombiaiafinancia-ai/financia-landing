@@ -1,5 +1,5 @@
 import { categoryBudgetRepository } from '../infrastructure/categoryBudgetRepository'
-import { monthSummaryRepository } from '@/features/transactions/infrastructure/monthSummaryRepository'
+import { transactionRepository } from '@/features/transactions/infrastructure/transactionRepository'
 import { categoryRepository } from '@/features/categories/infrastructure/categoryRepository'
 
 export interface CategoryBudgetWithSpent {
@@ -18,14 +18,26 @@ export class CategoryBudgetService {
     const budgets = await categoryBudgetRepository.findAllByUser(userId)
     if (budgets.length === 0) return []
 
-    // 2. Obtener gastos del mes y todas las categorías en PARALELO
-    const [categoryExpenses, allCategories] = await Promise.all([
-      monthSummaryRepository.getMonthCategoryExpenses(userId, monthDate),
+    const monthStart = new Date(`${monthDate}T00:00:00`)
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
+
+    // 2. Obtener transacciones reales del mes y categorías en paralelo
+    const [monthTransactions, allCategories] = await Promise.all([
+      transactionRepository.findByUserAndPeriod(
+        userId,
+        monthStart.toISOString(),
+        new Date(monthEnd.getFullYear(), monthEnd.getMonth(), monthEnd.getDate(), 23, 59, 59, 999).toISOString()
+      ),
       categoryRepository.findAllForUser(userId) // usa el nuevo método
     ])
 
     // 3. Crear mapas para acceso rápido O(1)
-    const expenseMap = new Map(categoryExpenses.map(ce => [ce.category_id, ce.total]))
+    const expenseMap = monthTransactions.reduce((map, tx) => {
+      if (tx.direction !== 'gasto') return map
+      const current = map.get(tx.category_id) || 0
+      map.set(tx.category_id, current + tx.amount)
+      return map
+    }, new Map<string, number>())
     const categoryNameMap = new Map(allCategories.map(c => [c.id, c.name]))
 
     // 4. Combinar resultados

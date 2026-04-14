@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, Wallet, TrendingUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useCategories } from '@/hooks/useCategories'
 import { OnboardingVignette, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+import { CategorySelectWithIcons } from '@/components/dashboard/CategorySelectWithIcons'
 
 type CreateTransactionFn = (data: {
   amount: number
@@ -38,10 +39,15 @@ export const AddTransactionForm = ({
   const [valor, setValor] = useState('')
   const [categoriaId, setCategoriaId] = useState('')
   const [descripcion, setDescripcion] = useState('')
-
   const { gastoCategories, ingresoCategories, loading: categoriesLoading } = useCategories()
 
   const availableCategories = tipo === 'gasto' ? gastoCategories : ingresoCategories
+
+  useEffect(() => {
+    if (categoriaId && !availableCategories.some((c) => c.id === categoriaId)) {
+      setCategoriaId('')
+    }
+  }, [tipo, availableCategories, categoriaId])
 
   const resetForm = () => {
     setTipo('gasto')
@@ -230,35 +236,37 @@ export const AddTransactionForm = ({
               <Label htmlFor="categoria" className="text-slate-900 dark:text-white/80 text-sm sm:text-base">
                 Categoría *
               </Label>
-              <select
+              <CategorySelectWithIcons
                 id="categoria"
+                categories={availableCategories}
+                value={categoriaId}
+                onChange={setCategoriaId}
+                disabled={categoriesLoading}
+              />
+              {categoriesLoading && (
+                <p className="text-xs text-muted-foreground">Cargando categorías...</p>
+              )}
+              <Label htmlFor="categoria-native" className="sr-only">
+                Categoría (nativo)
+              </Label>
+              <select
+                id="categoria-native"
                 value={categoriaId}
                 onChange={(e) => setCategoriaId(e.target.value)}
                 required
                 disabled={categoriesLoading}
-                className="
-                  w-full rounded-lg px-3 py-2 sm:py-3 text-sm sm:text-base outline-none border
-                  bg-background text-foreground border-border
-                  focus:ring-2 focus:ring-primary
-                  dark:bg-white/10 dark:text-white dark:border-white/20
-                "
+                className="sr-only"
+                aria-hidden
+                tabIndex={-1}
               >
-                {categoriesLoading ? (
-                  <option value="" disabled>
-                    Cargando categorías...
+                <option value="" disabled>
+                  Selecciona una categoría
+                </option>
+                {availableCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.nombre}
                   </option>
-                ) : (
-                  <>
-                    <option value="" disabled>
-                      Selecciona una categoría
-                    </option>
-                    {availableCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id} className="bg-white text-slate-900 dark:bg-[#0D1D35] dark:text-white">
-                        {cat.nombre}
-                      </option>
-                    ))}
-                  </>
-                )}
+                ))}
               </select>
             </div>
 

@@ -10,6 +10,12 @@ export type { CategoryDTO } from './application/categoryUseCases'
 // Domain types and logic
 export type { Category, CategoryType } from './domain/categoryLogic'
 export { 
+  DEFAULT_CATEGORY_ICON_KEY,
+  CATEGORY_ICON_MAP,
+  isValidCategoryIconKey,
+} from './domain/categoryIcons'
+
+export {
   validateCategoryName, 
   validateCategoryType, 
   filterCategoriesByType, 
@@ -26,7 +32,7 @@ export type {
 } from './application/categoryUseCases'
 
 // Infrastructure layer
-export { categoryRepository } from './services/categoryRepository'
+export { categoryRepository } from './infrastructure/categoryRepository'
 
 // Convenience exports
 import { categoryUseCases } from './application/categoryUseCases'
@@ -38,6 +44,14 @@ export const CategoryService = {
   
   getCategoriesByType: (userId: string) => 
     categoryUseCases.getCategoriesByType(userId),
+
+  getOrCreateCategory: (
+    userId: string,
+    data: { nombre: string; tipo: 'Gasto' | 'Ingreso'; iconKey?: string | null }
+  ) => categoryUseCases.getOrCreateCategory(userId, data),
+
+  getUserOwnedCategories: (userId: string) =>
+    categoryUseCases.getUserOwnedCategories(userId),
   
   create: (data: CategoryCreationData) => 
     categoryUseCases.createCategory(data),
