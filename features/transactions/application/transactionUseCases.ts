@@ -14,7 +14,8 @@ export interface TransactionUpdateRequest {
   amount?: number
   categoryId?: string
   direction?: 'gasto' | 'ingreso'
-  description?: string
+  description?: string | null
+  occurredAt?: string
 }
 
 export interface TransactionStats {
@@ -113,31 +114,78 @@ export class TransactionUseCases {
     await transactionRepository.delete(transactionId, userId)
   }
 
+  async updateTransaction(
+    userId: string,
+    transactionId: string,
+    data: TransactionUpdateRequest
+  ): Promise<TransactionDTO> {
+    const entities = await transactionRepository.findAllByUser(userId)
+    const current = entities.find((t) => t.id === transactionId)
+    if (!current) {
+      throw new Error('Transacción no encontrada')
+    }
+
+    const amount = data.amount ?? current.amount
+    const categoryId = data.categoryId ?? current.category_id
+    const direction = data.direction ?? current.direction
+    const description =
+      data.description !== undefined ? data.description : current.description
+    const occurredAt = data.occurredAt ?? current.occurred_at
+
+    const validation = validateTransactionCreation({
+      valor: amount,
+      categoria: categoryId,
+      tipo: direction,
+      descripcion: description ?? undefined,
+    })
+    if (!validation.isValid) {
+      throw new Error(`Datos inválidos: ${validation.errors.join(', ')}`)
+    }
+
+    const updated = await transactionRepository.update(transactionId, userId, {
+      amount,
+      category_id: categoryId,
+      direction,
+      description,
+      occurred_at: occurredAt,
+    })
+    return await this.mapEntityToDTO(updated)
+  }
+
+ 
   async getTransactionSummary(userId: string): Promise<TransactionSummaryDTO> {
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
 
-    // Ejecutar consultas en paralelo
-    const [monthSummary, categoryExpenses, weeklyTrend] = await Promise.all([
+    const [monthSummary, categoryRows, weeklyTrend] = await Promise.all([
       monthSummaryRepository.getMonthSummary(userId, monthStart),
       monthSummaryRepository.getMonthCategoryExpenses(userId, monthStart),
-      this.calculateWeeklyTrend(userId)
+      this.calculateWeeklyTrend(userId),
     ])
 
-    const totalIncome = monthSummary?.income_total || 0
-    const totalSpent = monthSummary?.expense_total || 0
+    if (!monthSummary) {
+      return this.getTransactionSummaryFromTransactions(userId, weeklyTrend)
+    }
+
+    const totalSpent = Number(monthSummary.expense_total) || 0
+    const totalIncome = Number(monthSummary.income_total) || 0
     const balance = totalIncome - totalSpent
 
-    // Obtener nombres de categorías en una sola consulta
-    const categoryIds = categoryExpenses.map(ce => ce.category_id)
+    const categoryIds = categoryRows.map((r) => r.category_id)
     const categoryMap = await this.getCategoryMap(userId, categoryIds)
 
-    const expensesByCategory = categoryExpenses.map(ce => ({
-      categoryId: ce.category_id,
-      categoryName: categoryMap.get(ce.category_id) || 'Desconocida',
-      total: ce.total,
-      percentage: totalSpent > 0 ? (ce.total / totalSpent) * 100 : 0
-    })).sort((a, b) => b.total - a.total)
+    const expensesByCategory = categoryRows
+      .map((row) => {
+        const total = Number(row.total) || 0
+        return {
+          categoryId: row.category_id,
+          categoryName: categoryMap.get(row.category_id) || 'Desconocida',
+          total,
+          percentage: totalSpent > 0 ? (total / totalSpent) * 100 : 0,
+        }
+      })
+      .filter((x) => x.total > 0)
+      .sort((a, b) => b.total - a.total)
 
     return {
       totalSpent,
@@ -146,7 +194,58 @@ export class TransactionUseCases {
       monthExpenses: totalSpent,
       monthIncome: totalIncome,
       expensesByCategory,
-      weeklyTrend
+      weeklyTrend,
+    }
+  }
+
+  private async getTransactionSummaryFromTransactions(
+    userId: string,
+    weeklyTrend: Array<{ week: string; amount: number; date: string }>
+  ): Promise<TransactionSummaryDTO> {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+
+    const monthTransactions = await transactionRepository.findByUserAndPeriod(
+      userId,
+      `${monthStart}T00:00:00.000Z`,
+      `${monthEnd}T23:59:59.999Z`
+    )
+
+    const totalIncome = monthTransactions
+      .filter((tx) => tx.direction === 'ingreso')
+      .reduce((sum, tx) => sum + tx.amount, 0)
+    const totalSpent = monthTransactions
+      .filter((tx) => tx.direction === 'gasto')
+      .reduce((sum, tx) => sum + tx.amount, 0)
+    const balance = totalIncome - totalSpent
+
+    const categoryTotals = monthTransactions.reduce((acc, tx) => {
+      if (tx.direction !== 'gasto') return acc
+      acc.set(tx.category_id, (acc.get(tx.category_id) || 0) + tx.amount)
+      return acc
+    }, new Map<string, number>())
+
+    const categoryIds = [...categoryTotals.keys()]
+    const categoryMap = await this.getCategoryMap(userId, categoryIds)
+
+    const expensesByCategory = [...categoryTotals.entries()]
+      .map(([categoryId, total]) => ({
+        categoryId,
+        categoryName: categoryMap.get(categoryId) || 'Desconocida',
+        total,
+        percentage: totalSpent > 0 ? (total / totalSpent) * 100 : 0,
+      }))
+      .sort((a, b) => b.total - a.total)
+
+    return {
+      totalSpent,
+      totalIncome,
+      balance,
+      monthExpenses: totalSpent,
+      monthIncome: totalIncome,
+      expensesByCategory,
+      weeklyTrend,
     }
   }
 

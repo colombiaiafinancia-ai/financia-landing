@@ -1,18 +1,29 @@
 'use client'
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { Trash2, Filter, Search, TrendingUp, TrendingDown } from 'lucide-react'
+import { Trash2, Filter, Search, TrendingUp, TrendingDown, Pencil, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { TransactionDTO } from '@/features/transactions/dto/transactionDTO'
 import { useCategories } from '@/hooks/useCategories'
 import { DeleteErrorHandler } from './DeleteErrorHandler'
+import { CategorySelectWithIcons } from './CategorySelectWithIcons'
 
 interface TransactionsTableImprovedProps {
   transactions: TransactionDTO[]
   onTransactionDeleted: () => void
   onDeleteTransaction?: (transactionId: string) => Promise<boolean>
+  onUpdateTransaction?: (
+    transactionId: string,
+    data: {
+      amount: number
+      categoryId: string
+      direction: 'gasto' | 'ingreso'
+      description: string | null
+    }
+  ) => Promise<boolean>
   loading?: boolean
 }
 
@@ -20,6 +31,7 @@ export const TransactionsTableImproved = ({
   transactions,
   onTransactionDeleted,
   onDeleteTransaction,
+  onUpdateTransaction,
   loading = false
 }: TransactionsTableImprovedProps) => {
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -35,7 +47,27 @@ export const TransactionsTableImproved = ({
 
   const [localTransactions, setLocalTransactions] = useState<TransactionDTO[]>(transactions)
 
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [transactionToEdit, setTransactionToEdit] = useState<TransactionDTO | null>(null)
+  const [editTipo, setEditTipo] = useState<'gasto' | 'ingreso'>('gasto')
+  const [editValor, setEditValor] = useState('')
+  const [editCategoriaId, setEditCategoriaId] = useState('')
+  const [editDescripcion, setEditDescripcion] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
+
   const { gastoCategories, ingresoCategories } = useCategories()
+
+  const availableEditCategories = editTipo === 'gasto' ? gastoCategories : ingresoCategories
+
+  useEffect(() => {
+    if (
+      editCategoriaId &&
+      !availableEditCategories.some((c) => c.id === editCategoriaId)
+    ) {
+      setEditCategoriaId('')
+    }
+  }, [editTipo, availableEditCategories, editCategoriaId])
 
   useEffect(() => {
     setLocalTransactions(transactions)
@@ -87,6 +119,68 @@ export const TransactionsTableImproved = ({
     setTransactionToDelete(transaction)
     setShowDeleteModal(true)
   }
+
+  const handleEditClick = (transaction: TransactionDTO) => {
+    setTransactionToEdit(transaction)
+    setEditTipo(transaction.type === 'ingreso' ? 'ingreso' : 'gasto')
+    setEditValor(String(Math.round(transaction.amount)))
+    setEditCategoriaId(transaction.categoryId)
+    setEditDescripcion(transaction.description || '')
+    setEditError(null)
+    setShowEditModal(true)
+  }
+
+  const formatEditCurrency = (value: string) => {
+    const numericValue = value.replace(/[^\d]/g, '')
+    if (!numericValue) return ''
+    return `$${new Intl.NumberFormat('es-CO').format(Number(numericValue))}`
+  }
+
+  const handleEditValorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditValor(e.target.value.replace(/[^\d]/g, ''))
+  }
+
+  const handleEditSubmit = useCallback(async () => {
+    if (!transactionToEdit || !onUpdateTransaction) return
+    const valorNumerico = parseFloat(editValor.replace(/[^\d]/g, ''))
+    if (!editValor || isNaN(valorNumerico) || valorNumerico <= 0) {
+      setEditError('Indica un valor válido')
+      return
+    }
+    if (!editCategoriaId) {
+      setEditError('Selecciona una categoría')
+      return
+    }
+    setEditSaving(true)
+    setEditError(null)
+    try {
+      const ok = await onUpdateTransaction(transactionToEdit.id, {
+        amount: valorNumerico,
+        categoryId: editCategoriaId,
+        direction: editTipo,
+        description: editDescripcion.trim() || null,
+      })
+      if (ok) {
+        setShowEditModal(false)
+        setTransactionToEdit(null)
+        onTransactionDeleted()
+      } else {
+        setEditError('No se pudo guardar. Inténtalo de nuevo.')
+      }
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Error al guardar')
+    } finally {
+      setEditSaving(false)
+    }
+  }, [
+    transactionToEdit,
+    onUpdateTransaction,
+    editValor,
+    editCategoriaId,
+    editTipo,
+    editDescripcion,
+    onTransactionDeleted,
+  ])
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!transactionToDelete) {
@@ -342,6 +436,21 @@ export const TransactionsTableImproved = ({
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onUpdateTransaction && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditClick(transaction)}
+                        disabled={editSaving}
+                        className="
+                          border-border text-foreground hover:bg-muted
+                          dark:border-white/20 dark:text-white dark:hover:bg-white/10
+                        "
+                      >
+                        <Pencil className="h-4 w-4" />
+                        <span className="ml-1 text-xs">Editar</span>
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -455,6 +564,123 @@ export const TransactionsTableImproved = ({
                       Eliminar
                     </>
                   )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showEditModal}
+        onOpenChange={(open) => {
+          setShowEditModal(open)
+          if (!open) {
+            setTransactionToEdit(null)
+            setEditError(null)
+          }
+        }}
+      >
+        <DialogContent
+          className="
+            max-w-md mx-auto max-h-[90vh] overflow-y-auto
+            bg-card border border-border text-card-foreground
+            dark:bg-[#0D1D35] dark:border-white/20 dark:text-white
+          "
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-center text-slate-900 dark:text-white">
+              Editar transacción
+            </DialogTitle>
+          </DialogHeader>
+
+          {transactionToEdit && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditTipo('gasto')}
+                  className={`
+                    flex items-center justify-center gap-2 p-3 rounded-lg border text-sm transition-all
+                    ${
+                      editTipo === 'gasto'
+                        ? 'bg-red-500/15 border-red-500/40 text-red-600 dark:bg-red-500/20 dark:text-red-300'
+                        : 'bg-muted border-border dark:bg-white/5 dark:border-white/20 dark:text-white/70'
+                    }
+                  `}
+                >
+                  <TrendingDown className="h-4 w-4" />
+                  Gasto
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditTipo('ingreso')}
+                  className={`
+                    flex items-center justify-center gap-2 p-3 rounded-lg border text-sm transition-all
+                    ${
+                      editTipo === 'ingreso'
+                        ? 'bg-green-500/15 border-green-500/40 text-green-600 dark:bg-green-500/20 dark:text-green-300'
+                        : 'bg-muted border-border dark:bg-white/5 dark:border-white/20 dark:text-white/70'
+                    }
+                  `}
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Ingreso
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-tx-valor">Valor *</Label>
+                <div className="relative">
+                  <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="edit-tx-valor"
+                    type="text"
+                    value={formatEditCurrency(editValor)}
+                    onChange={handleEditValorChange}
+                    className="pl-10 dark:bg-white/10 dark:border-white/20"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-tx-categoria">Categoría *</Label>
+                <CategorySelectWithIcons
+                  id="edit-tx-categoria"
+                  categories={availableEditCategories}
+                  value={editCategoriaId}
+                  onChange={setEditCategoriaId}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-tx-desc">Descripción (opcional)</Label>
+                <Input
+                  id="edit-tx-desc"
+                  value={editDescripcion}
+                  onChange={(e) => setEditDescripcion(e.target.value)}
+                  maxLength={100}
+                  className="dark:bg-white/10 dark:border-white/20"
+                />
+              </div>
+
+              {editError && (
+                <p className="text-sm text-red-600 dark:text-red-400">{editError}</p>
+              )}
+
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowEditModal(false)}
+                  disabled={editSaving}
+                  className="dark:border-white/20 dark:text-white"
+                >
+                  Cancelar
+                </Button>
+                <Button type="button" onClick={handleEditSubmit} disabled={editSaving}>
+                  {editSaving ? 'Guardando...' : 'Guardar cambios'}
                 </Button>
               </div>
             </div>

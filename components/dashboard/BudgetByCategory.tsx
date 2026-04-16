@@ -24,9 +24,12 @@ import { Label } from '@/components/ui/label'
 import { useCategories } from '@/hooks/useCategories'
 import { useCategoryBudget } from '@/hooks/useCategoryBudget'
 import { OnboardingVignette, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+import { CategoryGlyph } from '@/components/dashboard/CategoryGlyph'
 
 interface BudgetByCategoryProps {
   userId: string
+  /** Forzar recálculo del presupuesto consumido (p. ej. tras CRUD de transacciones). */
+  refreshKey?: number
   /** Onboarding: paso activo (null si no aplica) */
   onboardingStep?: OnboardingStep | null
   onSkipOnboarding?: () => void
@@ -36,6 +39,7 @@ interface BudgetByCategoryProps {
 
 export const BudgetByCategory = ({
   userId,
+  refreshKey = 0,
   onboardingStep = null,
   onSkipOnboarding,
   onFirstBudgetCreated,
@@ -69,7 +73,7 @@ export const BudgetByCategory = ({
     error,
     saveCategoryBudget,
     deleteCategoryBudget
-  } = useCategoryBudget(userId)
+  } = useCategoryBudget(userId, refreshKey)
 
   const loading = categoriesLoading || budgetsLoading
 
@@ -325,8 +329,18 @@ export const BudgetByCategory = ({
                         dark:bg-white/10 dark:text-white dark:border-white/20 dark:hover:bg-white/15
                       "
                     >
-                      <span className={selectedCategory ? '' : 'text-muted-foreground dark:text-white/50'}>
-                        {selectedCategory?.nombre || 'Seleccionar categoría'}
+                      <span className={selectedCategory ? 'flex items-center gap-2' : 'text-muted-foreground dark:text-white/50'}>
+                        {selectedCategory ? (
+                          <>
+                            <CategoryGlyph
+                              iconKey={selectedCategory.iconKey}
+                              className="text-foreground dark:text-white/90"
+                            />
+                            {selectedCategory.nombre}
+                          </>
+                        ) : (
+                          'Seleccionar categoría'
+                        )}
                       </span>
                       <ChevronDown
                         className={`h-4 w-4 text-muted-foreground dark:text-white/60 transition-transform ${
@@ -367,7 +381,13 @@ export const BudgetByCategory = ({
                                     dark:hover:bg-white/10 dark:hover:text-white
                                   "
                                 >
-                                  <span>{cat.nombre}</span>
+                                  <span className="flex items-center gap-2">
+                                    <CategoryGlyph
+                                      iconKey={cat.iconKey}
+                                      className="text-foreground dark:text-white/85"
+                                    />
+                                    {cat.nombre}
+                                  </span>
                                   {isSelected && (
                                     <Check className="h-4 w-4 text-primary dark:text-cyan-400" />
                                   )}

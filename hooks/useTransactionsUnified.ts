@@ -121,6 +121,30 @@ export const useTransactionsUnified = () => {
     }
   }, [user, fetchData, errorHandler])
 
+  const updateTransaction = useCallback(
+    async (
+      transactionId: string,
+      data: {
+        amount?: number
+        categoryId?: string
+        direction?: 'gasto' | 'ingreso'
+        description?: string | null
+        occurredAt?: string
+      }
+    ) => {
+      if (!user) return false
+      try {
+        await transactionUseCases.updateTransaction(user.id, transactionId, data)
+        await fetchData(true)
+        return true
+      } catch (err) {
+        errorHandler.handle(err, 'transactions', { action: 'update', transactionId })
+        return false
+      }
+    },
+    [user, fetchData, errorHandler]
+  )
+
   const summaryData = state.data
 
   return {
@@ -141,6 +165,7 @@ export const useTransactionsUnified = () => {
     user,
     createTransaction,
     deleteTransaction,
+    updateTransaction,
     loading: state.isLoading,
     error: state.error,
     refetch: state.refetch
