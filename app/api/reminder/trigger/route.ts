@@ -7,9 +7,6 @@ const BATCH_SIZE = 50;
 const BATCH_DELAY_SECONDS = 5;
 const CRON_SECRET = process.env.CRON_SECRET;
 
-// Reemplaza con el UUID real del usuario que quieres probar
-const TEST_USER_ID = 'e6c5798f-e49c-4198-9833-5883005d1208';
-
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   if (authHeader !== `Bearer ${CRON_SECRET}`) {
@@ -26,9 +23,9 @@ export async function GET(request: NextRequest) {
       throw new Error(`Invalid baseUrl: ${baseUrl}`);
     }
 
-    // Obtener usuarios elegibles (solo el usuario de prueba)
+    // Obtener todos los usuarios elegibles (sin filtrar por ID)
     const { data: users, error } = await supabaseAdmin
-      .rpc('get_users_eligible_for_reminder', { p_user_id: TEST_USER_ID });
+      .rpc('get_users_eligible_for_reminder'); // sin parámetro → todos los elegibles
 
     if (error) {
       console.error('Error fetching eligible users:', error);
@@ -36,20 +33,20 @@ export async function GET(request: NextRequest) {
     }
 
     if (!users || users.length === 0) {
-      console.log(`User ${TEST_USER_ID} is not eligible today (already has transaction or reminder).`);
-      return NextResponse.json({ message: 'User not eligible', userId: TEST_USER_ID });
+      console.log('No eligible users today');
+      return NextResponse.json({ message: 'No eligible users', count: 0 });
     }
 
     const userIds = users.map((u: any) => u.user_id);
     const totalUsers = userIds.length;
 
-    // Dividir en lotes (en este caso, un solo lote con un usuario)
+    // Dividir en lotes de BATCH_SIZE
     const batches = [];
     for (let i = 0; i < totalUsers; i += BATCH_SIZE) {
       batches.push(userIds.slice(i, i + BATCH_SIZE));
     }
 
-    // Encolar el lote
+    // Encolar cada lote con delay progresivo
     const batchPromises = batches.map((batch, index) => {
       const delaySeconds = index * BATCH_DELAY_SECONDS;
       return qstash.publishJSON({
@@ -67,7 +64,7 @@ export async function GET(request: NextRequest) {
     await Promise.all(batchPromises);
 
     return NextResponse.json({
-      message: `Triggered ${batches.length} batches for ${totalUsers} users (test user: ${TEST_USER_ID})`,
+      message: `Triggered ${batches.length} batches for ${totalUsers} users`,
     });
   } catch (error) {
     console.error('Trigger error:', error);
