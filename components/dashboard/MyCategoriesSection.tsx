@@ -26,13 +26,14 @@ function CategoryBadge({ tipo }: { tipo: 'Gasto' | 'Ingreso' }) {
   return (
     <span
       className={cn(
-        'shrink-0 rounded px-1 py-px text-[9px] font-bold leading-none',
-        'bg-muted/90 text-muted-foreground dark:bg-white/15 dark:text-white/75'
+        'h-2.5 w-2.5 shrink-0 rounded-full',
+        tipo === 'Gasto'
+          ? 'bg-red-500/90 ring-1 ring-red-500/30 dark:bg-red-400/90 dark:ring-red-400/35'
+          : 'bg-green-500/90 ring-1 ring-green-500/30 dark:bg-green-400/90 dark:ring-green-400/35'
       )}
       title={tipo}
-    >
-      {tipo === 'Gasto' ? 'G' : 'I'}
-    </span>
+      aria-label={tipo}
+    />
   )
 }
 
@@ -41,7 +42,9 @@ function DefaultCategoryChip({ c }: { c: CategoryRow }) {
     <div
       className={cn(
         'flex min-h-[2rem] items-center gap-1 rounded-md border px-1.5 py-1',
-        'border-border/40 bg-muted/10 dark:border-white/[0.08] dark:bg-white/[0.04]'
+        c.tipo === 'Gasto'
+          ? 'border-red-500/35 bg-red-500/10 dark:border-red-400/35 dark:bg-red-400/12'
+          : 'border-green-500/35 bg-green-500/10 dark:border-green-400/35 dark:bg-green-400/12'
       )}
     >
       <CategoryGlyph iconKey={c.iconKey} className="h-3 w-3 shrink-0" />
@@ -66,7 +69,9 @@ function OwnedCategoryChip({
     <div
       className={cn(
         'group flex min-h-[2rem] items-center gap-0.5 rounded-md border px-1 py-0.5',
-        'border-border/50 bg-muted/25 dark:border-white/[0.1] dark:bg-white/[0.07]'
+        c.tipo === 'Gasto'
+          ? 'border-red-500/45 bg-red-500/15 dark:border-red-400/45 dark:bg-red-400/15'
+          : 'border-green-500/45 bg-green-500/15 dark:border-green-400/45 dark:bg-green-400/15'
       )}
     >
       <CategoryGlyph iconKey={c.iconKey} className="ml-0.5 h-3 w-3 shrink-0" />
