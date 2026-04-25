@@ -27,21 +27,19 @@ export default function SubscriptionCheckout({
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    let mounted = true;
-
     async function initMercadoPago() {
       try {
         const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
 
-        console.log("MP public key cargada:", {
+        console.log("MP Public Key:", {
           exists: Boolean(publicKey),
           startsWith: publicKey?.slice(0, 8),
           length: publicKey?.length,
         });
 
-        if (!publicKey || publicKey.trim() === "") {
+        if (!publicKey) {
           setMessage(
-            "Falta NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY. Revisa Vercel Environment Variables y haz redeploy."
+            "Falta NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY. Revisa Vercel y haz redeploy."
           );
           return;
         }
@@ -49,11 +47,9 @@ export default function SubscriptionCheckout({
         await loadMercadoPago();
 
         if (!window.MercadoPago) {
-          setMessage("No se pudo cargar Mercado Pago en el navegador.");
+          setMessage("Mercado Pago no cargó en el navegador.");
           return;
         }
-
-        if (!mounted) return;
 
         const mp = new window.MercadoPago(publicKey, {
           locale: "es-CO",
@@ -78,7 +74,7 @@ export default function SubscriptionCheckout({
 
             securityCode: {
               id: "form-checkout__securityCode",
-              placeholder: "Código de seguridad",
+              placeholder: "CVV",
             },
 
             cardholderName: {
@@ -115,18 +111,66 @@ export default function SubscriptionCheckout({
           callbacks: {
             onFormMounted: (error: any) => {
               if (error) {
-                console.error("Error montando CardForm:", error);
-                setMessage(
-                  `No se pudo cargar el formulario de pago: ${
-                    error?.message || JSON.stringify(error)
-                  }`
-                );
+                console.error("MP onFormMounted error:", error);
+                setMessage(`Error montando CardForm: ${JSON.stringify(error)}`);
                 return;
               }
 
-              console.log("Mercado Pago CardForm montado correctamente");
+              console.log("MP CardForm montado correctamente");
               setIsReady(true);
               setMessage("");
+            },
+
+            onReady: () => {
+              console.log("MP CardForm ready");
+              setIsReady(true);
+            },
+
+            onBinChange: (bin: string) => {
+              console.log("MP onBinChange:", bin);
+            },
+
+            onValidityChange: (error: any, field: string) => {
+              console.log("MP onValidityChange:", {
+                field,
+                error,
+              });
+            },
+
+            onFetching: (resource: string) => {
+              console.log("MP onFetching:", resource);
+              return () => {
+                console.log("MP fetched:", resource);
+              };
+            },
+
+            onError: (error: any, event: any) => {
+              console.error("MP onError:", {
+                error,
+                event,
+              });
+
+              const readableError =
+                Array.isArray(error) && error.length > 0
+                  ? error.map((e) => e.message || JSON.stringify(e)).join(" | ")
+                  : error?.message || JSON.stringify(error);
+
+              setMessage(`Error Mercado Pago: ${readableError}`);
+            },
+
+            onCardTokenReceived: (error: any, token: any) => {
+              console.log("MP onCardTokenReceived:", {
+                error,
+                token,
+              });
+
+              if (error) {
+                setMessage(
+                  `Error creando token: ${
+                    error?.message || JSON.stringify(error)
+                  }`
+                );
+              }
             },
 
             onSubmit: async (event: any) => {
@@ -137,19 +181,34 @@ export default function SubscriptionCheckout({
                 setMessage("");
 
                 if (!cardFormRef.current) {
-                  setMessage("El formulario de pago aún no está listo.");
+                  setMessage("El formulario de pago todavía no está listo.");
+                  return;
+                }
+
+                console.log("Intentando crear card token...");
+
+                try {
+                  await cardFormRef.current.createCardToken();
+                } catch (createTokenError: any) {
+                  console.error("Error explícito en createCardToken:", createTokenError);
+                  setMessage(
+                    `Error creando card token: ${
+                      createTokenError?.message ||
+                      JSON.stringify(createTokenError)
+                    }`
+                  );
                   return;
                 }
 
                 const cardFormData = cardFormRef.current.getCardFormData();
 
-                console.log("Mercado Pago cardFormData:", cardFormData);
+                console.log("MP cardFormData final:", cardFormData);
 
                 const cardTokenId = cardFormData?.token;
 
                 if (!cardTokenId) {
                   setMessage(
-                    "No se pudo generar el token de la tarjeta. Revisa tarjeta de prueba, Public Key y comprador de prueba."
+                    "No se generó token. Mira la consola para ver onError, onValidityChange y cardFormData."
                   );
                   return;
                 }
@@ -169,33 +228,27 @@ export default function SubscriptionCheckout({
 
                 const data = await response.json();
 
+                console.log("Respuesta /api/subscriptions/create:", data);
+
                 if (!response.ok || !data.ok) {
-                  console.error("Error creando suscripción:", data);
                   setMessage(data.error || "No se pudo crear la suscripción.");
                   return;
                 }
 
                 setMessage("Suscripción creada correctamente.");
               } catch (error: any) {
-                console.error("Error procesando suscripción:", error);
+                console.error("Error general onSubmit:", error);
                 setMessage(
-                  `Ocurrió un error procesando la suscripción: ${
-                    error?.message || JSON.stringify(error)
-                  }`
+                  `Error general: ${error?.message || JSON.stringify(error)}`
                 );
               } finally {
                 setIsPaying(false);
               }
             },
-
-            onFetching: (resource: string) => {
-              console.log("Mercado Pago fetching:", resource);
-            },
           },
         });
       } catch (error: any) {
         console.error("Error inicializando Mercado Pago:", error);
-
         setMessage(
           `Error inicializando Mercado Pago: ${
             error?.message || JSON.stringify(error)
@@ -205,10 +258,6 @@ export default function SubscriptionCheckout({
     }
 
     initMercadoPago();
-
-    return () => {
-      mounted = false;
-    };
   }, [userId, payerEmail, planKey]);
 
   return (
@@ -245,23 +294,17 @@ export default function SubscriptionCheckout({
         <select
           id="form-checkout__issuer"
           className="w-full rounded-md border border-white/40 bg-white px-3 py-2 text-black"
-        >
-          <option value="">Banco emisor</option>
-        </select>
+        />
 
         <select
           id="form-checkout__installments"
           className="w-full rounded-md border border-white/40 bg-white px-3 py-2 text-black"
-        >
-          <option value="">Cuotas</option>
-        </select>
+        />
 
         <select
           id="form-checkout__identificationType"
           className="w-full rounded-md border border-white/40 bg-white px-3 py-2 text-black"
-        >
-          <option value="">Tipo de documento</option>
-        </select>
+        />
 
         <input
           id="form-checkout__identificationNumber"
@@ -289,12 +332,6 @@ export default function SubscriptionCheckout({
       {message && (
         <p className="mt-4 break-words text-sm font-medium text-white">
           {message}
-        </p>
-      )}
-
-      {!isReady && !message && (
-        <p className="mt-4 text-sm text-white/60">
-          Cargando formulario de pago...
         </p>
       )}
     </div>
