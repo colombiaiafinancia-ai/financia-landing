@@ -33,6 +33,12 @@ export default function SubscriptionCheckout({
       try {
         const publicKey = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY;
 
+        console.log("MP public key cargada:", {
+          exists: Boolean(publicKey),
+          startsWith: publicKey?.slice(0, 8),
+          length: publicKey?.length,
+        });
+
         if (!publicKey || publicKey.trim() === "") {
           setMessage(
             "Falta NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY. Revisa Vercel Environment Variables y haz redeploy."
@@ -55,7 +61,7 @@ export default function SubscriptionCheckout({
 
         cardFormRef.current = mp.cardForm({
           amount: "19900",
-          iframe: false,
+          iframe: true,
 
           form: {
             id: "form-checkout",
@@ -80,6 +86,16 @@ export default function SubscriptionCheckout({
               placeholder: "Nombre del titular",
             },
 
+            issuer: {
+              id: "form-checkout__issuer",
+              placeholder: "Banco emisor",
+            },
+
+            installments: {
+              id: "form-checkout__installments",
+              placeholder: "Cuotas",
+            },
+
             identificationType: {
               id: "form-checkout__identificationType",
               placeholder: "Tipo de documento",
@@ -100,10 +116,15 @@ export default function SubscriptionCheckout({
             onFormMounted: (error: any) => {
               if (error) {
                 console.error("Error montando CardForm:", error);
-                setMessage("No se pudo cargar el formulario de pago.");
+                setMessage(
+                  `No se pudo cargar el formulario de pago: ${
+                    error?.message || JSON.stringify(error)
+                  }`
+                );
                 return;
               }
 
+              console.log("Mercado Pago CardForm montado correctamente");
               setIsReady(true);
               setMessage("");
             },
@@ -128,7 +149,7 @@ export default function SubscriptionCheckout({
 
                 if (!cardTokenId) {
                   setMessage(
-                    "No se pudo generar el token de la tarjeta. Revisa los datos de prueba y la Public Key."
+                    "No se pudo generar el token de la tarjeta. Revisa tarjeta de prueba, Public Key y comprador de prueba."
                   );
                   return;
                 }
@@ -155,9 +176,13 @@ export default function SubscriptionCheckout({
                 }
 
                 setMessage("Suscripción creada correctamente.");
-              } catch (error) {
+              } catch (error: any) {
                 console.error("Error procesando suscripción:", error);
-                setMessage("Ocurrió un error procesando la suscripción.");
+                setMessage(
+                  `Ocurrió un error procesando la suscripción: ${
+                    error?.message || JSON.stringify(error)
+                  }`
+                );
               } finally {
                 setIsPaying(false);
               }
@@ -168,9 +193,14 @@ export default function SubscriptionCheckout({
             },
           },
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error inicializando Mercado Pago:", error);
-        setMessage("Error inicializando Mercado Pago.");
+
+        setMessage(
+          `Error inicializando Mercado Pago: ${
+            error?.message || JSON.stringify(error)
+          }`
+        );
       }
     }
 
@@ -213,9 +243,25 @@ export default function SubscriptionCheckout({
         />
 
         <select
+          id="form-checkout__issuer"
+          className="w-full rounded-md border border-white/40 bg-white px-3 py-2 text-black"
+        >
+          <option value="">Banco emisor</option>
+        </select>
+
+        <select
+          id="form-checkout__installments"
+          className="w-full rounded-md border border-white/40 bg-white px-3 py-2 text-black"
+        >
+          <option value="">Cuotas</option>
+        </select>
+
+        <select
           id="form-checkout__identificationType"
           className="w-full rounded-md border border-white/40 bg-white px-3 py-2 text-black"
-        />
+        >
+          <option value="">Tipo de documento</option>
+        </select>
 
         <input
           id="form-checkout__identificationNumber"
@@ -240,7 +286,11 @@ export default function SubscriptionCheckout({
         </button>
       </form>
 
-      {message && <p className="mt-4 text-sm font-medium text-white">{message}</p>}
+      {message && (
+        <p className="mt-4 break-words text-sm font-medium text-white">
+          {message}
+        </p>
+      )}
 
       {!isReady && !message && (
         <p className="mt-4 text-sm text-white/60">
