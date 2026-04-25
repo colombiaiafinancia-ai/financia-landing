@@ -2,16 +2,22 @@ import { NextResponse } from "next/server";
 import { getServerSupabaseClient } from "@/services/supabase/client-server";
 import { createMercadoPagoSubscription } from "@/services/mercadopago/subscriptions";
 
+function mapMercadoPagoStatus(status: string) {
+  const map: Record<string, string> = {
+    authorized: "active",
+    pending: "pending",
+    paused: "paused",
+    cancelled: "cancelled",
+  };
+
+  return map[status] || status || "unknown";
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const {
-      userId,
-      planKey,
-      payerEmail,
-      cardTokenId,
-    } = body;
+    const { userId, planKey, payerEmail, cardTokenId } = body;
 
     if (!userId || !planKey || !payerEmail || !cardTokenId) {
       return NextResponse.json(
@@ -33,6 +39,11 @@ export async function POST(req: Request) {
       .single();
 
     if (planError || !plan) {
+      console.error("Plan no encontrado o inactivo:", {
+        planKey,
+        planError,
+      });
+
       return NextResponse.json(
         {
           ok: false,
@@ -53,9 +64,49 @@ export async function POST(req: Request) {
       );
     }
 
-    const frequencyType = plan.frequency_type as "days" | "months";
+    const frequencyType = String(plan.frequency_type).trim().toLowerCase();
+
+    if (frequencyType !== "days" && frequencyType !== "months") {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "frequency_type inválido. Debe ser exactamente 'days' o 'months'.",
+          received: plan.frequency_type,
+        },
+        { status: 400 }
+      );
+    }
+
+    const backUrl = process.env.MERCADOPAGO_BACK_URL;
+
+    if (!backUrl || !backUrl.startsWith("https://")) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "MERCADOPAGO_BACK_URL debe ser una URL pública con https. No uses localhost.",
+        },
+        { status: 400 }
+      );
+    }
 
     const externalReference = `user:${userId}:plan:${plan.plan_key}`;
+
+    console.log("Debug create subscription:", {
+      userId,
+      planKey: plan.plan_key,
+      mpPlanId: plan.mp_plan_id,
+      payerEmail,
+      cardTokenIdStart: cardTokenId?.slice(0, 12),
+      cardTokenIdLength: cardTokenId?.length,
+      accessTokenStart: process.env.MERCADOPAGO_ACCESS_TOKEN?.slice(0, 10),
+      backUrl,
+      amount: Number(plan.amount),
+      currencyId: plan.currency_id,
+      frequency: Number(plan.frequency),
+      frequencyType,
+    });
 
     const subscription = await createMercadoPagoSubscription({
       preapprovalPlanId: plan.mp_plan_id,
@@ -67,12 +118,18 @@ export async function POST(req: Request) {
       currencyId: plan.currency_id,
       frequency: Number(plan.frequency),
       frequencyType,
-      backUrl:
-        process.env.MERCADOPAGO_BACK_URL || "http://localhost:3000/dashboard",
+      backUrl,
     });
 
     const mpStatus = subscription.status || "pending";
-    const internalStatus = mpStatus === "authorized" ? "active" : mpStatus;
+    const internalStatus = mapMercadoPagoStatus(mpStatus);
+
+    console.log("Suscripción creada en Mercado Pago:", {
+      mpPreapprovalId: subscription.id,
+      mpStatus,
+      internalStatus,
+      externalReference: subscription.external_reference,
+    });
 
     const { error: insertError } = await supabase
       .from("user_subscriptions")
@@ -90,7 +147,7 @@ export async function POST(req: Request) {
       });
 
     if (insertError) {
-      console.error("Error guardando suscripción:", insertError);
+      console.error("Error guardando suscripción en Supabase:", insertError);
 
       return NextResponse.json(
         {
