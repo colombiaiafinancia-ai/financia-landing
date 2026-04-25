@@ -2,10 +2,10 @@ import SubscriptionCheckout from "@/components/subscriptions/SubscriptionCheckou
 
 export default function SubscribePage() {
   return (
-    <main className="3357848177">
+    <main className="mx-auto max-w-xl p-6">
       <SubscriptionCheckout
-        userId="8"
-        payerEmail="test-vyk4bfj0v@srv1.mail-tester.com"
+        userId="3357848177"
+        payerEmail="test@testuser.com"
         planKey="financia_pro_monthly"
       />
     </main>
