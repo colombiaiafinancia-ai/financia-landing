@@ -8,7 +8,7 @@ import {
 } from '@/services/supabase/client-middleware'
 import { isRefreshTokenError } from '@/services/supabase/types'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const needsAuth = isProtectedRoute(pathname)
