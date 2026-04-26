@@ -54,7 +54,7 @@ export async function createMercadoPagoSubscription(
 
     throw new Error(
       [data?.message, cause].filter(Boolean).join(" - ") ||
-        "No se pudo consultar la suscripcion en Mercado Pago"
+        "No se pudo crear la suscripcion en Mercado Pago"
     );
   }
 
@@ -84,7 +84,7 @@ export async function getMercadoPagoSubscription(preapprovalId: string) {
 
     throw new Error(
       [data?.message, cause].filter(Boolean).join(" - ") ||
-        "No se pudo crear la suscripcion en Mercado Pago"
+        "No se pudo consultar la suscripcion en Mercado Pago"
     );
   }
 

@@ -1,7 +1,7 @@
 export const MERCADOPAGO_API_BASE_URL = "https://api.mercadopago.com";
 
 export function getMercadoPagoAccessToken() {
-  const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
+  const token = process.env.MERCADOPAGO_ACCESS_TOKEN?.trim();
 
   if (!token) {
     throw new Error("Falta MERCADOPAGO_ACCESS_TOKEN en .env.local");
