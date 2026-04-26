@@ -2,6 +2,7 @@ import {
   MERCADOPAGO_API_BASE_URL,
   getMercadoPagoHeaders,
 } from "@/lib/mercadopago";
+import { randomUUID } from "crypto";
 
 type CreateMercadoPagoSubscriptionInput = {
   preapprovalPlanId: string;
@@ -21,7 +22,7 @@ export async function createMercadoPagoSubscription(
 ) {
   const response = await fetch(`${MERCADOPAGO_API_BASE_URL}/preapproval`, {
     method: "POST",
-    headers: getMercadoPagoHeaders(),
+    headers: getMercadoPagoHeaders({ idempotencyKey: randomUUID() }),
     body: JSON.stringify({
       preapproval_plan_id: input.preapprovalPlanId,
       reason: input.reason,
@@ -44,8 +45,16 @@ export async function createMercadoPagoSubscription(
   if (!response.ok) {
     console.error("Error creando suscripción en Mercado Pago:", data);
 
+    const cause = Array.isArray(data?.cause)
+      ? data.cause
+          .map((item: any) => item?.description || item?.message || item?.code)
+          .filter(Boolean)
+          .join(" | ")
+      : "";
+
     throw new Error(
-      data?.message || "No se pudo crear la suscripción en Mercado Pago"
+      [data?.message, cause].filter(Boolean).join(" - ") ||
+        "No se pudo consultar la suscripcion en Mercado Pago"
     );
   }
 
@@ -66,8 +75,16 @@ export async function getMercadoPagoSubscription(preapprovalId: string) {
   if (!response.ok) {
     console.error("Error consultando suscripción:", data);
 
+    const cause = Array.isArray(data?.cause)
+      ? data.cause
+          .map((item: any) => item?.description || item?.message || item?.code)
+          .filter(Boolean)
+          .join(" | ")
+      : "";
+
     throw new Error(
-      data?.message || "No se pudo consultar la suscripción en Mercado Pago"
+      [data?.message, cause].filter(Boolean).join(" - ") ||
+        "No se pudo crear la suscripcion en Mercado Pago"
     );
   }
 

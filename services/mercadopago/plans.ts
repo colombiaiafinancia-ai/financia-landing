@@ -2,6 +2,7 @@ import {
   MERCADOPAGO_API_BASE_URL,
   getMercadoPagoHeaders,
 } from "@/lib/mercadopago";
+import { randomUUID } from "crypto";
 
 type CreateMercadoPagoPlanInput = {
   reason: string;
@@ -15,7 +16,7 @@ type CreateMercadoPagoPlanInput = {
 export async function createMercadoPagoPlan(input: CreateMercadoPagoPlanInput) {
   const response = await fetch(`${MERCADOPAGO_API_BASE_URL}/preapproval_plan`, {
     method: "POST",
-    headers: getMercadoPagoHeaders(),
+    headers: getMercadoPagoHeaders({ idempotencyKey: randomUUID() }),
     body: JSON.stringify({
       reason: input.reason,
       auto_recurring: {

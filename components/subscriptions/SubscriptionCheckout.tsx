@@ -185,21 +185,6 @@ export default function SubscriptionCheckout({
                   return;
                 }
 
-                console.log("Intentando crear card token...");
-
-                try {
-                  await cardFormRef.current.createCardToken();
-                } catch (createTokenError: any) {
-                  console.error("Error explícito en createCardToken:", createTokenError);
-                  setMessage(
-                    `Error creando card token: ${
-                      createTokenError?.message ||
-                      JSON.stringify(createTokenError)
-                    }`
-                  );
-                  return;
-                }
-
                 const cardFormData = cardFormRef.current.getCardFormData();
 
                 console.log("MP cardFormData final:", cardFormData);
