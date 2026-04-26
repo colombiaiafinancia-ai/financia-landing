@@ -298,7 +298,7 @@ export async function logOut() {
  * Obtiene la URL base del sitio desde env o desde los headers de la petición.
  * Prioriza env para build, pero usa la URL real de la petición en producción.
  */
-function getSiteUrl(): string {
+async function getSiteUrl(): Promise<string> {
   // 1. PRIORIDAD ABSOLUTA: variable de entorno
   const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
   if (envUrl) {
@@ -307,7 +307,7 @@ function getSiteUrl(): string {
 
   // 2. fallback usando headers (opcional)
   try {
-    const headersList = headers();
+    const headersList = await headers();
     const host = headersList.get("x-forwarded-host") || headersList.get("host");
     const proto = headersList.get("x-forwarded-proto") || "http";
 
@@ -360,7 +360,7 @@ export async function requestPasswordReset(formData: FormData) {
     }
 
     // 2) Si el email existe, entonces sí pedimos el correo de recuperación a Supabase.
-    const siteUrl = getSiteUrl();
+    const siteUrl = await getSiteUrl();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${siteUrl}/reset-password`,
     });

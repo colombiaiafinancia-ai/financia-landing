@@ -68,7 +68,7 @@ export async function getServerSupabaseClient(options: ClientOptions = {}): Prom
   try {
     // Importar cookies dinámicamente para evitar errores en build
     const { cookies } = await import('next/headers')
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
 
     // Crear cliente server con manejo de cookies
     const client = createServerClient(
@@ -200,7 +200,7 @@ export async function getServerSupabaseAdmin(serviceRoleKey?: string): Promise<S
   try {
     // Importar cookies dinámicamente para evitar errores en build
     const { cookies } = await import('next/headers')
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
 
     const client = createServerClient(
       serverConfig.url,
