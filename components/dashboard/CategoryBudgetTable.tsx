@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useCategoryBudget } from '@/hooks/useCategoryBudget'
 import { useCategories } from '@/hooks/useCategories'
 import { Edit3, Check, X, Plus, Trash2 } from 'lucide-react'
+import { formatCurrency } from '@/utils/format'
 
 interface CategoryBudgetTableProps {
   userId: string
@@ -21,15 +22,6 @@ export const CategoryBudgetTable = ({ userId }: CategoryBudgetTableProps) => {
   // Categorías disponibles para agregar (excluir las que ya tienen presupuesto)
   const usedCategoryIds = new Set(budgetSummary.map(b => b.categoryId))
   const availableCategories = gastoCategories.filter(cat => !usedCategoryIds.has(cat.id))
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount)
-  }
 
   const startEdit = (categoryId: string, currentAmount: number) => {
     setEditingCategoryId(categoryId)

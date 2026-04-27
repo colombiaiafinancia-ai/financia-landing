@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { Calendar, Clock, TrendingUp, DollarSign } from 'lucide-react'
+import { formatCurrency } from '@/utils/format'
 
 interface ExpenseSummaryProps {
   todayExpenses: number
@@ -16,25 +17,6 @@ export const ExpenseSummary = ({
   monthExpenses,
   totalExpenses
 }: ExpenseSummaryProps) => {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-      notation: 'compact'
-    }).format(amount)
-  }
-
-  const formatCurrencyFull = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount)
-  }
-
   const expenseItems = [
     {
       icon: Clock,
@@ -95,9 +77,9 @@ export const ExpenseSummary = ({
             </p>
             <p 
               className={`text-sm sm:text-lg lg:text-xl font-bold ${item.color} break-words`}
-              title={formatCurrencyFull(item.amount)}
+              title={formatCurrency(item.amount)}
             >
-              {formatCurrency(item.amount)}
+              {formatCurrency(item.amount, { compact: true })}
             </p>
           </motion.div>
         ))}
@@ -111,4 +93,4 @@ export const ExpenseSummary = ({
       </div>
     </motion.div>
   )
-} 
+}

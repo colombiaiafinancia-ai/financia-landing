@@ -11,6 +11,8 @@ const USER_MESSAGES = [
   "¿Cuánto he ahorrado esta semana?"
 ]
 
+const MESSAGE_TIME = '10:42 a.m.'
+
 export const FloatingUserMessages = () => {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
@@ -47,10 +49,7 @@ export const FloatingUserMessages = () => {
             {USER_MESSAGES[currentMessageIndex]}
           </p>
           <div className="text-xs text-gray-500 mt-2 text-right">
-            {new Date().toLocaleTimeString('es-CO', { 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            })}
+            {MESSAGE_TIME}
           </div>
           {/* WhatsApp bubble tail */}
           <div className="absolute -bottom-1 right-3 w-0 h-0 border-l-8 border-l-transparent border-t-8 border-t-[#DCF8C6]"></div>

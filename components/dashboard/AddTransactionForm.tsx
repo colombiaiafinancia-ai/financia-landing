@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useCategories } from '@/hooks/useCategories'
 import { OnboardingVignette, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import { CategorySelectWithIcons } from '@/components/dashboard/CategorySelectWithIcons'
+import { formatCurrencyInput } from '@/utils/format'
 
 type CreateTransactionFn = (data: {
   amount: number
@@ -91,13 +92,6 @@ export const AddTransactionForm = ({
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const formatCurrency = (value: string) => {
-    const numericValue = value.replace(/[^\d]/g, '')
-    if (!numericValue) return ''
-    const formattedValue = new Intl.NumberFormat('es-CO').format(Number(numericValue))
-    return `$${formattedValue}`
   }
 
   const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -217,7 +211,7 @@ export const AddTransactionForm = ({
                 <Input
                   id="valor"
                   type="text"
-                  value={formatCurrency(valor)}
+                  value={formatCurrencyInput(valor)}
                   onChange={handleValueChange}
                   placeholder="$0"
                   className="

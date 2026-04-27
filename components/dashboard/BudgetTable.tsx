@@ -9,16 +9,8 @@ import { Label } from '@/components/ui/label'
 import { useTransactionsUnified } from '@/hooks/useTransactionsUnified'
 import { useCategoryBudget } from '@/hooks/useCategoryBudget'
 import { useCategories } from '@/hooks/useCategories'
-import { Settings, TrendingUp, TrendingDown, DollarSign, Calculator } from 'lucide-react'
-
-const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
+import { TrendingUp, TrendingDown, DollarSign, Calculator } from 'lucide-react'
+import { formatCurrency } from '@/utils/format'
 
 interface BudgetTableProps {
   userId?: string

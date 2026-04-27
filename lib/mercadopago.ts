@@ -31,3 +31,16 @@ export function getMercadoPagoHeaders(options: MercadoPagoHeadersOptions = {}) {
 
   return headers;
 }
+
+export function mapMercadoPagoStatus(status?: string | null) {
+  if (!status) return "unknown";
+
+  const map: Record<string, string> = {
+    authorized: "active",
+    pending: "pending",
+    paused: "paused",
+    cancelled: "cancelled",
+  };
+
+  return map[status] || status;
+}

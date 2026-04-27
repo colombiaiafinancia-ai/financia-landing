@@ -13,6 +13,7 @@ import {
 import { TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { formatCurrency } from '@/utils/format'
 
 interface WeeklyData {
   week: string
@@ -68,15 +69,6 @@ export const WeeklyTrendChart = ({
       onFetchMonthly()
     }
   }, [period, dailyData.length, monthlyData.length, onFetchDaily, onFetchMonthly])
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount)
-  }
 
   const getData = () => {
     switch (period) {

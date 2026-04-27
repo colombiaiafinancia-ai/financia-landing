@@ -25,6 +25,7 @@ import { useCategories } from '@/hooks/useCategories'
 import { useCategoryBudget } from '@/hooks/useCategoryBudget'
 import { OnboardingVignette, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import { CategoryGlyph } from '@/components/dashboard/CategoryGlyph'
+import { formatCurrencyInput } from '@/utils/format'
 
 interface BudgetByCategoryProps {
   userId: string
@@ -94,12 +95,6 @@ export const BudgetByCategory = ({
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-
-  const formatCurrency = (value: string) => {
-    const numericValue = value.replace(/[^\d]/g, '')
-    if (!numericValue) return ''
-    return `$${new Intl.NumberFormat('es-CO').format(Number(numericValue))}`
-  }
 
   const handleBudgetValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value.replace(/[^\d]/g, '')
@@ -415,7 +410,7 @@ export const BudgetByCategory = ({
                   <Input
                     id="budget"
                     type="text"
-                    value={formatCurrency(budgetValue)}
+                    value={formatCurrencyInput(budgetValue)}
                     onChange={handleBudgetValueChange}
                     placeholder="$0"
                     className="

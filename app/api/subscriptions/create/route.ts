@@ -1,17 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseClient } from "@/services/supabase/client-server";
 import { createMercadoPagoSubscription } from "@/services/mercadopago/subscriptions";
-
-function mapMercadoPagoStatus(status: string) {
-  const map: Record<string, string> = {
-    authorized: "active",
-    pending: "pending",
-    paused: "paused",
-    cancelled: "cancelled",
-  };
-
-  return map[status] || status || "unknown";
-}
+import { mapMercadoPagoStatus } from "@/lib/mercadopago";
 
 export async function POST(req: Request) {
   try {

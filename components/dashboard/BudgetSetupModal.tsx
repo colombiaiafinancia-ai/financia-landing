@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { formatCurrency } from '@/utils/format'
 
 interface BudgetSetupModalProps {
   isOpen: boolean
@@ -23,15 +24,6 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({
       setError(null)
     }
   }, [isOpen, currentBudget])
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount)
-  }
 
   const handleInputChange = (value: string) => {
     // Solo permitir números
@@ -147,4 +139,4 @@ export const BudgetSetupModal: React.FC<BudgetSetupModalProps> = ({
       </div>
     </div>
   )
-} 
+}

@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from 'react'
 import { useTheme } from 'next-themes'
 import { useCategories } from '@/hooks/useCategories'
 import { CategoryGlyph } from './CategoryGlyph'
+import { formatCurrency } from '@/utils/format'
 
 interface CategoryData {
   name: string
@@ -50,14 +51,6 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
   const hasMoreBg = categoryData.length > 8
   const top5 = categoryData.slice(0, 5)
   const top7 = categoryData.slice(0, 7)
-
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount)
 
   const iconByCategoryName = useMemo(() => {
     const map = new Map<string, string | null>()

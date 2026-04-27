@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { formatCurrency } from '@/utils/format'
 
 interface BudgetModalProps {
   isOpen: boolean
@@ -24,15 +25,6 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
       setBudgetInput(currentBudget > 0 ? currentBudget.toString() : '')
     }
   }, [isOpen, currentBudget])
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount)
-  }
 
   const handleInputChange = (value: string) => {
     // Solo permitir números
@@ -163,4 +155,4 @@ export const BudgetModal: React.FC<BudgetModalProps> = ({
       </motion.div>
     </AnimatePresence>
   )
-} 
+}
