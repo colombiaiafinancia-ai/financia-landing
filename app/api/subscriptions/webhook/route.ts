@@ -16,7 +16,6 @@ function mapMercadoPagoStatus(status: string) {
 export async function POST(req: Request) {
   try {
     const url = new URL(req.url);
-
     const body = await req.json().catch(() => ({}));
 
     const type =
@@ -52,27 +51,83 @@ export async function POST(req: Request) {
     }
 
     const mpSubscription = await getMercadoPagoSubscription(preapprovalId);
-
     const internalStatus = mapMercadoPagoStatus(mpSubscription.status);
-
     const supabase = getSupabaseAdminClient();
 
-    const { data: localSubscription, error: subError } = await supabase
+    let { data: localSubscription, error: subError } = await supabase
       .from("user_subscriptions")
       .select("*")
       .eq("mp_preapproval_id", preapprovalId)
-      .single();
+      .maybeSingle();
 
     if (subError || !localSubscription) {
-      console.error("Suscripción local no encontrada:", {
+      console.warn("Suscripcion local no encontrada, intentando reconciliar:", {
         preapprovalId,
         subError,
       });
 
-      return NextResponse.json({
-        ok: true,
-        message: "Suscripción local no encontrada",
-      });
+      const { data: plan, error: planError } = await supabase
+        .from("subscription_plans")
+        .select("*")
+        .eq("mp_plan_id", mpSubscription.preapproval_plan_id)
+        .maybeSingle();
+
+      const payerEmail = String(mpSubscription.payer_email || "").trim();
+
+      const { data: userRecord, error: userError } = await supabase
+        .from("usuarios")
+        .select("id,gmail")
+        .eq("gmail", payerEmail)
+        .maybeSingle();
+
+      if (planError || userError || !plan || !userRecord) {
+        console.error("No se pudo reconciliar suscripcion hospedada:", {
+          preapprovalId,
+          payerEmail,
+          mpPlanId: mpSubscription.preapproval_plan_id,
+          planError,
+          userError,
+          hasPlan: Boolean(plan),
+          hasUser: Boolean(userRecord),
+        });
+
+        return NextResponse.json({
+          ok: true,
+          message:
+            "Webhook recibido, pero no se pudo reconciliar con usuario/plan local",
+        });
+      }
+
+      const { data: insertedSubscription, error: insertError } = await supabase
+        .from("user_subscriptions")
+        .insert({
+          user_id: userRecord.id,
+          plan_key: plan.plan_key,
+          mp_plan_id: plan.mp_plan_id,
+          mp_preapproval_id: preapprovalId,
+          payer_email: payerEmail,
+          external_reference: mpSubscription.external_reference || null,
+          status: internalStatus,
+          amount: Number(plan.amount),
+          currency_id: plan.currency_id,
+          started_at: new Date().toISOString(),
+        })
+        .select("*")
+        .single();
+
+      if (insertError || !insertedSubscription) {
+        console.error("No se pudo crear suscripcion local desde webhook:", {
+          preapprovalId,
+          insertError,
+        });
+
+        return NextResponse.json({
+          ok: true,
+          error: "No se pudo crear user_subscriptions desde webhook",
+        });
+      }
+
+      localSubscription = insertedSubscription;
     }
 
     const { error: updateSubscriptionError } = await supabase
@@ -106,7 +161,7 @@ export async function POST(req: Request) {
         mp_preapproval_id:
           internalStatus === "active" ? preapprovalId : null,
       })
-      .eq("id", localSubscription.user_id);
+      .eq("user_id", localSubscription.user_id);
 
     if (updateUserError) {
       console.error("Error actualizando user_profiles:", updateUserError);

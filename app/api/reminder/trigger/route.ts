@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { Client } from '@upstash/qstash';
 
-const qstash = new Client({ token: process.env.QSTASH_TOKEN! });
 const BATCH_SIZE = 50;
 const BATCH_DELAY_SECONDS = 5;
 const CRON_SECRET = process.env.CRON_SECRET;
@@ -37,8 +36,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'No eligible users', count: 0 });
     }
 
-    const userIds = users.map((u: any) => u.user_id);
+    const userIds = users
+      .map((u: any) => (typeof u === 'string' ? u : u.user_id ?? u.id))
+      .filter(Boolean);
     const totalUsers = userIds.length;
+
+    if (totalUsers === 0) {
+      console.warn('Eligible users returned without readable ids:', users);
+      return NextResponse.json({ message: 'No readable eligible user ids', count: 0 });
+    }
 
     // Dividir en lotes de BATCH_SIZE
     const batches = [];
@@ -47,6 +53,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Encolar cada lote con delay progresivo
+    const qstashToken = process.env.QSTASH_TOKEN;
+    if (!qstashToken) {
+      console.error('QSTASH_TOKEN is missing');
+      return NextResponse.json(
+        { error: 'QSTASH_TOKEN is missing. Reminder batches were not queued.' },
+        { status: 500 }
+      );
+    }
+
+    const qstash = new Client({ token: qstashToken });
+
     const batchPromises = batches.map((batch, index) => {
       const delaySeconds = index * BATCH_DELAY_SECONDS;
       return qstash.publishJSON({

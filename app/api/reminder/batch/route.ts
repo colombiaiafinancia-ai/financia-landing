@@ -26,21 +26,25 @@ export async function POST(request: NextRequest) {
     const colombiaDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
     const results: ResultItem[] = [];
 
-    for (const userId of userIds) {
+    for (const userId of userIds.filter(Boolean)) {
       let eligible = false;
       let eligError = null;
 
       if (!force) {
         const { data, error } = await supabaseAdmin
-          .rpc('is_user_eligible_for_reminder', { user_id: userId });
-        eligible = data === true;
+          .rpc('get_users_eligible_for_reminder', { p_user_id: userId });
+        eligible = Array.isArray(data) && data.length > 0;
         eligError = error;
       } else {
         eligible = true;
       }
 
       if (eligError || !eligible) {
-        results.push({ userId, status: 'skipped', reason: 'not eligible' });
+        results.push({
+          userId,
+          status: 'skipped',
+          reason: eligError ? eligError.message : 'not eligible',
+        });
         continue;
       }
 

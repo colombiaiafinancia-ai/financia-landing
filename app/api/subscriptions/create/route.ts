@@ -168,7 +168,7 @@ export async function POST(req: Request) {
         mp_preapproval_id:
           internalStatus === "active" ? subscription.id : null,
       })
-      .eq("id", userId);
+      .eq("user_id", userId);
 
     if (updateUserError) {
       console.error("Error actualizando user_profiles:", updateUserError);

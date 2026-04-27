@@ -21,6 +21,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { OnboardingWelcomeModal } from '@/components/dashboard/OnboardingWelcomeModal'
 import { FeedbackForm } from '@/components/dashboard/FeedbackForm'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { CreditCard, LogOut, Menu, UserCircle, X } from 'lucide-react'
 import type { OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import { getOnboardingLocalKeys, readStoredStep } from '@/utils/onboardingLocalStorage'
 import { smoothScrollToElement } from '@/utils/scroll'
@@ -29,6 +30,18 @@ import { CATEGORIES_UPDATED_EVENT } from '@/utils/categorySyncEvents'
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [isCancellingPlan, setIsCancellingPlan] = useState(false)
+  const [planMessage, setPlanMessage] = useState('')
+  const [profilePlan, setProfilePlan] = useState<{
+    subscription_status: string
+    current_plan: string
+    mp_preapproval_id: string | null
+  }>({
+    subscription_status: 'free',
+    current_plan: 'free',
+    mp_preapproval_id: null,
+  })
   const router = useRouter()
 
   const {
@@ -98,6 +111,35 @@ export default function DashboardPage() {
 
     return () => subscription.unsubscribe()
   }, [router])
+
+  const fetchProfilePlan = useCallback(async (userId: string) => {
+    const supabase = createSupabaseClient()
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('subscription_status,current_plan,mp_preapproval_id')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (error || !data) {
+      setProfilePlan({
+        subscription_status: 'free',
+        current_plan: 'free',
+        mp_preapproval_id: null,
+      })
+      return
+    }
+
+    setProfilePlan({
+      subscription_status: data.subscription_status || 'free',
+      current_plan: data.current_plan || 'free',
+      mp_preapproval_id: data.mp_preapproval_id || null,
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!user?.id) return
+    void fetchProfilePlan(user.id)
+  }, [fetchProfilePlan, user?.id])
 
   /**
    * Restaurar paso / bienvenida desde localStorage solo si el tour está activo (onboarding = verificado en BD).
@@ -245,6 +287,44 @@ export default function DashboardPage() {
     }
   }
 
+  const handleCancelPlan = async () => {
+    if (!user?.id || isCancellingPlan) return
+
+    const confirmed = window.confirm(
+      'Vas a cancelar tu plan. Seguiras con acceso gratuito y se detendran los cobros futuros. ¿Deseas continuar?'
+    )
+
+    if (!confirmed) return
+
+    try {
+      setIsCancellingPlan(true)
+      setPlanMessage('')
+
+      const response = await fetch('/api/subscriptions/cancel', {
+        method: 'POST',
+      })
+      const data = await response.json()
+
+      if (!response.ok || !data.ok) {
+        setPlanMessage(data.error || 'No se pudo cancelar el plan.')
+        return
+      }
+
+      setProfilePlan({
+        subscription_status: 'cancelled',
+        current_plan: 'free',
+        mp_preapproval_id: null,
+      })
+      setPlanMessage('Tu plan fue cancelado correctamente.')
+      void fetchProfilePlan(user.id)
+    } catch (error: any) {
+      console.error('Error cancelando plan:', error)
+      setPlanMessage(error?.message || 'No se pudo cancelar el plan.')
+    } finally {
+      setIsCancellingPlan(false)
+    }
+  }
+
   const handleCategoryClick = (category: string) => {
     setSelectedCategoryName(category)
   }
@@ -325,6 +405,24 @@ export default function DashboardPage() {
   }
 
   const welcomeModalOpen = showTour && !welcomeDone
+  const planStatus = profilePlan.subscription_status || 'free'
+  const currentPlan = profilePlan.current_plan || 'free'
+  const hasPaidPlan =
+    currentPlan !== 'free' && (planStatus === 'active' || planStatus === 'pending')
+  const planLabel =
+    currentPlan === 'free'
+      ? 'Plan gratis'
+      : currentPlan === 'financia_pro_monthly'
+        ? 'Financia Pro mensual'
+        : currentPlan
+  const statusLabel: Record<string, string> = {
+    free: 'Gratis',
+    pending: 'Pendiente',
+    active: 'Activo',
+    paused: 'Pausado',
+    cancelled: 'Cancelado',
+    unknown: 'Por revisar',
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -346,18 +444,95 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            <div className="flex items-center space-x-2 sm:space-x-4">
+            <div className="relative flex items-center space-x-2 sm:space-x-3">
               <ThemeToggle />
-              <div className="text-xs text-muted-foreground sm:text-sm">
-                ¡Hola, {user.user_metadata?.full_name || 'Usuario'}!
-              </div>
               <button
-                onClick={handleLogout}
-                className="rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-500/25 dark:text-red-400 sm:px-4 sm:text-base"
+                type="button"
+                onClick={() => setAccountMenuOpen((open) => !open)}
+                aria-label="Abrir menu de usuario"
+                aria-expanded={accountMenuOpen}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-foreground transition-colors hover:bg-accent dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
               >
-                <span className="hidden sm:inline">Cerrar Sesión</span>
-                <span className="sm:hidden">Salir</span>
+                {accountMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </button>
+
+              {accountMenuOpen && (
+                <div className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl dark:border-white/15 dark:bg-[#0D1D35] dark:text-white">
+                  <div className="border-b border-border px-4 py-3 dark:border-white/10">
+                    <Link
+                      href="/profile"
+                      onClick={() => setAccountMenuOpen(false)}
+                      className="flex items-start gap-3 rounded-md p-1 transition-colors hover:bg-accent dark:hover:bg-white/10"
+                    >
+                      <UserCircle className="mt-0.5 h-5 w-5 text-muted-foreground dark:text-white/70" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {user.user_metadata?.full_name || 'Usuario'}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground dark:text-white/60">
+                          {user.email}
+                        </p>
+                        <p className="mt-1 text-xs font-medium text-primary dark:text-[#5ce1e6]">
+                          Editar usuario
+                        </p>
+                      </div>
+                    </Link>
+                  </div>
+
+                  <div className="space-y-3 px-4 py-3">
+                    <div className="rounded-md border border-border bg-muted/40 p-3 dark:border-white/10 dark:bg-white/5">
+                      <div className="flex items-start gap-3">
+                        <CreditCard className="mt-0.5 h-5 w-5 text-primary dark:text-[#5ce1e6]" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">Mi plan</p>
+                          <p className="mt-1 text-sm text-muted-foreground dark:text-white/70">
+                            {planLabel}
+                          </p>
+                          <span className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary dark:bg-[#5ce1e6]/15 dark:text-[#5ce1e6]">
+                            {statusLabel[planStatus] || planStatus}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {planMessage && (
+                      <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground dark:bg-white/5 dark:text-white/70">
+                        {planMessage}
+                      </p>
+                    )}
+
+                    {hasPaidPlan ? (
+                      <button
+                        type="button"
+                        onClick={handleCancelPlan}
+                        disabled={isCancellingPlan}
+                        className="w-full rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-300"
+                      >
+                        {isCancellingPlan ? 'Cancelando plan...' : 'Cancelar plan'}
+                      </button>
+                    ) : (
+                      <Link
+                        href="/subscribe"
+                        onClick={() => setAccountMenuOpen(false)}
+                        className="block w-full rounded-md bg-[#0D1D35] px-3 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-[#0D1D35]/90 dark:bg-[#5ce1e6] dark:text-[#0D1D35]"
+                      >
+                        Suscribirme a Pro
+                      </Link>
+                    )}
+                  </div>
+
+                  <div className="border-t border-border p-2 dark:border-white/10">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-500/10 dark:text-red-300"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Cerrar sesion
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

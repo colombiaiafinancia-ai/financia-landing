@@ -10,6 +10,7 @@ interface CategoryData {
   value: number
   percentage: number
   intensity: number
+  heatLevel: number
 }
 
 interface CategoryChartProps {
@@ -33,14 +34,16 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
     const total = entries.reduce((sum, [, value]) => sum + value, 0)
     const values = entries.map(([, v]) => v)
     const max = Math.max(...values, 1)
-    const data: CategoryData[] = entries
-      .map(([name, value]) => ({
+    const sortedEntries = [...entries].sort((a, b) => b[1] - a[1])
+    const maxRank = Math.max(sortedEntries.length - 1, 1)
+    const data: CategoryData[] = sortedEntries
+      .map(([name, value], index) => ({
         name,
         value,
         percentage: total > 0 ? (value / total) * 100 : 0,
-        intensity: value / max
+        intensity: value / max,
+        heatLevel: Math.round((sortedEntries.length === 1 ? 1 : 1 - index / maxRank) * 4)
       }))
-      .sort((a, b) => b.value - a.value)
     return { totalAmount: total, categoryData: data }
   }, [expensesByCategory])
 
@@ -64,51 +67,54 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
     return map
   }, [gastoCategories])
 
-  // DARK: tu paleta original (idéntica)
   const heatmapColorsDark = [
-    'rgba(157, 250, 215, 0.10)',
-    'rgba(157, 250, 215, 0.30)',
-    'rgba(34, 197, 94, 0.40)',
-    'rgba(245, 158, 11, 0.50)',
-    'rgba(239, 68, 68, 0.60)',
-    'rgba(239, 68, 68, 0.80)',
-    'rgba(220, 38, 127, 0.90)'
+    'rgba(96, 165, 250, 0.18)',
+    'rgba(45, 212, 191, 0.24)',
+    'rgba(34, 197, 94, 0.46)',
+    'rgba(245, 158, 11, 0.62)',
+    'rgba(236, 72, 153, 0.86)'
   ]
 
-  // LIGHT: paleta auxiliar más visible
   const heatmapColorsLight = [
-    'rgb(224, 247, 240)', // menta clara
-    'rgb(187, 247, 208)', // green-200
-    'rgb(134, 239, 172)', // green-300
-    'rgb(253, 230, 138)', // amber-200
-    'rgb(253, 186, 116)', // orange-300
-    'rgb(252, 165, 165)', // red-300
-    'rgb(244, 114, 182)'  // pink-400
+    'rgb(219, 234, 254)',
+    'rgb(204, 251, 241)',
+    'rgb(187, 247, 208)',
+    'rgb(253, 230, 138)',
+    'rgb(244, 114, 182)'
   ]
 
-  const getHeatmapColor = (intensity: number) => {
+  const getHeatmapColor = (level: number) => {
     const colors = isDark ? heatmapColorsDark : heatmapColorsLight
-    const idx = Math.floor(intensity * (colors.length - 1))
+    const idx = Math.min(Math.max(Math.round(level), 0), colors.length - 1)
     return colors[idx] || colors[0]
   }
 
-  const getBorderColor = (intensity: number) => {
-    if (isDark) {
-      if (intensity > 0.8) return 'rgba(220, 38, 127, 0.5)'
-      if (intensity > 0.6) return 'rgba(239, 68, 68, 0.4)'
-      if (intensity > 0.4) return 'rgba(245, 158, 11, 0.3)'
-      if (intensity > 0.2) return 'rgba(34, 197, 94, 0.3)'
-      return 'rgba(157, 250, 215, 0.2)'
-    }
-    // Light: bordes más visibles
-    if (intensity > 0.8) return 'rgba(219, 39, 119, 0.35)'
-    if (intensity > 0.6) return 'rgba(239, 68, 68, 0.30)'
-    if (intensity > 0.4) return 'rgba(245, 158, 11, 0.28)'
-    if (intensity > 0.2) return 'rgba(34, 197, 94, 0.25)'
-    return 'rgba(2, 132, 199, 0.18)'
+  const getBorderColor = (level: number) => {
+    const borderColorsDark = [
+      'rgba(96, 165, 250, 0.38)',
+      'rgba(45, 212, 191, 0.42)',
+      'rgba(34, 197, 94, 0.55)',
+      'rgba(245, 158, 11, 0.65)',
+      'rgba(236, 72, 153, 0.75)'
+    ]
+    const borderColorsLight = [
+      'rgba(37, 99, 235, 0.25)',
+      'rgba(13, 148, 136, 0.25)',
+      'rgba(22, 163, 74, 0.30)',
+      'rgba(217, 119, 6, 0.32)',
+      'rgba(219, 39, 119, 0.38)'
+    ]
+    const colors = isDark ? borderColorsDark : borderColorsLight
+    const idx = Math.min(Math.max(Math.round(level), 0), colors.length - 1)
+    return colors[idx] || colors[0]
   }
 
-  // ✅ Requisito: en LIGHT todo el texto negro
+  const getDotColor = (level: number) => {
+    const dotColors = ['#60a5fa', '#2dd4bf', '#22c55e', '#f59e0b', '#ec4899']
+    const idx = Math.min(Math.max(Math.round(level), 0), dotColors.length - 1)
+    return dotColors[idx] || dotColors[0]
+  }
+
   const textMain = isDark ? 'text-white' : 'text-slate-900'
   const textSub = isDark ? 'text-white/70' : 'text-slate-700'
 
@@ -132,7 +138,7 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
   }
 
   const HeatCard = (category: CategoryData) => {
-    const bg = getHeatmapColor(category.intensity)
+    const bg = getHeatmapColor(category.heatLevel)
     const iconKey = iconByCategoryName.get(category.name.trim().toLowerCase()) ?? null
 
     return (
@@ -145,7 +151,7 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
         `}
         style={{
           backgroundColor: bg,
-          borderColor: getBorderColor(category.intensity),
+          borderColor: getBorderColor(category.heatLevel),
           borderWidth: '1px',
           borderStyle: 'solid'
         }}
@@ -156,13 +162,8 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
         {/* Indicador de intensidad */}
         <div className="absolute top-2 right-2">
           <div
-            className={`
-              w-2 h-2 rounded-full
-              ${category.intensity > 0.8 ? 'bg-red-500' :
-                category.intensity > 0.6 ? 'bg-orange-500' :
-                category.intensity > 0.4 ? 'bg-yellow-500' :
-                category.intensity > 0.2 ? 'bg-green-500' : 'bg-blue-400'}
-            `}
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: getDotColor(category.heatLevel) }}
           />
         </div>
 
@@ -269,8 +270,8 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
         <div className="flex items-center gap-2 text-xs text-muted-foreground dark:text-white/70">
           <span>Menor gasto</span>
           <div className="flex gap-1">
-            {[0.1, 0.3, 0.5, 0.7, 0.9].map((intensity, i) => (
-              <div key={i} className="w-4 h-2 rounded-sm" style={{ backgroundColor: getHeatmapColor(intensity) }} />
+            {[0, 1, 2, 3, 4].map((level) => (
+              <div key={level} className="w-4 h-2 rounded-sm" style={{ backgroundColor: getHeatmapColor(level) }} />
             ))}
           </div>
           <span>Mayor gasto</span>
@@ -317,7 +318,7 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
                       {formatCurrency(category.value)} ({category.percentage.toFixed(1)}%)
                     </p>
                   </div>
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getHeatmapColor(category.intensity) }} />
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getDotColor(category.heatLevel) }} />
                 </div>
               ))}
             </div>

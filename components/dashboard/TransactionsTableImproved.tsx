@@ -22,6 +22,7 @@ interface TransactionsTableImprovedProps {
       categoryId: string
       direction: 'gasto' | 'ingreso'
       description: string | null
+      occurredAt?: string
     }
   ) => Promise<boolean>
   loading?: boolean
@@ -52,6 +53,7 @@ export const TransactionsTableImproved = ({
   const [editTipo, setEditTipo] = useState<'gasto' | 'ingreso'>('gasto')
   const [editValor, setEditValor] = useState('')
   const [editCategoriaId, setEditCategoriaId] = useState('')
+  const [editFecha, setEditFecha] = useState('')
   const [editDescripcion, setEditDescripcion] = useState('')
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
@@ -80,6 +82,18 @@ export const TransactionsTableImproved = ({
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(amount)
+
+  const formatDateInputValue = (value: string | null) => {
+    if (!value) return new Date().toISOString().slice(0, 10)
+
+    const datePart = value.slice(0, 10)
+    return /^\d{4}-\d{2}-\d{2}$/.test(datePart)
+      ? datePart
+      : new Date().toISOString().slice(0, 10)
+  }
+
+  const dateInputToIso = (value: string) =>
+    new Date(`${value}T12:00:00.000Z`).toISOString()
 
   const filteredTransactions = useMemo(() => {
     let filtered = localTransactions.filter((transaction) => {
@@ -125,6 +139,7 @@ export const TransactionsTableImproved = ({
     setEditTipo(transaction.type === 'ingreso' ? 'ingreso' : 'gasto')
     setEditValor(String(Math.round(transaction.amount)))
     setEditCategoriaId(transaction.categoryId)
+    setEditFecha(formatDateInputValue(transaction.createdAt))
     setEditDescripcion(transaction.description || '')
     setEditError(null)
     setShowEditModal(true)
@@ -151,6 +166,10 @@ export const TransactionsTableImproved = ({
       setEditError('Selecciona una categoría')
       return
     }
+    if (!editFecha) {
+      setEditError('Selecciona una fecha')
+      return
+    }
     setEditSaving(true)
     setEditError(null)
     try {
@@ -159,6 +178,7 @@ export const TransactionsTableImproved = ({
         categoryId: editCategoriaId,
         direction: editTipo,
         description: editDescripcion.trim() || null,
+        occurredAt: dateInputToIso(editFecha),
       })
       if (ok) {
         setShowEditModal(false)
@@ -177,6 +197,7 @@ export const TransactionsTableImproved = ({
     onUpdateTransaction,
     editValor,
     editCategoriaId,
+    editFecha,
     editTipo,
     editDescripcion,
     onTransactionDeleted,
@@ -651,6 +672,17 @@ export const TransactionsTableImproved = ({
                   categories={availableEditCategories}
                   value={editCategoriaId}
                   onChange={setEditCategoriaId}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-tx-fecha">Fecha *</Label>
+                <Input
+                  id="edit-tx-fecha"
+                  type="date"
+                  value={editFecha}
+                  onChange={(e) => setEditFecha(e.target.value)}
+                  className="dark:bg-white/10 dark:border-white/20"
                 />
               </div>
 
