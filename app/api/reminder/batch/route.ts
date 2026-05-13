@@ -50,11 +50,16 @@ export async function POST(request: NextRequest) {
 
       const { data: profile, error: profileError } = await supabaseAdmin
         .from('user_profiles')
-        .select('phone')
+        .select('phone,reminder_opt_in')
         .eq('user_id', userId)
         .single();
 
-      if (profileError || !profile?.phone) {
+      if (profileError || profile?.reminder_opt_in !== true) {
+        results.push({ userId, status: 'skipped', reason: 'reminders disabled' });
+        continue;
+      }
+
+      if (!profile?.phone) {
         results.push({ userId, status: 'failed', reason: 'no phone' });
         await supabaseAdmin
           .from('reminder_logs')

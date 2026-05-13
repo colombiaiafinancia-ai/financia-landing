@@ -34,7 +34,8 @@ export const useCategoryBudget = (userId: string, refreshKey: number = 0): UseCa
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const currentMonth = new Date().toISOString().slice(0, 10).replace(/-/g, '-').substring(0, 7) + '-01' // YYYY-MM-01
+  const currentMonth =
+    new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).slice(0, 7) + '-01'
 
   const fetchBudgets = useCallback(async (showLoading = true) => {
     if (!userId) {

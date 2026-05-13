@@ -21,7 +21,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { OnboardingWelcomeModal } from '@/components/dashboard/OnboardingWelcomeModal'
 import { FeedbackForm } from '@/components/dashboard/FeedbackForm'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { CreditCard, LogOut, Menu, UserCircle, X } from 'lucide-react'
+import { Bell, BellOff, CreditCard, LogOut, Menu, UserCircle, X } from 'lucide-react'
 import type { OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import { getOnboardingLocalKeys, readStoredStep } from '@/utils/onboardingLocalStorage'
 import { smoothScrollToElement } from '@/utils/scroll'
@@ -32,15 +32,18 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [isCancellingPlan, setIsCancellingPlan] = useState(false)
+  const [isSavingReminderOptIn, setIsSavingReminderOptIn] = useState(false)
   const [planMessage, setPlanMessage] = useState('')
   const [profilePlan, setProfilePlan] = useState<{
     subscription_status: string
     current_plan: string
     mp_preapproval_id: string | null
+    reminder_opt_in: boolean
   }>({
     subscription_status: 'free',
     current_plan: 'free',
     mp_preapproval_id: null,
+    reminder_opt_in: false,
   })
   const router = useRouter()
 
@@ -116,7 +119,7 @@ export default function DashboardPage() {
     const supabase = createSupabaseClient()
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('subscription_status,current_plan,mp_preapproval_id')
+      .select('subscription_status,current_plan,mp_preapproval_id,reminder_opt_in')
       .eq('user_id', userId)
       .maybeSingle()
 
@@ -125,6 +128,7 @@ export default function DashboardPage() {
         subscription_status: 'free',
         current_plan: 'free',
         mp_preapproval_id: null,
+        reminder_opt_in: false,
       })
       return
     }
@@ -133,6 +137,7 @@ export default function DashboardPage() {
       subscription_status: data.subscription_status || 'free',
       current_plan: data.current_plan || 'free',
       mp_preapproval_id: data.mp_preapproval_id || null,
+      reminder_opt_in: data.reminder_opt_in === true,
     })
   }, [])
 
@@ -310,11 +315,12 @@ export default function DashboardPage() {
         return
       }
 
-      setProfilePlan({
+      setProfilePlan((prev) => ({
+        ...prev,
         subscription_status: 'cancelled',
         current_plan: 'free',
         mp_preapproval_id: null,
-      })
+      }))
       setPlanMessage('Tu plan fue cancelado correctamente.')
       void fetchProfilePlan(user.id)
     } catch (error: any) {
@@ -322,6 +328,54 @@ export default function DashboardPage() {
       setPlanMessage(error?.message || 'No se pudo cancelar el plan.')
     } finally {
       setIsCancellingPlan(false)
+    }
+  }
+
+  const handleToggleReminderOptIn = async () => {
+    if (!user?.id || isSavingReminderOptIn) return
+
+    const nextValue = !profilePlan.reminder_opt_in
+    const previousValue = profilePlan.reminder_opt_in
+
+    try {
+      setIsSavingReminderOptIn(true)
+      setPlanMessage('')
+      setProfilePlan((prev) => ({
+        ...prev,
+        reminder_opt_in: nextValue,
+      }))
+
+      const supabase = createSupabaseClient()
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({
+          reminder_opt_in: nextValue,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id)
+
+      if (error) {
+        setProfilePlan((prev) => ({
+          ...prev,
+          reminder_opt_in: previousValue,
+        }))
+        setPlanMessage(error.message || 'No se pudo actualizar la preferencia.')
+        return
+      }
+
+      setPlanMessage(
+        nextValue
+          ? 'Recordatorios diarios activados.'
+          : 'Recordatorios diarios desactivados.'
+      )
+    } catch (error: any) {
+      setProfilePlan((prev) => ({
+        ...prev,
+        reminder_opt_in: previousValue,
+      }))
+      setPlanMessage(error?.message || 'No se pudo actualizar la preferencia.')
+    } finally {
+      setIsSavingReminderOptIn(false)
     }
   }
 
@@ -491,6 +545,36 @@ export default function DashboardPage() {
                           <span className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary dark:bg-[#5ce1e6]/15 dark:text-[#5ce1e6]">
                             {statusLabel[planStatus] || planStatus}
                           </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border border-border bg-muted/40 p-3 dark:border-white/10 dark:bg-white/5">
+                      <div className="flex items-start gap-3">
+                        {profilePlan.reminder_opt_in ? (
+                          <Bell className="mt-0.5 h-5 w-5 text-primary dark:text-[#5ce1e6]" />
+                        ) : (
+                          <BellOff className="mt-0.5 h-5 w-5 text-muted-foreground dark:text-white/60" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">Recordatorios diarios</p>
+                          <p className="mt-1 text-xs text-muted-foreground dark:text-white/70">
+                            {profilePlan.reminder_opt_in
+                              ? 'Te enviaremos WhatsApp si no registras movimientos en el dia.'
+                              : 'No recibiras recordatorios hasta que los actives.'}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleToggleReminderOptIn}
+                            disabled={isSavingReminderOptIn}
+                            className="mt-3 inline-flex w-full items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                          >
+                            {isSavingReminderOptIn
+                              ? 'Guardando...'
+                              : profilePlan.reminder_opt_in
+                                ? 'Desactivar recordatorios'
+                                : 'Activar recordatorios'}
+                          </button>
                         </div>
                       </div>
                     </div>

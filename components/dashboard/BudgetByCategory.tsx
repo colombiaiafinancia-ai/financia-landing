@@ -204,7 +204,7 @@ export const BudgetByCategory = ({
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold flex items-center text-slate-900 dark:text-white">
             <DollarSign className="mr-2 h-5 w-5" />
-            Presupuesto por Categorías
+            Progreso de presupuestos del mes
           </h3>
         </div>
 
@@ -229,7 +229,7 @@ export const BudgetByCategory = ({
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold flex items-center text-slate-900 dark:text-white">
             <DollarSign className="mr-2 h-5 w-5" />
-            Presupuesto por Categorías
+            Progreso de presupuestos del mes
           </h3>
         </div>
 
@@ -258,7 +258,7 @@ export const BudgetByCategory = ({
           bullets={[
             'Elige una categoría de gasto y el monto que quieres destinar.',
             'Pulsa «Agregar», completa categoría y valor; luego podrás editar o borrar.',
-            'La barra de progreso muestra cuánto llevas gastado frente al límite.',
+            'La barra de progreso muestra solo lo gastado en el mes actual frente al límite.',
           ]}
           onSkip={onSkipOnboarding}
         />
@@ -266,7 +266,7 @@ export const BudgetByCategory = ({
       <div className="flex items-center justify-between mb-4 relative">
         <h3 className="text-lg font-semibold flex items-center text-slate-900 dark:text-white">
           <DollarSign className="mr-2 h-5 w-5" />
-          Presupuesto por Categorías
+          Progreso de presupuestos del mes
         </h3>
 
         {refreshing && (
@@ -457,10 +457,10 @@ export const BudgetByCategory = ({
         <div className="text-center py-8">
           <TrendingUp className="mx-auto h-12 w-12 text-slate-400 dark:text-white/40 mb-4" />
           <p className="text-slate-700 dark:text-white/70 mb-4">
-            No tienes presupuestos configurados por categoría
+            No tienes presupuestos configurados para este mes
           </p>
           <p className="text-sm text-slate-600 dark:text-white/50">
-            Agrega presupuestos específicos para cada categoría de gasto
+            Agrega presupuestos por categoría para medir el progreso mensual
           </p>
         </div>
       ) : (
