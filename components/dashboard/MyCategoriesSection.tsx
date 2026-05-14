@@ -15,48 +15,62 @@ import { CreateCategoryDialog } from './CreateCategoryDialog'
 import { EditCategoryDialog, type EditableCategory } from './EditCategoryDialog'
 import { cn } from '@/lib/utils'
 
+type CategoryType = 'Gasto' | 'Ingreso'
+
 type CategoryRow = {
   id: string
   nombre: string
-  tipo: 'Gasto' | 'Ingreso'
+  tipo: CategoryType
   iconKey: string | null
 }
 
-function CategoryBadge({ tipo }: { tipo: 'Gasto' | 'Ingreso' }) {
+function TypePill({ tipo }: { tipo: CategoryType }) {
   return (
     <span
       className={cn(
-        'h-2.5 w-2.5 shrink-0 rounded-full',
+        'inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold leading-none',
         tipo === 'Gasto'
-          ? 'bg-red-500/90 ring-1 ring-red-500/30 dark:bg-red-400/90 dark:ring-red-400/35'
-          : 'bg-green-500/90 ring-1 ring-green-500/30 dark:bg-green-400/90 dark:ring-green-400/35'
+          ? 'bg-amber-600/15 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300'
+          : 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-200'
       )}
-      title={tipo}
-      aria-label={tipo}
-    />
+    >
+      {tipo}
+    </span>
   )
 }
 
-function DefaultCategoryChip({ c }: { c: CategoryRow }) {
+function DefaultCategoryCard({ c }: { c: CategoryRow }) {
   return (
     <div
       className={cn(
-        'flex min-h-[2rem] items-center gap-1 rounded-md border px-1.5 py-1',
+        'flex min-h-[2.75rem] items-center gap-2 rounded-lg border px-2.5 py-2',
+        'text-foreground transition-colors',
         c.tipo === 'Gasto'
-          ? 'border-red-500/35 bg-red-500/10 dark:border-red-400/35 dark:bg-red-400/12'
-          : 'border-green-500/35 bg-green-500/10 dark:border-green-400/35 dark:bg-green-400/12'
+          ? 'border-amber-600/30 bg-amber-600/10 hover:bg-amber-600/15 dark:border-amber-500/25 dark:bg-amber-500/10 dark:hover:bg-amber-500/15'
+          : 'border-emerald-600/25 bg-emerald-600/10 hover:bg-emerald-600/15 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:hover:bg-emerald-400/15',
+        'dark:text-white'
       )}
+      role="listitem"
+      title={c.nombre}
     >
-      <CategoryGlyph iconKey={c.iconKey} className="h-3 w-3 shrink-0" />
-      <span className="min-w-0 flex-1 truncate text-[10px] font-medium leading-tight sm:text-[11px]">
+      <div
+        className={cn(
+          'flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
+          c.tipo === 'Gasto'
+            ? 'bg-amber-600/15 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300'
+            : 'bg-emerald-600/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300'
+        )}
+      >
+        <CategoryGlyph iconKey={c.iconKey} className="h-3.5 w-3.5" />
+      </div>
+      <span className="min-w-0 flex-1 truncate text-xs font-medium leading-tight">
         {c.nombre}
       </span>
-      <CategoryBadge tipo={c.tipo} />
     </div>
   )
 }
 
-function OwnedCategoryChip({
+function OwnedCategoryCard({
   c,
   onEdit,
   onDelete,
@@ -68,35 +82,64 @@ function OwnedCategoryChip({
   return (
     <div
       className={cn(
-        'group flex min-h-[2rem] items-center gap-0.5 rounded-md border px-1 py-0.5',
+        'group flex min-h-[3.25rem] items-center gap-2 rounded-lg border px-2.5 py-2',
+        'text-foreground transition-colors',
         c.tipo === 'Gasto'
-          ? 'border-red-500/45 bg-red-500/15 dark:border-red-400/45 dark:bg-red-400/15'
-          : 'border-green-500/45 bg-green-500/15 dark:border-green-400/45 dark:bg-green-400/15'
+          ? 'border-amber-600/35 bg-amber-600/10 hover:bg-amber-600/15 dark:border-amber-500/30 dark:bg-amber-500/10 dark:hover:bg-amber-500/15'
+          : 'border-emerald-600/30 bg-emerald-600/10 hover:bg-emerald-600/15 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:hover:bg-emerald-400/15',
+        'dark:text-white'
       )}
+      role="listitem"
+      title={c.nombre}
     >
-      <CategoryGlyph iconKey={c.iconKey} className="ml-0.5 h-3 w-3 shrink-0" />
-      <span className="min-w-0 flex-1 truncate text-[10px] font-medium leading-tight sm:text-[11px]">
-        {c.nombre}
-      </span>
-      <CategoryBadge tipo={c.tipo} />
-      <div className="flex shrink-0 items-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+      <div
+        className={cn(
+          'flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
+          c.tipo === 'Gasto'
+            ? 'bg-amber-600/15 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300'
+            : 'bg-emerald-600/15 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300'
+        )}
+      >
+        <CategoryGlyph iconKey={c.iconKey} className="h-3.5 w-3.5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <span className="block truncate text-xs font-medium leading-tight">
+          {c.nombre}
+        </span>
+        <div className="mt-1">
+          <TypePill tipo={c.tipo} />
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
         <button
           type="button"
           onClick={onEdit}
-          className="rounded p-0.5 text-muted-foreground hover:bg-primary/15 hover:text-primary dark:text-white/50 dark:hover:text-[#5ce1e6]"
+          className="rounded-md p-1 text-muted-foreground hover:bg-primary/15 hover:text-primary dark:text-white/50 dark:hover:text-[#5ce1e6]"
           title="Editar"
+          aria-label={`Editar ${c.nombre}`}
         >
-          <Pencil className="h-3 w-3" />
+          <Pencil className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
           onClick={onDelete}
-          className="rounded p-0.5 text-muted-foreground hover:bg-destructive/15 hover:text-destructive dark:text-white/50 dark:hover:text-red-400"
+          className="rounded-md p-1 text-muted-foreground hover:bg-destructive/15 hover:text-destructive dark:text-white/50 dark:hover:text-red-400"
           title="Eliminar"
+          aria-label={`Eliminar ${c.nombre}`}
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
+    </div>
+  )
+}
+
+function EmptyCategoryState({ type }: { type: CategoryType }) {
+  return (
+    <div className="rounded-lg border border-dashed border-border bg-muted/25 px-3 py-4 text-center dark:border-white/10 dark:bg-white/[0.035]">
+      <p className="text-[11px] leading-snug text-muted-foreground dark:text-white/55">
+        Aun no tienes categorias personalizadas de {type.toLowerCase()}.
+      </p>
     </div>
   )
 }
@@ -110,6 +153,7 @@ export function MyCategoriesSection() {
     loading,
   } = useCategories()
   const [openCreate, setOpenCreate] = useState(false)
+  const [activeType, setActiveType] = useState<CategoryType>('Gasto')
   const [editingCategory, setEditingCategory] = useState<EditableCategory | null>(null)
   const [categoryPendingDelete, setCategoryPendingDelete] = useState<CategoryRow | null>(null)
   const [deletingCategory, setDeletingCategory] = useState(false)
@@ -123,7 +167,7 @@ export function MyCategoriesSection() {
       setCategoryPendingDelete(null)
     } catch (err) {
       setCategoryDeleteBlockedMessage(
-        err instanceof Error ? err.message : 'No se pudo eliminar la categoría.'
+        err instanceof Error ? err.message : 'No se pudo eliminar la categoria.'
       )
       setCategoryPendingDelete(null)
     } finally {
@@ -149,8 +193,17 @@ export function MyCategoriesSection() {
     [userOwnedCategories]
   )
 
-  const gridClass =
-    'grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2 2xl:grid-cols-4'
+  const visibleDefaultCategories = useMemo(
+    () => defaultCategories.filter((c) => c.tipo === activeType),
+    [activeType, defaultCategories]
+  )
+
+  const visibleOwnedCategories = useMemo(
+    () => sortedOwned.filter((c) => c.tipo === activeType),
+    [activeType, sortedOwned]
+  )
+
+  const gridClass = 'grid grid-cols-1 gap-2 sm:grid-cols-2 2xl:grid-cols-3'
 
   return (
     <div
@@ -165,7 +218,7 @@ export function MyCategoriesSection() {
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
             <Tags className="h-4 w-4 text-primary" />
           </div>
-          <h3 className="truncate text-xs font-semibold sm:text-sm">Mis categorías</h3>
+          <h3 className="truncate text-xs font-semibold sm:text-sm">Mis categorias</h3>
         </div>
         <Button size="sm" className="h-8 shrink-0 px-2 text-xs sm:px-3" onClick={() => setOpenCreate(true)}>
           <Plus className="mr-1 h-3 w-3" />
@@ -175,34 +228,62 @@ export function MyCategoriesSection() {
 
       <div className="min-h-0 flex-1 px-4 pb-4 sm:px-6 sm:pb-6">
         {loading ? (
-          <p className="text-center text-[11px] text-muted-foreground dark:text-white/60">Cargando…</p>
+          <p className="text-center text-[11px] text-muted-foreground dark:text-white/60">Cargando...</p>
         ) : (
-          <div className="flex max-h-[min(52vh,480px)] flex-col gap-3 overflow-y-auto pr-0.5 scrollbar-thin">
-            {defaultCategories.length > 0 && (
+          <div className="flex max-h-[min(52vh,480px)] flex-col gap-4 overflow-y-auto pr-0.5 scrollbar-thin">
+            <div className="grid grid-cols-2 rounded-lg border border-border bg-muted/35 p-1 dark:border-white/10 dark:bg-white/[0.045]">
+              {(['Gasto', 'Ingreso'] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setActiveType(type)}
+                  className={cn(
+                    'rounded-md px-3 py-2 text-xs font-semibold transition-colors',
+                    activeType === type && type === 'Gasto'
+                      ? 'bg-amber-600 text-white shadow-sm dark:bg-amber-400 dark:text-[#0D1D35]'
+                      : activeType === type
+                        ? 'bg-emerald-600 text-white shadow-sm dark:bg-emerald-400 dark:text-[#0D1D35]'
+                      : 'text-muted-foreground hover:text-foreground dark:text-white/60 dark:hover:text-white'
+                  )}
+                >
+                  {type === 'Gasto' ? 'Gastos' : 'Ingresos'}
+                </button>
+              ))}
+            </div>
+
+            {visibleDefaultCategories.length > 0 && (
               <div>
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground dark:text-white/45">
-                  Predeterminadas
-                </p>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground dark:text-white/45">
+                    Predeterminadas
+                  </p>
+                  <span className="text-[10px] text-muted-foreground dark:text-white/40">
+                    {visibleDefaultCategories.length}
+                  </span>
+                </div>
                 <div className={gridClass} role="list">
-                  {defaultCategories.map((c) => (
-                    <DefaultCategoryChip key={c.id} c={c} />
+                  {visibleDefaultCategories.map((c) => (
+                    <DefaultCategoryCard key={c.id} c={c} />
                   ))}
                 </div>
               </div>
             )}
 
             <div>
-              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground dark:text-white/45">
-                Personalizadas
-              </p>
-              {sortedOwned.length === 0 ? (
-                <p className="text-[10px] leading-snug text-muted-foreground dark:text-white/55">
-                  Crea tus propias categorías para organizar mejor tus finanzas.
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground dark:text-white/45">
+                  Personalizadas
                 </p>
+                <span className="text-[10px] text-muted-foreground dark:text-white/40">
+                  {visibleOwnedCategories.length}
+                </span>
+              </div>
+              {visibleOwnedCategories.length === 0 ? (
+                <EmptyCategoryState type={activeType} />
               ) : (
                 <div className={gridClass} role="list">
-                  {sortedOwned.map((c) => (
-                    <OwnedCategoryChip
+                  {visibleOwnedCategories.map((c) => (
+                    <OwnedCategoryCard
                       key={c.id}
                       c={c}
                       onEdit={() =>
@@ -223,7 +304,7 @@ export function MyCategoriesSection() {
         )}
       </div>
 
-      <CreateCategoryDialog open={openCreate} onOpenChange={setOpenCreate} defaultType="Gasto" />
+      <CreateCategoryDialog open={openCreate} onOpenChange={setOpenCreate} defaultType={activeType} />
       <EditCategoryDialog
         open={editingCategory !== null}
         onOpenChange={(open) => {
@@ -246,24 +327,24 @@ export function MyCategoriesSection() {
         >
           <DialogHeader>
             <DialogTitle className="text-center text-lg font-bold text-red-600 dark:text-red-400">
-              ¿Eliminar categoría?
+              Eliminar categoria
             </DialogTitle>
           </DialogHeader>
 
           {categoryPendingDelete && (
             <div className="space-y-4">
               <p className="text-center text-sm text-slate-700 dark:text-white/85">
-                ¿Estás seguro de que quieres eliminar la categoría{' '}
+                Seguro que quieres eliminar la categoria{' '}
                 <span className="font-semibold text-foreground dark:text-white">
-                  «{categoryPendingDelete.nombre}»
+                  {categoryPendingDelete.nombre}
                 </span>
-                ? Esta acción no se puede deshacer desde aquí.
+                ? Esta accion no se puede deshacer desde aqui.
               </p>
 
               <p className="text-center text-xs leading-relaxed text-slate-600 dark:text-white/65">
-                Las transacciones que usen esta categoría se moverán automáticamente a la categoría predeterminada{' '}
-                <span className="font-medium text-foreground dark:text-white/85">«Otros»</span>. Si tenías un
-                presupuesto asignado a esta categoría, se fusionará con el de «Otros».
+                Las transacciones que usen esta categoria se moveran automaticamente a la categoria predeterminada{' '}
+                <span className="font-medium text-foreground dark:text-white/85">Otros</span>. Si tenias un
+                presupuesto asignado a esta categoria, se fusionara con el de Otros.
               </p>
 
               <div
@@ -284,7 +365,7 @@ export function MyCategoriesSection() {
                 </p>
                 <p className="mt-1 text-sm text-slate-600 dark:text-white/65">{categoryPendingDelete.tipo}</p>
                 <p className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground dark:text-white/40">
-                  Categoría personalizada
+                  Categoria personalizada
                 </p>
               </div>
 
@@ -311,11 +392,11 @@ export function MyCategoriesSection() {
                   onClick={() => void confirmDeleteCategory()}
                 >
                   {deletingCategory ? (
-                    'Eliminando…'
+                    'Eliminando...'
                   ) : (
                     <>
                       <Trash2 className="h-4 w-4 shrink-0" />
-                      Sí, eliminar
+                      Si, eliminar
                     </>
                   )}
                 </Button>
@@ -339,7 +420,7 @@ export function MyCategoriesSection() {
         >
           <DialogHeader>
             <DialogTitle className="text-center text-lg font-bold text-red-600 dark:text-red-400">
-              No se puede eliminar la categoría
+              No se puede eliminar la categoria
             </DialogTitle>
           </DialogHeader>
 
