@@ -1,129 +1,198 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { AlertTriangle, Check, User, Mic, Camera, Target, Bot, TrendingUp, BarChart3 } from 'lucide-react'
+import { Check, Crown, Star, Zap } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+const plans = [
+  {
+    eyebrow: 'Mensual',
+    name: 'Plan Mensual',
+    price: '$3.50',
+    detail: 'USD / usuario / mes',
+    helper: 'Sin permanencia minima. Cancela cuando quieras.',
+    badge: null,
+    features: [
+      'Acceso completo a la plataforma',
+      'Sin compromiso de permanencia',
+      'Cobro mes a mes',
+      'Cancela cuando quieras',
+      'Soporte estandar',
+    ],
+    href: '/subscribe',
+    tone: 'standard',
+    icon: Star,
+  },
+  {
+    eyebrow: 'Anual',
+    name: 'Plan Anual 30% OFF',
+    price: '$29.40',
+    detail: 'USD / ano - $2.45/mes',
+    helper: 'Ahorras USD $12.60 al ano.',
+    badge: 'Mas popular',
+    features: [
+      '30% de descuento sobre el precio mensual',
+      'Un solo cobro al ano',
+      'Renovacion anual con el mismo descuento',
+      'Soporte estandar incluido',
+    ],
+    href: '/subscribe',
+    tone: 'annual',
+    icon: Zap,
+  },
+  {
+    eyebrow: 'Fundadores',
+    name: 'Founders 100',
+    price: '$2.46',
+    detail: 'USD / usuario / mes por 12 meses',
+    helper: 'Solo 100 cupos en 2026.',
+    badge: 'Cupo limitado',
+    features: [
+      'Precio especial de fundador por 12 meses',
+      'Acceso anticipado a nuevas funciones',
+      'Canal directo con el equipo de producto',
+      'Mencion en la comunidad de fundadores',
+    ],
+    href: '/subscribe',
+    tone: 'founder',
+    icon: Crown,
+  },
+  {
+    eyebrow: 'Fundadores anual',
+    name: 'Founder Anual',
+    price: '$27.06',
+    detail: 'USD / ano - pagas 11 meses',
+    helper: 'Un mes gratis frente al founder mensual.',
+    badge: '1 mes gratis',
+    features: [
+      '12 meses de acceso fundador',
+      'Un solo pago anual',
+      'Precio especial no renovable',
+      'Canal directo con el equipo de producto',
+    ],
+    href: '/subscribe',
+    tone: 'founder',
+    icon: Crown,
+  },
+] as const
+
+const comparisonRows = [
+  ['Precio para ti', '$3.50 / mes', '$29.40 / ano', '$2.46 / mes', '$27.06 / ano'],
+  ['Modalidad de pago', 'Mensual recurrente', 'Pago unico anual', 'Mensual recurrente', 'Pago unico anual'],
+  ['Ahorro vs mensual', '-', '30%', '~30%', '~35%'],
+  ['Duracion del beneficio', 'Indefinido', '12 meses renovable', '12 meses no renovable', '12 meses no renovable'],
+]
 
 const PricingSection = () => {
-  const features = [
-    { icon: User, text: '1 cuenta' },
-    { icon: Mic, text: 'Reconocimiento texto' },
-    { icon: Mic, text: 'Reconocimiento audio' },
-    { icon: Camera, text: 'Reconocimiento imagen' },
-    { icon: Target, text: '1 presupuesto' },
-    { icon: Bot, text: '5 gastos diarios vía bot' },
-    { icon: BarChart3, text: 'Visualización de patrones gráficos' },
-    { icon: TrendingUp, text: 'Asistente financiero' }
-  ]
-
   return (
     <section id="plan" className="py-20 bg-gradient-to-br from-[#0D1D35] to-[#0D1D35]/90">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="mb-12 text-center"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-            Comienza tu{' '}
-            <span className="bg-gradient-to-r from-[#5ce1e6] to-[#4dd0e1] bg-clip-text text-transparent">
-              transformación financiera
-            </span>
+          <h2 className="text-4xl font-bold text-white md:text-5xl">
+            Elige el plan que mejor se adapta a ti
           </h2>
-          <p className="text-xl text-white/80 max-w-2xl mx-auto">
-            Únete al lanzamiento exclusivo y sé de los primeros en experimentar FinancIA{' '}
-            <span className="border-b-2 border-[#5ce1e6] text-[#5ce1e6]">totalmente gratis</span>
+          <p className="mx-auto mt-4 max-w-2xl text-sm text-white/70 sm:text-base">
+            Sin permanencia minima en el plan mensual. Cancela cuando quieras. Soporte y actualizaciones incluidos.
           </p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          viewport={{ once: true }}
-          className="max-w-md mx-auto"
-        >
-          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden relative">
-            {/* Header del plan */}
-            <div className="bg-gradient-to-r from-[#5ce1e6] to-[#4dd0e1] p-8 text-center text-[#0D1D35]">
-              <h3 className="text-2xl font-bold mb-2">Plan Lanzamiento</h3>
-              <p className="text-[#0D1D35]/70 text-sm">
-                Acceso exclusivo para early adopters
-              </p>
-            </div>
-
-            {/* Precio con blur y advertencia */}
-            <div className="p-8 text-center border-b border-gray-100">
-              <div className="relative inline-block">
-                <div className="text-6xl font-black bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent animate-pulse select-none tracking-wider">
-                  OFF
-                </div>
-                <div className="absolute -inset-2 bg-gradient-to-r from-red-500/20 via-orange-500/20 to-yellow-500/20 blur-lg rounded-lg animate-pulse"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <AlertTriangle className="w-8 h-8 text-amber-500 animate-bounce" />
-                </div>
-              </div>
-              <p className="text-sm text-gray-500 mt-4 font-light animate-pulse">
-                Algo especial se aproxima...
-              </p>
-            </div>
-
-            {/* Features */}
-            <div className="p-8">
-              <h4 className="font-semibold text-gray-900 mb-6 text-center">
-                Características incluidas:
-              </h4>
-              <ul className="space-y-4">
-                {features.map((feature, index) => (
-                  <motion.li
-                    key={index}
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    viewport={{ once: true }}
-                    className="flex items-center text-gray-700"
-                  >
-                    <div className="flex-shrink-0 w-5 h-5 bg-[#5ce1e6]/20 rounded-full flex items-center justify-center mr-3">
-                      <Check className="w-3 h-3 text-[#5ce1e6]" />
-                    </div>
-                    <feature.icon className="w-4 h-4 text-gray-500 mr-2" />
-                    <span className="text-sm">{feature.text}</span>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-
-            {/* CTA Button */}
-            <div className="p-8 pt-0">
-              <motion.a
-                href="/register"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full bg-gradient-to-r from-[#5ce1e6] to-[#4dd0e1] hover:from-[#5ce1e6]/90 hover:to-[#4dd0e1]/90 text-[#0D1D35] font-semibold py-4 px-6 rounded-xl transition duration-300 shadow-lg hover:shadow-xl block text-center"
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {plans.map((plan, index) => {
+            const Icon = plan.icon
+            return (
+              <motion.article
+                key={plan.name}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: index * 0.08 }}
+                viewport={{ once: true }}
+                className={cn(
+                  'relative flex min-h-[31rem] flex-col rounded-2xl border p-5 shadow-xl',
+                  plan.tone === 'founder'
+                    ? 'border-amber-400 bg-amber-50 text-[#0D1D35]'
+                    : plan.tone === 'annual'
+                      ? 'border-[#5ce1e6] bg-[#5ce1e6]/10 text-white'
+                      : 'border-white/15 bg-white text-[#0D1D35]'
+                )}
               >
-                Chatea ya con FinancIA
-              </motion.a>
-            </div>
-          </div>
-        </motion.div>
+                {plan.badge && (
+                  <span
+                    className={cn(
+                      'absolute right-4 top-4 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide',
+                      plan.tone === 'founder'
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-[#5ce1e6] text-[#0D1D35]'
+                    )}
+                  >
+                    {plan.badge}
+                  </span>
+                )}
 
-        {/* Disclaimer */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          viewport={{ once: true }}
-          className="text-center mt-8"
-        >
-          <p className="text-xs text-white/40 font-light max-w-md mx-auto">
-            * Los precios y características pueden estar sujetos a cambios durante la fase de lanzamiento. 
-            Los early adopters tendrán acceso a condiciones preferenciales.
-          </p>
-        </motion.div>
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-[#0D1D35]/10">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-wide opacity-70">{plan.eyebrow}</p>
+                <h3 className="mt-1 text-xl font-bold">{plan.name}</h3>
+                <p className="mt-3 text-4xl font-black">{plan.price}</p>
+                <p className="mt-1 text-xs opacity-70">{plan.detail}</p>
+                <p className="mt-3 rounded-md bg-[#0D1D35]/8 px-2 py-1.5 text-xs font-semibold">
+                  {plan.helper}
+                </p>
+
+                <ul className="mt-5 flex-1 space-y-3 text-sm">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex gap-2">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <motion.a
+                  href={plan.href}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={cn(
+                    'mt-6 block w-full rounded-lg px-4 py-3 text-center text-sm font-bold transition',
+                    plan.tone === 'founder'
+                      ? 'bg-amber-500 text-white hover:bg-amber-600'
+                      : 'bg-[#5ce1e6] text-[#0D1D35] hover:bg-[#4dd0e1]'
+                  )}
+                >
+                  Elegir plan
+                </motion.a>
+              </motion.article>
+            )
+          })}
+        </div>
+
+        <div className="mt-10 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+          <div className="grid grid-cols-5 bg-[#5ce1e6]/15 px-4 py-3 text-xs font-bold text-white">
+            <span>Comparativo</span>
+            <span>Mensual</span>
+            <span>Anual</span>
+            <span>Founders</span>
+            <span>Founder anual</span>
+          </div>
+          {comparisonRows.map((row) => (
+            <div key={row[0]} className="grid grid-cols-5 border-t border-white/10 px-4 py-3 text-xs text-white/80">
+              {row.map((cell, index) => (
+                <span key={`${row[0]}-${cell}`} className={index === 0 ? 'font-semibold text-white' : ''}>
+                  {cell}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   )
 }
 
-export default PricingSection 
+export default PricingSection

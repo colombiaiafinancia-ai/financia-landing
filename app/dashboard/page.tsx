@@ -463,12 +463,14 @@ export default function DashboardPage() {
   const currentPlan = profilePlan.current_plan || 'free'
   const hasPaidPlan =
     currentPlan !== 'free' && (planStatus === 'active' || planStatus === 'pending')
-  const planLabel =
-    currentPlan === 'free'
-      ? 'Plan gratis'
-      : currentPlan === 'financia_pro_monthly'
-        ? 'Financia Pro mensual'
-        : currentPlan
+  const planNames: Record<string, string> = {
+    free: 'Plan gratis',
+    financia_monthly: 'Plan mensual',
+    financia_annual: 'Plan anual 30% OFF',
+    financia_founder_monthly: 'Founders 100',
+    financia_founder_annual: 'Founder anual',
+  }
+  const planLabel = planNames[currentPlan] || currentPlan
   const statusLabel: Record<string, string> = {
     free: 'Gratis',
     pending: 'Pendiente',

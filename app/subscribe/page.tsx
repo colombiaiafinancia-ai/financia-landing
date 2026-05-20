@@ -1,8 +1,14 @@
-import SubscriptionCheckout from "@/components/subscriptions/SubscriptionCheckout";
+import SubscriptionCheckout, { type SubscriptionPlanOption } from "@/components/subscriptions/SubscriptionCheckout";
 import { createSupabaseClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
-const planKey = "financia_pro_monthly";
+const planOrder = [
+  "financia_test_weekly",
+  "financia_monthly",
+  "financia_annual",
+  "financia_founder_monthly",
+  "financia_founder_annual",
+];
 
 export default async function SubscribePage() {
   const supabase = await createSupabaseClient();
@@ -17,25 +23,34 @@ export default async function SubscribePage() {
   const payerEmail =
     process.env.MERCADOPAGO_TEST_PAYER_EMAIL?.trim() || user.email;
 
-  const { data: plan, error: planError } = await supabase
+  const { data: plans, error: plansError } = await supabase
     .from("subscription_plans")
-    .select("amount,currency_id")
-    .eq("plan_key", planKey)
-    .eq("is_active", true)
-    .single();
+    .select("plan_key,name,description,amount,currency_id,frequency,frequency_type")
+    .in("plan_key", planOrder)
+    .eq("is_active", true);
 
-  if (planError || !plan) {
-    throw new Error("No se encontro el plan activo para la suscripcion");
+  if (plansError || !plans || plans.length === 0) {
+    throw new Error("No se encontraron planes activos para la suscripcion");
   }
 
+  const orderedPlans = [...plans]
+    .sort((a, b) => planOrder.indexOf(a.plan_key) - planOrder.indexOf(b.plan_key))
+    .map((plan) => ({
+      planKey: plan.plan_key,
+      name: plan.name,
+      description: plan.description,
+      amount: Number(plan.amount),
+      currencyId: plan.currency_id,
+      frequency: Number(plan.frequency),
+      frequencyType: plan.frequency_type,
+    })) satisfies SubscriptionPlanOption[];
+
   return (
-    <main className="mx-auto max-w-xl p-6">
+    <main className="min-h-screen bg-[#0D1D35] px-4 py-8 text-white sm:px-6 lg:px-8">
       <SubscriptionCheckout
         userId={user.id}
         payerEmail={payerEmail}
-        planKey={planKey}
-        amount={Number(plan.amount)}
-        currencyId={plan.currency_id}
+        plans={orderedPlans}
       />
     </main>
   );
