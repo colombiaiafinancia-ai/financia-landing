@@ -1,106 +1,88 @@
 'use client'
 
-import { useRef, useEffect } from 'react';
-import ChatExample from './ChatExample';
+import { useRef, useEffect } from 'react'
+import ChatExample from './ChatExample'
 
 const CHAT_EXAMPLES = [
   {
     messages: [
-      {
-        isUser: true,
-        text: "Gasté $40,000 en el lavado del carro",
-        time: "16:12",
-      },
+      { isUser: true, text: 'Gasté $40,000 en el lavado del carro', time: '16:12' },
       {
         isUser: false,
-        text: "👍 Confirma tu transacción:\nMonto: $40,000 COP\nCategoría: Auto 🚗\nDescripción: Servicio Auto\nCuenta: Bancolombia 🏦",
-        time: "16:12",
+        text: '👍 Confirma tu transacción:\nMonto: $40,000 COP\nCategoría: Auto 🚗\nDescripción: Servicio Auto\nCuenta: Bancolombia 🏦',
+        time: '16:12',
       },
+      { isUser: true, text: 'Confirmar ✅', time: '16:13' },
+    ],
+  },
+  {
+    messages: [
+      { isUser: true, text: '¿Qué tal estuvo mi fin de semana en gastos? 😅', time: '15:44' },
       {
-        isUser: true,
-        text: "Confirmar ✅",
-        time: "16:13",
+        isUser: false,
+        text: '🎉 Wey, tu fin de semana costó $200,000 COP en fiestas... Te recomiendo que le bajes un poquito 😅 🎯 ¿Quieres quebrar?',
+        time: '15:45',
       },
     ],
   },
   {
     messages: [
-      {
-        isUser: true,
-        text: "¿Qué tal estuvo mi fin de semana en gastos? 😅",
-        time: "15:44",
-      },
+      { isUser: true, text: '¿Por qué gasto tanto en transporte? 🚗 💸', time: '18:30' },
       {
         isUser: false,
-        text: "🎉 Wey, tu fin de semana costó $200,000 COP en fiestas... Te recomiendo que le bajes un poquito 😅 🎯 ¿Quieres quebrar?",
-        time: "15:45",
+        text: '🚗 Hermano, gastaste $104,000 COP en Ubers porque seguiste "durmiendo accidentalmente" 😴\nTe recomiendo poner 5 alarmas o comprar una bici 🚲',
+        time: '18:30',
       },
     ],
   },
-  {
-    messages: [
-      {
-        isUser: true,
-        text: "¿Por qué gasto tanto en transporte? 🚗 💸",
-        time: "18:30",
-      },
-      {
-        isUser: false,
-        text: "🚗 Hermano, gastaste $104,000 COP en Ubers porque seguiste \"durmiendo accidentalmente\" 😴\nTe recomiendo poner 5 alarmas o comprar una bici 🚲",
-        time: "18:30",
-      },
-    ],
-  },
-];
+]
 
 const ChatCarousel = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const scrollElement = scrollRef.current;
-    if (!scrollElement) return;
+    const scrollElement = scrollRef.current
+    if (!scrollElement) return
 
     const scroll = () => {
-      const maxScroll = scrollElement.scrollWidth - scrollElement.clientWidth;
-      let currentScroll = scrollElement.scrollLeft;
-
-      currentScroll += 1;
+      const maxScroll = scrollElement.scrollWidth - scrollElement.clientWidth
+      let currentScroll = scrollElement.scrollLeft
+      currentScroll += 1
       if (currentScroll >= maxScroll) {
-        currentScroll = 0;
+        currentScroll = 0
       }
+      scrollElement.scrollLeft = currentScroll
+    }
 
-      scrollElement.scrollLeft = currentScroll;
-    };
-
-    const intervalId = setInterval(scroll, 40);
-
-    return () => clearInterval(intervalId);
-  }, []);
+    const intervalId = setInterval(scroll, 40)
+    return () => clearInterval(intervalId)
+  }, [])
 
   return (
-    <section className="bg-[#0D1D35] py-8 md:py-16">
-      <div className="container mx-auto px-4">
-        <h2 className="text-2xl md:text-4xl font-bold text-white text-center mb-8 md:mb-12 px-4">
-          Imagina tener un amigo que{' '}
-          <span className="text-[#5ce1e6]">siempre cuida tu dinero</span>
-        </h2>
-        
-        <div 
-          ref={scrollRef}
-          className="flex overflow-x-hidden gap-3 md:gap-4 py-4 mb-8 md:mb-12 px-2 md:px-0"
-          style={{ maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}
-        >
-          {[...CHAT_EXAMPLES, ...CHAT_EXAMPLES, ...CHAT_EXAMPLES].map((example, index) => (
-            <ChatExample key={index} messages={example.messages} />
-          ))}
-        </div>
+    <section className="px-[8%] py-16 text-center md:py-20" style={{ background: '#0d1a2e' }}>
+      <h2 className="font-sora mb-10 text-2xl font-extrabold tracking-tight text-slate-100 sm:text-3xl md:mb-12 md:text-[32px]">
+        Imagina tener un amigo que <span className="text-[#06B6D4]">siempre cuida tu dinero</span>
+      </h2>
 
-        <p className="text-white/80 text-center max-w-4xl mx-auto text-sm md:text-lg leading-relaxed px-4">
-          ¿Necesitas un consejo rápido? Pregúntale. ¿Quieres saber dónde se fue tu último gasto? Él lo sabe. Es la tranquilidad de tener un experto que te acompaña en cada decisión financiera, sin juicios y siempre listo para ayudarte.
-        </p>
+      <div
+        ref={scrollRef}
+        className="mb-8 flex overflow-x-hidden gap-3 px-2 py-4 md:mb-12 md:gap-4 md:px-0"
+        style={{
+          maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)',
+        }}
+      >
+        {[...CHAT_EXAMPLES, ...CHAT_EXAMPLES, ...CHAT_EXAMPLES].map((example, index) => (
+          <ChatExample key={index} messages={example.messages} />
+        ))}
       </div>
-    </section>
-  );
-};
 
-export default ChatCarousel; 
+      <p className="mx-auto max-w-[580px] text-sm leading-relaxed text-slate-400 sm:text-[15px]">
+        ¿Necesitas un consejo rápido? Pregúntale. ¿Quieres saber dónde se fue tu último gasto? Él lo sabe. Es
+        la tranquilidad de tener un experto que te acompaña en cada decisión financiera, sin juicios y siempre
+        listo para ayudarte.
+      </p>
+    </section>
+  )
+}
+
+export default ChatCarousel

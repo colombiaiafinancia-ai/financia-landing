@@ -11,7 +11,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Roboto', 'sans-serif'],
+        sans: ['var(--font-inter)', 'Roboto', 'sans-serif'],
+        sora: ['var(--font-sora)', 'Sora', 'sans-serif'],
       },
       colors: {
         primary: '#5ce1e6',

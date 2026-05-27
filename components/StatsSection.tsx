@@ -1,125 +1,194 @@
 'use client'
 
+import type { ReactNode } from 'react'
+import { BookOpen, Home, PiggyBank, Truck, UtensilsCrossed } from 'lucide-react'
+
+type CategoryTileProps = {
+  bg: string
+  icon: ReactNode
+  name: string
+  amount: string
+  amountSize: number
+  pct: string
+  col: string
+  row: string
+}
+
+const CategoryTile = ({ bg, icon, name, amount, amountSize, pct, col, row }: CategoryTileProps) => (
+  <div
+    className="flex cursor-default flex-col justify-between overflow-hidden rounded-[14px] p-3 transition-[filter] hover:brightness-110 sm:p-4"
+    style={{
+      gridColumn: col,
+      gridRow: row,
+      background: bg,
+    }}
+  >
+    <div className="flex items-start justify-between">
+      <span className="text-xs font-semibold text-white/90 sm:text-[13px]">{name}</span>
+      <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/20">
+        {icon}
+      </div>
+    </div>
+    <div>
+      <div className="font-sora font-extrabold text-white" style={{ fontSize: amountSize }}>
+        {amount}
+      </div>
+      <div className="text-xs text-white/60">{pct}</div>
+    </div>
+  </div>
+)
+
 const StatsSection = () => {
   return (
-    <section className="bg-[#0D1D35] py-8 md:py-12">
-      <div className="container mx-auto px-4">
-        <h2 className="text-2xl md:text-4xl font-bold text-center mb-8 md:mb-16">
-          <span className="text-[#5ce1e6]">Descubre patrones</span>
-          <span className="text-white">, no solo números.</span>
+    <section className="relative overflow-hidden px-[8%] py-14 md:py-[72px]" style={{ background: '#0d1a2e' }}>
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 70% 60% at 80% 50%, rgba(6,182,212,0.06) 0%, transparent 65%)',
+        }}
+      />
+
+      <div className="relative z-[1] mb-8 text-center md:mb-10">
+        <h2 className="font-sora text-2xl font-extrabold tracking-tight text-slate-100 sm:text-3xl md:text-[34px]">
+          <span className="text-[#06B6D4]">Descubre patrones</span>, no solo números.
         </h2>
+        <p className="mx-auto mt-4 max-w-[580px] text-sm leading-relaxed text-slate-500 sm:text-[15px]">
+          Olvídate de las hojas de cálculo. Aquí puedes ver tus gastos por categoría, tus ingresos a lo largo
+          del tiempo o el impacto de tus hábitos en gráficas que realmente te hablan.
+        </p>
+      </div>
 
-        <div className="grid lg:grid-cols-2 gap-6 md:gap-8">
-          {/* Resumen de Gastos Card */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl md:rounded-3xl p-6 md:p-8">
-            <h3 className="text-xl md:text-2xl font-bold text-white mb-6 md:mb-8">Resumen de Gastos</h3>
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
-              <div className="bg-[#5ce1e6]/20 rounded-xl md:rounded-2xl p-4 md:p-6">
-                <p className="text-[#5ce1e6] text-xs md:text-sm mb-1 md:mb-2">Hoy</p>
-                <p className="text-white text-xl md:text-3xl font-bold leading-tight">$85.000</p>
-                <p className="text-[#5ce1e6]/80 text-xs md:text-sm">COP</p>
+      <div className="relative z-[1] flex flex-col gap-5 lg:flex-row lg:gap-5">
+        <div
+          className="flex-1 rounded-[20px] border border-white/[0.07] p-5 sm:p-6"
+          style={{ background: 'rgba(255,255,255,0.03)' }}
+        >
+          <h3 className="font-sora mb-4 mt-0 text-xs font-bold uppercase tracking-wide text-slate-400">
+            Resumen de Gastos
+          </h3>
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-2.5">
+            {[
+              {
+                label: 'Hoy',
+                value: '$85.000',
+                bg: 'rgba(6,182,212,0.15)',
+                border: 'rgba(6,182,212,0.25)',
+                labelColor: '#06B6D4',
+              },
+              {
+                label: 'Esta Semana',
+                value: '$420.000',
+                bg: 'rgba(139,92,246,0.15)',
+                border: 'rgba(139,92,246,0.25)',
+                labelColor: '#8b5cf6',
+              },
+              {
+                label: 'Este Mes',
+                value: '$1.850.000',
+                bg: 'rgba(168,85,247,0.15)',
+                border: 'rgba(168,85,247,0.25)',
+                labelColor: '#a855f7',
+              },
+              {
+                label: 'Total',
+                value: '$5.240.000',
+                bg: 'rgba(100,116,139,0.15)',
+                border: 'rgba(100,116,139,0.25)',
+                labelColor: '#94a3b8',
+              },
+            ].map((tile) => (
+              <div
+                key={tile.label}
+                className="flex flex-col gap-1 rounded-[14px] p-4"
+                style={{ background: tile.bg, border: `1px solid ${tile.border}` }}
+              >
+                <span
+                  className="text-[10px] font-semibold uppercase tracking-wide"
+                  style={{ color: tile.labelColor }}
+                >
+                  {tile.label}
+                </span>
+                <span className="font-sora text-xl font-extrabold text-slate-100 sm:text-[22px]">
+                  {tile.value}
+                </span>
+                <span className="text-[10px] text-slate-600">COP</span>
               </div>
-              <div className="bg-blue-500/20 rounded-xl md:rounded-2xl p-4 md:p-6">
-                <p className="text-blue-300 text-xs md:text-sm mb-1 md:mb-2">Esta Semana</p>
-                <p className="text-white text-xl md:text-3xl font-bold leading-tight">$420.000</p>
-                <p className="text-blue-300/80 text-xs md:text-sm">COP</p>
-              </div>
-              <div className="bg-purple-500/20 rounded-xl md:rounded-2xl p-4 md:p-6">
-                <p className="text-purple-300 text-xs md:text-sm mb-1 md:mb-2">Este Mes</p>
-                <p className="text-white text-xl md:text-3xl font-bold leading-tight">$1.850.000</p>
-                <p className="text-purple-300/80 text-xs md:text-sm">COP</p>
-              </div>
-              <div className="bg-gray-500/20 rounded-xl md:rounded-2xl p-4 md:p-6">
-                <p className="text-gray-300 text-xs md:text-sm mb-1 md:mb-2">Total</p>
-                <p className="text-white text-xl md:text-3xl font-bold leading-tight">$5.240.000</p>
-                <p className="text-gray-300/80 text-xs md:text-sm">COP</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Mapa de Gastos Card */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl md:rounded-3xl p-6 md:p-8">
-            <h3 className="text-xl md:text-2xl font-bold text-white mb-6 md:mb-8">Mapa de Gastos por Categoría</h3>
-            <div className="grid grid-cols-4 md:grid-cols-6 gap-2 md:gap-4 h-[280px] md:h-[calc(100%-4rem)]">
-              {/* Comida - 36.7% */}
-              <div className="col-span-2 md:col-span-4 row-span-2 bg-red-500/80 rounded-xl md:rounded-2xl p-3 md:p-4 flex flex-col justify-between">
-                <div className="flex items-center gap-1 md:gap-2">
-                  <span className="text-white text-sm md:text-base">🍔</span>
-                  <span className="text-white text-xs md:text-sm font-medium">Comida</span>
-                </div>
-                <div>
-                  <p className="text-white text-lg md:text-2xl font-bold leading-tight">$680.000</p>
-                  <p className="text-white/80 text-xs md:text-sm">36.7%</p>
-                </div>
-              </div>
-
-              {/* Vivienda - 18.5% */}
-              <div className="col-span-2 row-span-2 bg-blue-500/80 rounded-xl md:rounded-2xl p-3 md:p-4 flex flex-col justify-between">
-                <div className="flex items-center gap-1 md:gap-2">
-                  <span className="text-white text-sm md:text-base">🏠</span>
-                  <span className="text-white text-xs md:text-sm font-medium">Vivienda</span>
-                </div>
-                <div>
-                  <p className="text-white text-sm md:text-lg font-bold leading-tight">$342.000</p>
-                  <p className="text-white/80 text-xs md:text-sm">18.5%</p>
-                </div>
-              </div>
-
-              {/* Transporte - 15.1% */}
-              <div className="col-span-1 md:col-span-2 bg-cyan-500/80 rounded-xl md:rounded-2xl p-3 md:p-4 flex flex-col justify-between">
-                <div className="flex items-center gap-1 md:gap-2">
-                  <span className="text-white text-sm md:text-base">🚗</span>
-                  <span className="text-white text-xs md:text-sm font-medium">Transporte</span>
-                </div>
-                <div>
-                  <p className="text-white text-sm md:text-lg font-bold leading-tight">$280.000</p>
-                  <p className="text-white/80 text-xs md:text-sm">15.1%</p>
-                </div>
-              </div>
-
-              {/* Educación - 12.8% */}
-              <div className="col-span-1 md:col-span-2 bg-amber-500/80 rounded-xl md:rounded-2xl p-3 md:p-4 flex flex-col justify-between">
-                <div className="flex items-center gap-1 md:gap-2">
-                  <span className="text-white text-sm md:text-base">📚</span>
-                  <span className="text-white text-xs md:text-sm font-medium">Educación</span>
-                </div>
-                <div>
-                  <p className="text-white text-sm md:text-lg font-bold leading-tight">$237.000</p>
-                  <p className="text-white/80 text-xs md:text-sm">12.8%</p>
-                </div>
-              </div>
-
-              {/* Entretenimiento y Ocio - 10.2% */}
-              <div className="col-span-1 bg-purple-500/80 rounded-xl md:rounded-2xl p-3 md:p-4 flex flex-col justify-between">
-                <div className="flex items-center gap-1 md:gap-2">
-                  <span className="text-white text-sm md:text-base">🎮</span>
-                </div>
-                <div>
-                  <p className="text-white text-xs md:text-sm font-bold leading-tight">$189.000</p>
-                  <p className="text-white/80 text-xs md:text-sm">10.2%</p>
-                </div>
-              </div>
-
-              {/* Salud - 8.1% */}
-              <div className="col-span-1 bg-teal-500/80 rounded-xl md:rounded-2xl p-3 md:p-4 flex flex-col justify-between">
-                <div className="flex items-center gap-1 md:gap-2">
-                  <span className="text-white text-sm md:text-base">💊</span>
-                </div>
-                <div>
-                  <p className="text-white text-xs md:text-sm font-bold leading-tight">$150.000</p>
-                  <p className="text-white/80 text-xs md:text-sm">8.1%</p>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
 
-        <p className="text-white/70 text-center mt-8 md:mt-12 max-w-3xl mx-auto text-sm md:text-base leading-relaxed px-4">
-          Olvídate de las hojas de cálculo confusas. Aquí puedes ver tus gastos por categoría, tus ingresos a lo largo del tiempo o el impacto de tus hábitos en gráficas que realmente te hablan.
-        </p>
+        <div
+          className="flex-[1.5] rounded-[20px] border border-white/[0.07] p-5 sm:p-6"
+          style={{ background: 'rgba(255,255,255,0.03)' }}
+        >
+          <h3 className="font-sora mb-4 mt-0 text-xs font-bold uppercase tracking-wide text-slate-400">
+            Mapa de Gastos por Categoría
+          </h3>
+          <div className="overflow-x-auto">
+          <div
+            className="grid min-w-[320px] gap-2"
+            style={{
+              gridTemplateColumns: '1.7fr 1fr 1.25fr',
+              gridTemplateRows: '120px 95px',
+            }}
+          >
+            <CategoryTile
+              bg="#d94f4f"
+              icon={<UtensilsCrossed size={16} stroke="#fff" strokeWidth={3} fill="none" />}
+              name="Comida"
+              amount="$680.000"
+              amountSize={24}
+              pct="36.7%"
+              col="1"
+              row="1"
+            />
+            <CategoryTile
+              bg="#4f7fe0"
+              icon={<Home size={16} stroke="#fff" strokeWidth={3} fill="none" />}
+              name="Vivienda"
+              amount="$342.000"
+              amountSize={20}
+              pct="18.5%"
+              col="2 / 4"
+              row="1"
+            />
+            <CategoryTile
+              bg="#12a89a"
+              icon={<Truck size={16} stroke="#fff" strokeWidth={3} fill="none" />}
+              name="Transporte"
+              amount="$280.000"
+              amountSize={18}
+              pct="15.1%"
+              col="1"
+              row="2"
+            />
+            <CategoryTile
+              bg="#e8960a"
+              icon={<BookOpen size={16} stroke="#fff" strokeWidth={3} fill="none" />}
+              name="Educación"
+              amount="$237.000"
+              amountSize={18}
+              pct="12.8%"
+              col="2"
+              row="2"
+            />
+            <CategoryTile
+              bg="#7c4fd6"
+              icon={<PiggyBank size={16} stroke="#fff" strokeWidth={3} fill="none" />}
+              name="Ahorro"
+              amount="$189.000"
+              amountSize={16}
+              pct="10.2%"
+              col="3"
+              row="2"
+            />
+          </div>
+          </div>
+        </div>
       </div>
     </section>
-  );
-};
+  )
+}
 
-export default StatsSection; 
+export default StatsSection

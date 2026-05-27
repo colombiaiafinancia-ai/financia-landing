@@ -2,13 +2,9 @@ import SubscriptionCheckout, { type SubscriptionPlanOption } from "@/components/
 import { createSupabaseClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
-const planOrder = [
-  "financia_test_weekly",
-  "financia_monthly",
-  "financia_annual",
-  "financia_founder_monthly",
-  "financia_founder_annual",
-];
+import { SUBSCRIBE_PLAN_KEYS } from "@/lib/pricing-plans";
+
+const planOrder = ["financia_test_weekly", ...SUBSCRIBE_PLAN_KEYS];
 
 export default async function SubscribePage() {
   const supabase = await createSupabaseClient();
@@ -46,7 +42,10 @@ export default async function SubscribePage() {
     })) satisfies SubscriptionPlanOption[];
 
   return (
-    <main className="min-h-screen bg-[#0D1D35] px-4 py-8 text-white sm:px-6 lg:px-8">
+    <main
+      className="min-h-screen px-[6%] py-10 text-white sm:py-12"
+      style={{ background: "#0d1a2e" }}
+    >
       <SubscriptionCheckout
         userId={user.id}
         payerEmail={payerEmail}

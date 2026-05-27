@@ -3,14 +3,14 @@
 import { useEffect, useState } from 'react'
 
 interface Message {
-  isUser: boolean;
-  text: string;
-  time: string;
-  emoji?: string;
+  isUser: boolean
+  text: string
+  time: string
+  emoji?: string
 }
 
 interface ChatExampleProps {
-  messages: Message[];
+  messages: Message[]
 }
 
 const ChatExample = ({ messages }: ChatExampleProps) => {
@@ -18,32 +18,29 @@ const ChatExample = ({ messages }: ChatExampleProps) => {
   const [isTyping, setIsTyping] = useState(false)
 
   useEffect(() => {
-    let isMounted = true;
+    let isMounted = true
 
     const showMessages = async () => {
       setVisibleMessages([])
-      
+
       for (let i = 0; i < messages.length; i++) {
-        if (!isMounted) return;
-        
+        if (!isMounted) return
+
         if (!messages[i].isUser) {
           setIsTyping(true)
-          // Tiempo de escritura basado en la longitud del mensaje (mínimo 1s, máximo 2.5s)
-          await new Promise(resolve => 
+          await new Promise((resolve) =>
             setTimeout(resolve, Math.min(Math.max(messages[i].text.length * 30, 1000), 2500))
           )
-          if (!isMounted) return;
+          if (!isMounted) return
           setIsTyping(false)
-          // Pequeña pausa antes de mostrar el mensaje
-          await new Promise(resolve => setTimeout(resolve, 300))
+          await new Promise((resolve) => setTimeout(resolve, 300))
         }
-        
-        if (!isMounted) return;
-        setVisibleMessages(prev => [...prev, messages[i]])
-        
-        // Pausa entre mensajes
+
+        if (!isMounted) return
+        setVisibleMessages((prev) => [...prev, messages[i]])
+
         if (i < messages.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          await new Promise((resolve) => setTimeout(resolve, 1000))
         }
       }
     }
@@ -58,52 +55,82 @@ const ChatExample = ({ messages }: ChatExampleProps) => {
   }, [messages])
 
   return (
-    <div className="bg-[#0D1D35]/50 backdrop-blur-sm rounded-xl md:rounded-2xl p-3 md:p-4 shadow-xl w-[280px] md:w-[300px] mx-1 md:mx-2 flex-shrink-0 border border-white/10">
-      {/* Header del chat */}
-      <div className="flex items-center space-x-2 md:space-x-3 mb-3 md:mb-4 pb-2 md:pb-3 border-b border-white/10">
-        <div className="w-6 h-6 md:w-8 md:h-8 bg-[#5ce1e6] rounded-full flex items-center justify-center text-[#0D1D35] font-bold text-sm md:text-base">
+    <div
+      className="mx-1 w-[280px] flex-shrink-0 md:mx-2 md:w-[300px]"
+      style={{
+        background: '#deedf5',
+        borderRadius: 18,
+        border: '1px solid rgba(6,182,212,0.15)',
+        boxShadow: '0 4px 24px rgba(13,26,46,0.1)',
+      }}
+    >
+      <div
+        className="flex items-center space-x-2 p-3 md:space-x-3 md:p-4"
+        style={{
+          background: '#cce4f0',
+          borderBottom: '1px solid rgba(6,182,212,0.12)',
+          borderRadius: '18px 18px 0 0',
+        }}
+      >
+        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#06B6D4] text-sm font-bold text-white md:h-8 md:w-8 md:text-base">
           F
         </div>
         <div>
-          <div className="font-medium text-white text-sm md:text-base">FinancIA</div>
-          <div className="text-xs md:text-sm text-white/70">En línea</div>
+          <div className="text-sm font-medium text-slate-900 md:text-base">FinancIA</div>
+          <div className="text-xs text-cyan-800 md:text-sm">En línea</div>
         </div>
       </div>
 
-      {/* Mensajes */}
-      <div className="space-y-2 md:space-y-3 min-h-[180px] md:min-h-[200px]">
+      <div
+        className="min-h-[180px] space-y-2 p-3 md:min-h-[200px] md:space-y-3 md:p-4"
+        style={{ background: '#deedf5', borderRadius: '0 0 18px 18px' }}
+      >
         {visibleMessages.map((message, index) => (
           <div
             key={index}
             className={`flex ${message.isUser ? 'justify-end' : 'justify-start'} animate-message-in`}
           >
             <div
-              className={`${
+              className="max-w-[85%] rounded-xl p-2 md:rounded-2xl md:p-3"
+              style={
                 message.isUser
-                  ? 'bg-[#5ce1e6] text-[#0D1D35]'
-                  : 'bg-white/10 text-white'
-              } p-2 md:p-3 rounded-xl md:rounded-2xl max-w-[85%]`}
+                  ? { background: '#06B6D4', color: '#fff' }
+                  : {
+                      background: '#ffffff',
+                      color: '#334155',
+                      border: '1px solid rgba(6,182,212,0.15)',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                    }
+              }
             >
-              <p className="text-xs md:text-sm whitespace-pre-line leading-relaxed">
+              <p className="whitespace-pre-line text-xs leading-relaxed md:text-sm">
                 {message.emoji && <span className="mr-1">{message.emoji}</span>}
                 {message.text}
               </p>
-              <div className={`text-xs mt-1 ${
-                message.isUser ? 'text-[#0D1D35]/70' : 'text-white/70'
-              }`}>
+              <div
+                className="mt-1 text-xs"
+                style={{ color: message.isUser ? 'rgba(255,255,255,0.7)' : '#94a3b8' }}
+              >
                 {message.time}
               </div>
             </div>
           </div>
         ))}
-        
+
         {isTyping && (
-          <div className="flex justify-start animate-message-in">
-            <div className="bg-white/10 rounded-xl md:rounded-2xl p-2 md:p-3">
+          <div className="flex animate-message-in justify-start">
+            <div
+              className="rounded-xl p-2 md:rounded-2xl md:p-3"
+              style={{
+                background: '#ffffff',
+                border: '1px solid rgba(6,182,212,0.15)',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+              }}
+            >
               <div className="flex space-x-1">
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white/70 rounded-full animate-typing-1"></div>
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white/70 rounded-full animate-typing-2"></div>
-                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-white/70 rounded-full animate-typing-3"></div>
+                <div className="h-1.5 w-1.5 animate-typing-1 rounded-full bg-slate-400 md:h-2 md:w-2" />
+                <div className="h-1.5 w-1.5 animate-typing-2 rounded-full bg-slate-400 md:h-2 md:w-2" />
+                <div className="h-1.5 w-1.5 animate-typing-3 rounded-full bg-slate-400 md:h-2 md:w-2" />
               </div>
             </div>
           </div>
@@ -111,6 +138,6 @@ const ChatExample = ({ messages }: ChatExampleProps) => {
       </div>
     </div>
   )
-};
+}
 
-export default ChatExample; 
+export default ChatExample
