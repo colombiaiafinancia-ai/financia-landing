@@ -337,16 +337,16 @@ export async function requestPasswordReset(formData: FormData) {
   const supabase = await createSupabaseClient();
 
   try {
-    // 1) Comprobar si existe un usuario con ese email en nuestra tabla pública
+    // 1) Comprobar si existe un usuario con ese email en nuestra tabla de perfiles
     //    (sin usar service_role, solo la anon key y las policies de RLS).
     const { data: userRecord, error: userError } = await supabase
-      .from("usuarios")
-      .select("id")
-      .eq("gmail", email)
+      .from("user_profiles")
+      .select("user_id")
+      .eq("email", email)
       .maybeSingle();
 
     if (userError) {
-      console.error("requestPasswordReset - error comprobando usuarios:", userError);
+      console.error("requestPasswordReset - error comprobando user_profiles:", userError);
       return {
         error: "No pudimos verificar este email. Intenta nuevamente en unos minutos.",
       };
