@@ -31,22 +31,22 @@ export function OnboardingWelcomeModal({
       >
         <DialogHeader>
           <DialogTitle className="text-center text-xl sm:text-2xl">
-            Bienvenido a FinanciaIA
+            Bienvenido a FinancIA
           </DialogTitle>
           <DialogDescription asChild>
             <div className="space-y-3 pt-2 text-left text-sm text-muted-foreground">
               <p>
-                FinanciaIA es tu asistente para organizar gastos, seguir presupuestos por
-                categoría y registrar transacciones desde aquí o por WhatsApp.
+                FinancIA es tu asistente para organizar gastos, seguir presupuestos por
+                categoria y registrar transacciones desde aqui o por WhatsApp.
               </p>
               <p>
                 Te guiaremos en un recorrido corto de{' '}
-                <strong className="text-foreground">3 pasos</strong>: crear tu primer
-                presupuesto, registrar una transacción y conectar con el chat por
-                WhatsApp. En cada paso verás instrucciones claras de qué hacer.
+                <strong className="text-foreground">4 pasos</strong>: crear tu primer
+                presupuesto, registrar una transaccion, conectar con el chat por WhatsApp
+                y activar tus recordatorios diarios.
               </p>
               <p className="text-foreground/90">
-                Cuando estés listo, pulsa <strong>Siguiente</strong> y te llevaremos al
+                Cuando estes listo, pulsa <strong>Siguiente</strong> y te llevaremos al
                 primer paso.
               </p>
             </div>

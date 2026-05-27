@@ -1,6 +1,6 @@
 import type { OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 
-const VALID_STEPS: OnboardingStep[] = ['budgets', 'add-transaction', 'whatsapp']
+const VALID_STEPS: OnboardingStep[] = ['budgets', 'add-transaction', 'whatsapp', 'notifications']
 
 /** Claves por usuario para no mezclar sesiones en el mismo navegador */
 export function getOnboardingLocalKeys(userId: string) {

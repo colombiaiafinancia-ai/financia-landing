@@ -2,8 +2,6 @@
 
 import { MessageCircle } from 'lucide-react'
 import PhoneMockup from '@/components/landing/PhoneMockup'
-import { WHATSAPP_URL } from '@/lib/landing'
-
 const AVATARS = [
   { initial: 'M', gradient: 'from-purple-400 to-pink-400' },
   { initial: 'C', gradient: 'from-blue-400 to-cyan-400' },
@@ -15,7 +13,7 @@ const HeroSection = () => {
   return (
     <section
       id="inicio"
-      className="relative mx-[5%] mt-6 flex items-center overflow-hidden rounded-[28px] px-[6%] py-12 md:mt-10 md:py-[60px]"
+      className="relative mx-[5%] mt-6 flex items-center overflow-hidden rounded-[28px] border border-[#06B6D4]/40 px-[6%] py-12 md:mt-8 md:py-[60px]"
       style={{
         background: '#0d1a2e',
         boxShadow: '0 8px 48px rgba(13,26,46,0.2)',
@@ -62,9 +60,7 @@ const HeroSection = () => {
 
           <div className="mt-7 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
             <a
-              href={WHATSAPP_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/register"
               className="inline-flex items-center justify-center gap-2 rounded-[10px] px-8 py-4 text-base font-bold text-[#0d1a2e] transition hover:brightness-110"
               style={{
                 background: '#06B6D4',
@@ -72,7 +68,7 @@ const HeroSection = () => {
               }}
             >
               <MessageCircle size={20} />
-              Probar Gratis
+              Prueba gratis 7 dias
             </a>
             <a
               href="#producto"
@@ -100,9 +96,9 @@ const HeroSection = () => {
 
           <div className="mt-6 flex flex-wrap justify-center gap-8 border-t border-white/[0.07] pt-6 lg:justify-start lg:gap-9">
             {[
-              ['60+', 'usuarios activos'],
               ['$0', 'para empezar'],
               ['3s', 'por registro'],
+              ['7 dias', 'de prueba gratis'],
             ].map(([num, label]) => (
               <div key={label}>
                 <div className="font-sora text-2xl font-extrabold text-[#06B6D4]">{num}</div>

@@ -119,7 +119,7 @@ export default function ResetPasswordPage() {
           }}
           className="text-xl md:text-2xl font-bold text-white hover:text-[#9DFAD7] transition-colors"
         >
-          Finanzas Consulting - FinancIA
+          FinancIA
         </Link>
         <button
           type="button"

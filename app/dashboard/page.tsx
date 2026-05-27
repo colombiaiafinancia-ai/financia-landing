@@ -22,7 +22,7 @@ import { OnboardingWelcomeModal } from '@/components/dashboard/OnboardingWelcome
 import { FeedbackForm } from '@/components/dashboard/FeedbackForm'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Bell, BellOff, CreditCard, LogOut, Menu, UserCircle, X } from 'lucide-react'
-import type { OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+import { OnboardingVignette, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import { getOnboardingLocalKeys, readStoredStep } from '@/utils/onboardingLocalStorage'
 import { smoothScrollToElement } from '@/utils/scroll'
 import { CATEGORIES_UPDATED_EVENT } from '@/utils/categorySyncEvents'
@@ -39,11 +39,15 @@ export default function DashboardPage() {
     current_plan: string
     mp_preapproval_id: string | null
     reminder_opt_in: boolean
+    trial_ends_at: string | null
+    is_super_user: boolean
   }>({
     subscription_status: 'free',
     current_plan: 'free',
     mp_preapproval_id: null,
     reminder_opt_in: false,
+    trial_ends_at: null,
+    is_super_user: false,
   })
   const router = useRouter()
 
@@ -119,7 +123,7 @@ export default function DashboardPage() {
     const supabase = createSupabaseClient()
     const { data, error } = await supabase
       .from('user_profiles')
-      .select('subscription_status,current_plan,mp_preapproval_id,reminder_opt_in')
+      .select('subscription_status,current_plan,mp_preapproval_id,reminder_opt_in,trial_ends_at,is_super_user')
       .eq('user_id', userId)
       .maybeSingle()
 
@@ -129,6 +133,8 @@ export default function DashboardPage() {
         current_plan: 'free',
         mp_preapproval_id: null,
         reminder_opt_in: false,
+        trial_ends_at: null,
+        is_super_user: false,
       })
       return
     }
@@ -138,6 +144,8 @@ export default function DashboardPage() {
       current_plan: data.current_plan || 'free',
       mp_preapproval_id: data.mp_preapproval_id || null,
       reminder_opt_in: data.reminder_opt_in === true,
+      trial_ends_at: data.trial_ends_at || null,
+      is_super_user: data.is_super_user === true,
     })
   }, [])
 
@@ -168,6 +176,15 @@ export default function DashboardPage() {
   }, [user?.id, onboardingLoading, shouldShowTour])
 
   const showTour = shouldShowTour && !onboardingLoading
+
+  /**
+   * Abrir el menu de usuario cuando el tour llega a recordatorios.
+   */
+  useEffect(() => {
+    if (showTour && onboardingStep === 'notifications') {
+      setAccountMenuOpen(true)
+    }
+  }, [showTour, onboardingStep])
 
   /**
    * Scroll al paso activo de onboarding.
@@ -216,6 +233,12 @@ export default function DashboardPage() {
     setOnboardingStepState(null)
   }, [user?.id, markCompleted])
 
+  useEffect(() => {
+    if (showTour && onboardingStep === 'notifications' && profilePlan.reminder_opt_in) {
+      void completeOnboarding()
+    }
+  }, [showTour, onboardingStep, profilePlan.reminder_opt_in, completeOnboarding])
+
   const handleWelcomeNext = useCallback(() => {
     if (!user?.id) return
     const k = getOnboardingLocalKeys(user.id)
@@ -263,9 +286,9 @@ export default function DashboardPage() {
 
   const handleWhatsAppOpenedForTour = useCallback(async () => {
     if (onboardingStep === 'whatsapp') {
-      await completeOnboarding()
+      setOnboardingStepAndPersist('notifications')
     }
-  }, [onboardingStep, completeOnboarding])
+  }, [onboardingStep, setOnboardingStepAndPersist])
 
   const handleSkipCurrentOnboardingStep = useCallback(async () => {
     if (!onboardingStep) return
@@ -277,6 +300,11 @@ export default function DashboardPage() {
 
     if (onboardingStep === 'add-transaction') {
       setOnboardingStepAndPersist('whatsapp')
+      return
+    }
+
+    if (onboardingStep === 'whatsapp') {
+      setOnboardingStepAndPersist('notifications')
       return
     }
 
@@ -320,6 +348,7 @@ export default function DashboardPage() {
         subscription_status: 'cancelled',
         current_plan: 'free',
         mp_preapproval_id: null,
+        trial_ends_at: null,
       }))
       setPlanMessage('Tu plan fue cancelado correctamente.')
       void fetchProfilePlan(user.id)
@@ -368,6 +397,10 @@ export default function DashboardPage() {
           ? 'Recordatorios diarios activados.'
           : 'Recordatorios diarios desactivados.'
       )
+
+      if (onboardingStep === 'notifications' && nextValue) {
+        await completeOnboarding()
+      }
     } catch (error: any) {
       setProfilePlan((prev) => ({
         ...prev,
@@ -461,24 +494,49 @@ export default function DashboardPage() {
   const welcomeModalOpen = showTour && !welcomeDone
   const planStatus = profilePlan.subscription_status || 'free'
   const currentPlan = profilePlan.current_plan || 'free'
-  const hasPaidPlan =
-    currentPlan !== 'free' && (planStatus === 'active' || planStatus === 'pending')
+  const trialEndsAt = profilePlan.trial_ends_at
+    ? new Date(profilePlan.trial_ends_at)
+    : null
+  const trialIsActive = Boolean(trialEndsAt && trialEndsAt.getTime() > Date.now())
+  const trialRemainingMs = trialIsActive && trialEndsAt
+    ? Math.max(trialEndsAt.getTime() - Date.now(), 0)
+    : 0
+  const trialDaysRemaining = trialRemainingMs
+    ? Math.max(1, Math.ceil(trialRemainingMs / (1000 * 60 * 60 * 24)))
+    : 0
+  const trialProgress = Math.max(
+    0,
+    Math.min(100, (trialRemainingMs / (7 * 24 * 60 * 60 * 1000)) * 100)
+  )
+  const canCancelPlan =
+    !profilePlan.is_super_user &&
+    currentPlan !== 'free' &&
+    (planStatus === 'active' || planStatus === 'pending' || trialIsActive)
   const planNames: Record<string, string> = {
     free: 'Plan gratis',
     financia_monthly: 'Plan mensual',
     financia_annual: 'Plan anual 30% OFF',
     financia_founder_monthly: 'Founders 100',
     financia_founder_annual: 'Founder anual',
+    financia_test_weekly: 'Plan prueba semanal',
   }
-  const planLabel = planNames[currentPlan] || currentPlan
+  const planLabel = profilePlan.is_super_user
+    ? 'Super user'
+    : planNames[currentPlan] || currentPlan
   const statusLabel: Record<string, string> = {
     free: 'Gratis',
     pending: 'Pendiente',
     active: 'Activo',
+    trial: 'Prueba',
     paused: 'Pausado',
     cancelled: 'Cancelado',
     unknown: 'Por revisar',
   }
+  const displayedStatus = profilePlan.is_super_user
+    ? 'Acceso total'
+    : trialIsActive
+      ? 'Prueba activa'
+      : statusLabel[planStatus] || planStatus
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -496,7 +554,7 @@ export default function DashboardPage() {
                 href="/"
                 className="text-xl font-bold text-foreground transition-colors hover:text-primary sm:text-2xl"
               >
-                Finanzas Consulting - FinancIA
+                FinancIA
               </Link>
             </div>
 
@@ -545,13 +603,32 @@ export default function DashboardPage() {
                             {planLabel}
                           </p>
                           <span className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary dark:bg-[#5ce1e6]/15 dark:text-[#5ce1e6]">
-                            {statusLabel[planStatus] || planStatus}
+                            {displayedStatus}
                           </span>
+                          {trialIsActive && trialEndsAt && (
+                            <p className="mt-2 text-xs text-muted-foreground dark:text-white/60">
+                              Prueba gratis hasta {trialEndsAt.toISOString().slice(0, 10)}.
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="rounded-md border border-border bg-muted/40 p-3 dark:border-white/10 dark:bg-white/5">
+                    <div
+                      data-onboarding-section="notifications"
+                      className="rounded-md border border-border bg-muted/40 p-3 dark:border-white/10 dark:bg-white/5"
+                    >
+                      {onboardingStep === 'notifications' && (
+                        <OnboardingVignette
+                          stepLabel="Paso 4 de 4"
+                          title="Activa tus recordatorios diarios"
+                          bullets={[
+                            'Recibiras un aviso por WhatsApp si no has registrado movimientos en el dia.',
+                            'Puedes desactivarlos cuando quieras desde este mismo menu.',
+                          ]}
+                          onSkip={handleSkipCurrentOnboardingStep}
+                        />
+                      )}
                       <div className="flex items-start gap-3">
                         {profilePlan.reminder_opt_in ? (
                           <Bell className="mt-0.5 h-5 w-5 text-primary dark:text-[#5ce1e6]" />
@@ -587,7 +664,7 @@ export default function DashboardPage() {
                       </p>
                     )}
 
-                    {hasPaidPlan ? (
+                    {canCancelPlan ? (
                       <button
                         type="button"
                         onClick={handleCancelPlan}
@@ -596,6 +673,10 @@ export default function DashboardPage() {
                       >
                         {isCancellingPlan ? 'Cancelando plan...' : 'Cancelar plan'}
                       </button>
+                    ) : profilePlan.is_super_user ? (
+                      <p className="rounded-md border border-[#5ce1e6]/20 bg-[#5ce1e6]/10 px-3 py-2 text-center text-xs font-medium text-[#5ce1e6]">
+                        Acceso completo habilitado por administrador.
+                      </p>
                     ) : (
                       <Link
                         href="/subscribe"
@@ -625,6 +706,25 @@ export default function DashboardPage() {
           {transactionsError && (
             <div className="mt-3 text-sm text-red-600 dark:text-red-400">
               {String(transactionsError)}
+            </div>
+          )}
+
+          {trialIsActive && (
+            <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 dark:border-[#5ce1e6]/20 dark:bg-[#5ce1e6]/10">
+              <div className="mb-1 flex items-center justify-between gap-3 text-[11px] font-medium text-muted-foreground dark:text-white/70">
+                <span>
+                  Prueba gratis
+                </span>
+                <span className="text-primary dark:text-[#5ce1e6]">
+                  {trialDaysRemaining} {trialDaysRemaining === 1 ? 'dia restante' : 'dias restantes'}
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-border dark:bg-white/10">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-500 dark:bg-[#5ce1e6]"
+                  style={{ width: `${trialProgress}%` }}
+                />
+              </div>
             </div>
           )}
         </div>

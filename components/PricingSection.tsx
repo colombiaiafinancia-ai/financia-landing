@@ -40,6 +40,17 @@ const PricingSection = () => {
           <h2 className="font-sora text-3xl font-extrabold tracking-tight text-slate-100 md:text-4xl lg:text-[40px]">
             Escoge tu plan
           </h2>
+          <div className="mx-auto mt-6 max-w-3xl rounded-2xl border border-cyan-300/30 bg-cyan-300/[0.1] px-6 py-5 text-cyan-50 shadow-lg shadow-cyan-950/10">
+            <p className="font-sora text-xl font-extrabold text-slate-100 md:text-2xl">
+              Prueba gratis por{' '}
+              <span className="text-amber-300 drop-shadow-[0_0_18px_rgba(252,211,77,0.28)]">
+                7 dias
+              </span>
+            </p>
+            <p className="mt-2 text-sm text-slate-300 md:text-base">
+              El pago se realiza despues de terminar la prueba. Puedes cancelar antes del primer cobro.
+            </p>
+          </div>
         </motion.div>
 
         <div className="grid items-stretch gap-5 lg:grid-cols-3 lg:gap-6">

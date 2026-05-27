@@ -33,8 +33,6 @@ type CreateMercadoPagoPendingSubscriptionInput = {
   currencyId: string;
   frequency: number;
   frequencyType: "days" | "months";
-  trialFrequency?: number | null;
-  trialFrequencyType?: "days" | "months" | null;
   backUrl: string;
 };
 
@@ -135,13 +133,6 @@ export async function createMercadoPagoPendingSubscription(
     transaction_amount: input.amount,
     currency_id: input.currencyId,
   };
-
-  if (input.trialFrequency && input.trialFrequencyType) {
-    autoRecurring.free_trial = {
-      frequency: input.trialFrequency,
-      frequency_type: input.trialFrequencyType,
-    };
-  }
 
   const payload = {
     reason: input.reason,

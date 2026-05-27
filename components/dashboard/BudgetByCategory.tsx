@@ -253,7 +253,7 @@ export const BudgetByCategory = ({
     <div className={wrapperClass}>
       {onboardingStep === 'budgets' && (
         <OnboardingVignette
-          stepLabel="Paso 1 de 3"
+          stepLabel="Paso 1 de 4"
           title="Configura tu primer presupuesto"
           bullets={[
             'Elige una categoría de gasto y el monto que quieres destinar.',

@@ -7,7 +7,7 @@ export default function RegisterPage() {
       {/* Navigation */}
       <nav className='sticky top-0 z-50 bg-[#0D1D35]/95 backdrop-blur-sm border-b border-white/10 container mx-auto px-4 py-4 md:py-6 flex justify-between items-center'>
         <Link href='/' className='text-xl md:text-2xl font-bold text-white hover:text-[#9DFAD7] transition-colors'>
-          Finanzas Consulting - FinancIA
+          FinancIA
         </Link>
         <div className='flex items-center space-x-4 md:space-x-6'>
           <Link href='/' className='text-white hover:text-[#9DFAD7] transition-colors text-sm md:text-base'>
@@ -24,7 +24,7 @@ export default function RegisterPage() {
               Crear Cuenta
             </h1>
             <p className='text-white/80 text-base md:text-lg'>
-              Ahora eres parte de FinancIA. Es hora de transformar el control de tu dinero
+              Crea tu cuenta y empieza con <span className='font-bold text-[#9DFAD7]'>7 dias de prueba gratis</span>. Luego podras elegir el plan que mejor se adapte a ti.
             </p>
           </div>
           

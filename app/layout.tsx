@@ -15,7 +15,7 @@ const sora = Sora({
 })
 
 export const metadata: Metadata = {
-  title: 'Finanzas Consulting - FinancIA',
+  title: 'FinancIA',
   description: 'Organiza tus finanzas con un simple mensaje en WhatsApp. Controla gastos, ahorra dinero y alcanza tus metas financieras con Paz, tu asistente personal.',
   keywords: 'finanzas personales, WhatsApp, asistente financiero, control de gastos, ahorro, presupuesto',
   authors: [{ name: 'FinancIA Team' }],
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     apple: '/favicon.ico', 
   },
   openGraph: {
-    title: 'Finanzas Consulting - FinancIA',
+    title: 'FinancIA',
     description: 'Organiza tus finanzas con un simple mensaje en WhatsApp. Controla gastos, ahorra dinero y alcanza tus metas financieras.',
     url: 'https://financia.app',
     siteName: 'FinancIA',
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
         url: '/favicon.ico',
         width: 1200,
         height: 630,
-        alt: 'Finanzas Consulting - FinancIA',
+        alt: 'FinancIA',
       },
     ],
     locale: 'es_ES',
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Finanzas Consulting - FinancIA',
+    title: 'FinancIA',
     description: 'Organiza tus finanzas con un simple mensaje en WhatsApp. Controla gastos, ahorra dinero y alcanza tus metas financieras.',
     images: ['/favicon.ico'],
   },

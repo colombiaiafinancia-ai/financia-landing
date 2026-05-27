@@ -39,11 +39,6 @@ export const ProfessionalAvatars = () => {
           {avatar.initial}
         </div>
       ))}
-      
-      {/* Plus indicator for more users */}
-      <div className="w-12 h-12 bg-gradient-to-br from-gray-300 to-gray-400 rounded-full border-3 border-white flex items-center justify-center text-white font-bold text-xs shadow-lg">
-        +60
-      </div>
     </div>
   )
 }

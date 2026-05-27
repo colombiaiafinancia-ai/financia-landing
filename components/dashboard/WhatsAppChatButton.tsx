@@ -40,7 +40,7 @@ const WhatsAppChatButton = ({
         <div className="mb-4">
           <OnboardingVignette
             variant="onGradient"
-            stepLabel="Paso 3 de 3"
+            stepLabel="Paso 3 de 4"
             title="Usa FinanciaIA por WhatsApp"
             bullets={[
               'Pulsa «Iniciar Chat» para abrir WhatsApp con un mensaje de bienvenida.',

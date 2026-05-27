@@ -8,7 +8,7 @@ import LandingFooter from '@/components/landing/LandingFooter'
 
 export default function Home() {
   return (
-    <main className="relative z-[1] min-h-screen" style={{ backgroundColor: '#f5f3ef' }}>
+    <main className="relative z-[1] min-h-screen" style={{ backgroundColor: '#0d1a2e' }}>
       <LandingNav />
       <HeroSection />
       <ChatCarousel />

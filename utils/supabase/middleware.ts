@@ -1,5 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isRefreshTokenError } from "@/services/supabase/types";
+
+function clearAuthCookies(request: NextRequest, response: NextResponse) {
+  request.cookies.getAll().forEach((cookie) => {
+    if (cookie.name.startsWith("sb-")) {
+      response.cookies.set(cookie.name, "", {
+        path: "/",
+        maxAge: 0,
+      });
+    }
+  });
+
+  return response;
+}
 
 export function createSupabaseClient(request: NextRequest) {
   return createServerClient(
@@ -53,7 +67,11 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  const { error } = await supabase.auth.getUser();
+
+  if (error && isRefreshTokenError(error)) {
+    return clearAuthCookies(request, supabaseResponse);
+  }
 
   return supabaseResponse;
 }

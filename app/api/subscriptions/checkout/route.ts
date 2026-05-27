@@ -57,34 +57,6 @@ export async function POST(req: Request) {
       );
     }
 
-    const trialFrequency = plan.trial_frequency
-      ? Number(plan.trial_frequency)
-      : null;
-    const trialFrequencyType = plan.trial_frequency_type
-      ? String(plan.trial_frequency_type).trim().toLowerCase()
-      : null;
-
-    if (
-      trialFrequency &&
-      trialFrequencyType !== "days" &&
-      trialFrequencyType !== "months"
-    ) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "trial_frequency_type invalido. Debe ser exactamente 'days' o 'months'.",
-          received: plan.trial_frequency_type,
-        },
-        { status: 400 }
-      );
-    }
-
-    const normalizedTrialFrequencyType =
-      trialFrequencyType === "days" || trialFrequencyType === "months"
-        ? trialFrequencyType
-        : null;
-
     const externalReference = `user:${userId}:plan:${plan.plan_key}`;
 
     const subscription = await createMercadoPagoPendingSubscription({
@@ -95,8 +67,6 @@ export async function POST(req: Request) {
       currencyId: plan.currency_id,
       frequency: Number(plan.frequency),
       frequencyType,
-      trialFrequency,
-      trialFrequencyType: normalizedTrialFrequencyType,
       backUrl,
     });
 

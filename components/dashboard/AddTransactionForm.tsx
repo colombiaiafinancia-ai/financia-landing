@@ -110,7 +110,7 @@ export const AddTransactionForm = ({
     <div className={wrapperClass}>
       {onboardingStep === 'add-transaction' && (
         <OnboardingVignette
-          stepLabel="Paso 2 de 3"
+          stepLabel="Paso 2 de 4"
           title="Registra tu primera transacción"
           bullets={[
             'Pulsa «Agregar Nueva Transacción» para abrir el formulario.',

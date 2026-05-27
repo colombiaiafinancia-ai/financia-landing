@@ -117,7 +117,7 @@ export default function SubscriptionCheckout({
       <div className="relative z-[1]">
         <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <Link href="/" className="font-sora text-2xl font-extrabold text-slate-100 hover:text-[#06B6D4]">
+            <Link href="/dashboard" className="font-sora text-2xl font-extrabold text-slate-100 hover:text-[#06B6D4]">
               FinancIA
             </Link>
             <p className="mt-1 text-sm text-slate-400">Tu asistente financiero impulsado por IA</p>
@@ -136,6 +136,17 @@ export default function SubscriptionCheckout({
           <h1 className="font-sora text-3xl font-extrabold tracking-tight text-slate-100 md:text-4xl lg:text-[40px]">
             Escoge tu plan
           </h1>
+          <div className="mx-auto mt-6 max-w-3xl rounded-2xl border border-cyan-300/30 bg-cyan-300/[0.1] px-6 py-5 text-cyan-50 shadow-lg shadow-cyan-950/10">
+            <p className="font-sora text-xl font-extrabold text-slate-100 md:text-2xl">
+              Empiezas con{' '}
+              <span className="text-amber-300 drop-shadow-[0_0_18px_rgba(252,211,77,0.28)]">
+                7 dias gratis
+              </span>
+            </p>
+            <p className="mt-2 text-sm text-slate-300 md:text-base">
+              Mercado Pago solo realiza el primer cobro cuando termina la prueba. Puedes cancelar antes de que finalicen los 7 dias desde tu dashboard.
+            </p>
+          </div>
         </motion.div>
 
         {testPlan && (
@@ -179,7 +190,7 @@ export default function SubscriptionCheckout({
               plan={plan.display}
               index={index}
               animated
-              footerNote={`Cobro Mercado Pago: ${formatCheckoutAmount(plan.amount, plan.currencyId)}`}
+              footerNote={`7 dias gratis; luego Mercado Pago cobra ${formatCheckoutAmount(plan.amount, plan.currencyId)}`}
             >
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <button

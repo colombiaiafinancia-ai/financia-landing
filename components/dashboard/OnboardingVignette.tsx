@@ -96,4 +96,4 @@ export const ONBOARDING_STEP_KEY = 'financia_onboarding_guided_v1_step'
 /** @deprecated Ver `onboardingLocalStorage` */
 export const ONBOARDING_WELCOME_KEY = 'financia_onboarding_guided_v1_welcome_done'
 
-export type OnboardingStep = 'add-transaction' | 'budgets' | 'whatsapp' | null
+export type OnboardingStep = 'add-transaction' | 'budgets' | 'whatsapp' | 'notifications' | null
