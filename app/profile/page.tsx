@@ -139,8 +139,11 @@ export default function ProfilePage() {
 
         <section className="rounded-lg border border-border bg-card p-5 shadow-sm dark:border-white/15 dark:bg-[#0D1D35] sm:p-6">
           <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-[#5ce1e6]/15 dark:text-[#5ce1e6]">
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary dark:bg-[#5ce1e6]/15 dark:text-[#5ce1e6]">
               <UserCircle className="h-6 w-6" />
+              <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border border-primary/25 bg-background px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary shadow-sm dark:border-[#5ce1e6]/30 dark:bg-[#0D1D35] dark:text-[#5ce1e6]">
+                Próximamente
+              </span>
             </div>
             <div>
               <h1 className="text-xl font-semibold">Mi usuario</h1>
