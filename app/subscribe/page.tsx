@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 
 import { SUBSCRIBE_PLAN_KEYS } from "@/lib/pricing-plans";
 
-const planOrder = ["financia_test_weekly", ...SUBSCRIBE_PLAN_KEYS];
+const planOrder = [...SUBSCRIBE_PLAN_KEYS];
 
 export default async function SubscribePage() {
   const supabase = await createSupabaseClient();

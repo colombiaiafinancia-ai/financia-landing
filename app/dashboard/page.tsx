@@ -599,9 +599,14 @@ export default function DashboardPage() {
                         <CreditCard className="mt-0.5 h-5 w-5 text-primary dark:text-[#5ce1e6]" />
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium">Mi plan</p>
-                          <p className="mt-1 text-sm text-muted-foreground dark:text-white/70">
-                            {planLabel}
-                          </p>
+                          <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <p className="text-sm text-muted-foreground dark:text-white/70">
+                              {planLabel}
+                            </p>
+                            <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary dark:border-[#5ce1e6]/30 dark:bg-[#5ce1e6]/10 dark:text-[#5ce1e6]">
+                              Beta
+                            </span>
+                          </div>
                           <span className="mt-2 inline-flex rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary dark:bg-[#5ce1e6]/15 dark:text-[#5ce1e6]">
                             {displayedStatus}
                           </span>

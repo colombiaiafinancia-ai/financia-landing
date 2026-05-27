@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PlanCard } from '@/components/pricing/PlanCard'
 import {
@@ -30,12 +29,6 @@ type SubscriptionCheckoutProps = {
   plans: SubscriptionPlanOption[]
 }
 
-const TEST_PLAN_FEATURES = [
-  'Cobro semanal de prueba',
-  'Monto bajo para validar Mercado Pago',
-  'Acceso completo durante la prueba',
-]
-
 function formatCheckoutAmount(amount: number, currencyId: string) {
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',
@@ -52,7 +45,7 @@ export default function SubscriptionCheckout({
   const [loadingPlanKey, setLoadingPlanKey] = useState<string | null>(null)
   const [message, setMessage] = useState('')
 
-  const { paidPlans, testPlan } = useMemo(() => {
+  const paidPlans = useMemo(() => {
     const ordered = SUBSCRIBE_PLAN_KEYS.map((planKey) => {
       const plan = plans.find((item) => item.planKey === planKey)
       const display = getLandingPlanByKey(planKey)
@@ -60,9 +53,7 @@ export default function SubscriptionCheckout({
       return { ...plan, display }
     }).filter(Boolean) as Array<SubscriptionPlanOption & { display: NonNullable<ReturnType<typeof getLandingPlanByKey>> }>
 
-    const test = plans.find((plan) => plan.planKey === 'financia_test_weekly')
-
-    return { paidPlans: ordered, testPlan: test }
+    return ordered
   }, [plans])
 
   async function handleSubscribe(planKey: string) {
@@ -148,40 +139,6 @@ export default function SubscriptionCheckout({
             </p>
           </div>
         </motion.div>
-
-        {testPlan && (
-          <article className="mb-6 rounded-2xl border-2 border-solid border-white/45 bg-white/[0.05] p-5 ring-1 ring-white/20">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Prueba</p>
-                <h2 className="font-sora text-lg font-bold text-slate-100">Plan Prueba (solo QA)</h2>
-              </div>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase text-slate-300">
-                Test
-              </span>
-            </div>
-            <p className="text-2xl font-black text-slate-100">
-              {formatCheckoutAmount(testPlan.amount, testPlan.currencyId)}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">Cobro cada 7 días · validación Mercado Pago</p>
-            <ul className="mt-4 space-y-2 text-sm text-slate-400">
-              {TEST_PLAN_FEATURES.map((feature) => (
-                <li key={feature} className="flex gap-2">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#06B6D4]" />
-                  <span>{feature}</span>
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={() => handleSubscribe(testPlan.planKey)}
-              disabled={Boolean(loadingPlanKey)}
-              className="mt-4 w-full rounded-xl border-2 border-solid border-white/40 bg-white/[0.1] px-4 py-3 text-sm font-bold text-white transition hover:border-white/55 hover:bg-white/[0.14] disabled:opacity-60"
-            >
-              {loadingPlanKey === testPlan.planKey ? 'Redirigiendo...' : 'Elegir plan de prueba'}
-            </button>
-          </article>
-        )}
 
         <div className="grid items-stretch gap-5 lg:grid-cols-3 lg:gap-6">
           {paidPlans.map((plan, index) => (
