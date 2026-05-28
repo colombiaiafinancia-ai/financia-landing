@@ -18,10 +18,6 @@ export function PlanCard({ plan, index = 0, animated = true, footerNote, childre
 
   const content = (
     <>
-      <span className="absolute left-4 top-4 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200">
-        Beta
-      </span>
-
       {plan.badge && (
         <span
           className={cn(
