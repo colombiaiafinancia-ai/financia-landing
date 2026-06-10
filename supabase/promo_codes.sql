@@ -67,14 +67,14 @@ begin
 
   v_trial_ends_at := now() + make_interval(days => v_promo.trial_days);
 
-  update public.user_profiles
+  update public.user_profiles as profile
   set subscription_status = 'trial',
-      current_plan = coalesce(current_plan, 'free'),
-      trial_ends_at = greatest(coalesce(trial_ends_at, v_trial_ends_at), v_trial_ends_at),
+      current_plan = coalesce(profile.current_plan, 'free'),
+      trial_ends_at = greatest(coalesce(profile.trial_ends_at, v_trial_ends_at), v_trial_ends_at),
       updated_at = now()
-  where user_id = p_user_id
-    and coalesce(is_super_user, false) = false
-    and coalesce(current_plan, 'free') = 'free';
+  where profile.user_id = p_user_id
+    and coalesce(profile.is_super_user, false) = false
+    and coalesce(profile.current_plan, 'free') = 'free';
 
   insert into public.promo_redemptions (
     promo_code_id, user_id, email, trial_days, trial_ends_at
