@@ -258,9 +258,9 @@ export const RegisterForm = () => {
               id='promoCode'
               name='promoCode'
               disabled={isLoading}
-              className='w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-[#9DFAD7] transition-colors uppercase'
+              className='w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-[#9DFAD7] transition-colors'
               placeholder='Ingresa tu codigo'
-              autoCapitalize='characters'
+              autoCapitalize='off'
               maxLength={64}
             />
           </div>
