@@ -537,6 +537,10 @@ export default function DashboardPage() {
     : trialIsActive
       ? 'Prueba activa'
       : statusLabel[planStatus] || planStatus
+  const hasPaidPlan =
+    currentPlan !== 'free' &&
+    (planStatus === 'active' || planStatus === 'pending')
+  const showTrialBanner = !profilePlan.is_super_user && !hasPaidPlan
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -709,14 +713,19 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {trialIsActive && (
+          {showTrialBanner && (
             <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 dark:border-[#5ce1e6]/20 dark:bg-[#5ce1e6]/10">
               <div className="mb-1 flex items-center justify-between gap-3 text-[11px] font-medium text-muted-foreground dark:text-white/70">
                 <span>
                   Prueba gratis
                 </span>
-                <span className="text-primary dark:text-[#5ce1e6]">
-                  {trialDaysRemaining} {trialDaysRemaining === 1 ? 'dia restante' : 'dias restantes'}
+                <span className={trialIsActive
+                  ? "text-primary dark:text-[#5ce1e6]"
+                  : "text-red-600 dark:text-red-300"
+                }>
+                  {trialIsActive
+                    ? `${trialDaysRemaining} ${trialDaysRemaining === 1 ? 'dia restante' : 'dias restantes'}`
+                    : 'Se ha acabado la prueba gratuita'}
                 </span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-border dark:bg-white/10">

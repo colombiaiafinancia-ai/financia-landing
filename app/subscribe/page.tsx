@@ -28,6 +28,14 @@ export default async function SubscribePage() {
   const payerEmail =
     process.env.MERCADOPAGO_TEST_PAYER_EMAIL?.trim() || user.email;
 
+  const { data: profile } = await supabase
+    .from("user_profiles")
+    .select("trial_ends_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const trialEndsAt = profile?.trial_ends_at || null;
+
   const { data: plans, error: plansError } = await supabase
     .from("subscription_plans")
     .select("plan_key,name,description,amount,currency_id,frequency,frequency_type")
@@ -71,6 +79,7 @@ export default async function SubscribePage() {
         userId={user.id}
         payerEmail={payerEmail}
         plans={orderedPlans}
+        trialEndsAt={trialEndsAt}
       />
     </main>
   );

@@ -15,6 +15,36 @@ export async function POST(req: Request) {
     }
 
     const supabase = await getServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user?.id || user.id !== userId) {
+      return NextResponse.json(
+        { ok: false, error: "Usuario no autorizado" },
+        { status: 401 }
+      );
+    }
+
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("trial_ends_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (
+      profile?.trial_ends_at &&
+      new Date(profile.trial_ends_at).getTime() > Date.now()
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Tu prueba gratis sigue activa. No necesitas pagar ni buscar descuentos en Mercado Pago.",
+        },
+        { status: 409 }
+      );
+    }
 
     const { data: plan, error: planError } = await supabase
       .from("subscription_plans")

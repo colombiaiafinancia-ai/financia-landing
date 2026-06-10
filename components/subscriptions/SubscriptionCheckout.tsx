@@ -27,6 +27,7 @@ type SubscriptionCheckoutProps = {
   userId: string
   payerEmail: string
   plans: SubscriptionPlanOption[]
+  trialEndsAt: string | null
 }
 
 function formatCheckoutAmount(amount: number, currencyId: string) {
@@ -41,9 +42,15 @@ export default function SubscriptionCheckout({
   userId,
   payerEmail,
   plans,
+  trialEndsAt,
 }: SubscriptionCheckoutProps) {
   const [loadingPlanKey, setLoadingPlanKey] = useState<string | null>(null)
   const [message, setMessage] = useState('')
+  const trialEndDate = trialEndsAt ? new Date(trialEndsAt) : null
+  const trialIsActive = Boolean(trialEndDate && trialEndDate.getTime() > Date.now())
+  const trialDaysRemaining = trialIsActive && trialEndDate
+    ? Math.max(1, Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0
 
   const paidPlans = useMemo(() => {
     const ordered = SUBSCRIBE_PLAN_KEYS.map((planKey) => {
@@ -129,13 +136,15 @@ export default function SubscriptionCheckout({
           </h1>
           <div className="mx-auto mt-6 max-w-3xl rounded-2xl border border-cyan-300/30 bg-cyan-300/[0.1] px-6 py-5 text-cyan-50 shadow-lg shadow-cyan-950/10">
             <p className="font-sora text-xl font-extrabold text-slate-100 md:text-2xl">
-              Empiezas con{' '}
+              {trialIsActive ? 'Tu prueba promocional esta activa: ' : 'Empiezas con '}
               <span className="text-amber-300 drop-shadow-[0_0_18px_rgba(252,211,77,0.28)]">
-                7 dias gratis
+                {trialIsActive ? `${trialDaysRemaining} dias restantes` : '7 dias gratis'}
               </span>
             </p>
             <p className="mt-2 text-sm text-slate-300 md:text-base">
-              Mercado Pago solo realiza el primer cobro cuando termina la prueba. Puedes cancelar antes de que finalicen los 7 dias desde tu dashboard.
+              {trialIsActive
+                ? `No necesitas pagar ni buscar descuentos en Mercado Pago. Podras suscribirte cuando termine tu prueba el ${trialEndDate?.toLocaleDateString('es-CO')}.`
+                : 'Mercado Pago procesara la suscripcion seleccionada.'}
             </p>
           </div>
         </motion.div>
@@ -153,10 +162,14 @@ export default function SubscriptionCheckout({
                 <button
                   type="button"
                   onClick={() => handleSubscribe(plan.planKey)}
-                  disabled={Boolean(loadingPlanKey)}
+                  disabled={Boolean(loadingPlanKey) || trialIsActive}
                   className={ctaClassName(plan.display)}
                 >
-                  {loadingPlanKey === plan.planKey ? 'Redirigiendo...' : 'Elegir plan'}
+                  {trialIsActive
+                    ? 'Disponible al terminar la prueba'
+                    : loadingPlanKey === plan.planKey
+                      ? 'Redirigiendo...'
+                      : 'Elegir plan'}
                 </button>
               </motion.div>
             </PlanCard>

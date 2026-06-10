@@ -79,7 +79,8 @@ export const RegisterForm = () => {
       email: formData.get('email') as string,
       phone: fullPhone, // El trigger quitará el '+' en la base de datos
       password: formData.get('password') as string,
-      repeatPassword: formData.get('repeatPassword') as string
+      repeatPassword: formData.get('repeatPassword') as string,
+      promoCode: ((formData.get('promoCode') as string) || '').trim()
     }
     
     // LOGS CORREGIDOS PARA MOSTRAR VALORES REALES
@@ -246,6 +247,25 @@ export const RegisterForm = () => {
           </div>
 
           <div>
+            <label
+              htmlFor='promoCode'
+              className='block text-white font-medium mb-2'
+            >
+              Codigo promocional
+            </label>
+            <input
+              type='text'
+              id='promoCode'
+              name='promoCode'
+              disabled={isLoading}
+              className='w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-[#9DFAD7] transition-colors uppercase'
+              placeholder='Ingresa tu codigo'
+              autoCapitalize='characters'
+              maxLength={64}
+            />
+          </div>
+
+          <div>
             <label 
               htmlFor='password' 
               className='block text-white font-medium mb-2'
@@ -330,4 +350,4 @@ export const RegisterForm = () => {
       </form>
     </div>
   )
-} 
+}
