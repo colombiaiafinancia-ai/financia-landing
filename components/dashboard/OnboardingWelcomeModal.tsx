@@ -7,6 +7,7 @@ import {
   DialogFooter,
   DialogTitle,
 } from '@/components/ui/dialog'
+import type { LucideIcon } from 'lucide-react'
 import { Bell, Check, MessageCircle, PiggyBank, Receipt, Sparkles, TrendingUp, Wallet } from 'lucide-react'
 
 const BRAND = {
@@ -16,7 +17,16 @@ const BRAND = {
   whatsapp: '#25D366',
 } as const
 
-const TOUR_STEPS = [
+type TourStep = {
+  label: string
+  icon: LucideIcon
+  accent: string
+  iconClass: string
+  badge?: LucideIcon
+  whatsapp?: boolean
+}
+
+const TOUR_STEPS: TourStep[] = [
   {
     label: 'Define Presupuesto',
     icon: PiggyBank,
@@ -44,7 +54,7 @@ const TOUR_STEPS = [
     iconClass: 'text-white',
     whatsapp: true,
   },
-] as const
+]
 
 interface OnboardingWelcomeModalProps {
   open: boolean
