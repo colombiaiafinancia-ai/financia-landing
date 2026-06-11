@@ -23,9 +23,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useCategories } from '@/hooks/useCategories'
 import { useCategoryBudget } from '@/hooks/useCategoryBudget'
-import { OnboardingVignette, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+import { OnboardingVignette, OnboardingSpotlightArrow, getOnboardingButtonSpotlightStyle, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import { CategoryGlyph } from '@/components/dashboard/CategoryGlyph'
 import { formatCurrencyInput } from '@/utils/format'
+import { cn } from '@/lib/utils'
 
 interface BudgetByCategoryProps {
   userId: string
@@ -253,17 +254,15 @@ export const BudgetByCategory = ({
     <div className={wrapperClass}>
       {onboardingStep === 'budgets' && (
         <OnboardingVignette
-          stepLabel="Paso 1 de 4"
-          title="Configura tu primer presupuesto"
-          bullets={[
-            'Elige una categoría de gasto y el monto que quieres destinar.',
-            'Pulsa «Agregar», completa categoría y valor; luego podrás editar o borrar.',
-            'La barra de progreso muestra solo lo gastado en el mes actual frente al límite.',
-          ]}
+          stepNumber={1}
+          title="Crea tu primer presupuesto"
+          icon={Wallet}
+          action="Elige una categoría, ingresa el monto y pulsa «Agregar»."
+          tip="¿No encuentras una categoría? Créala en «Mis categorías»."
           onSkip={onSkipOnboarding}
         />
       )}
-      <div className="flex items-center justify-between mb-4 relative">
+      <div className="relative mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold flex items-center text-slate-900 dark:text-white">
           <DollarSign className="mr-2 h-5 w-5" />
           Progreso de presupuestos del mes
@@ -276,15 +275,29 @@ export const BudgetByCategory = ({
         )}
 
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <DialogTrigger asChild>
+          <div className="flex shrink-0 flex-col items-center">
+            {onboardingStep === 'budgets' && (
+              <OnboardingSpotlightArrow align="center" className="min-w-[6.5rem]" />
+            )}
+            <DialogTrigger asChild>
             <Button
               size="sm"
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              data-onboarding-target="add-budget"
+              className={cn(
+                'bg-primary text-primary-foreground hover:bg-primary/90',
+                onboardingStep === 'budgets' && 'relative z-10'
+              )}
+              style={
+                onboardingStep === 'budgets'
+                  ? getOnboardingButtonSpotlightStyle()
+                  : undefined
+              }
             >
               <Plus className="mr-2 h-4 w-4" />
               Agregar
             </Button>
           </DialogTrigger>
+          </div>
 
           <DialogContent className="max-w-md bg-card border border-border text-card-foreground dark:bg-[#071224] dark:border-white/15 dark:text-white">
             <DialogHeader>

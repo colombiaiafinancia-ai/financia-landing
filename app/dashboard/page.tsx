@@ -22,7 +22,12 @@ import { OnboardingWelcomeModal } from '@/components/dashboard/OnboardingWelcome
 import { FeedbackForm } from '@/components/dashboard/FeedbackForm'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Bell, BellOff, CreditCard, LogOut, Menu, UserCircle, X } from 'lucide-react'
-import { OnboardingVignette, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+import { OnboardingVignette, OnboardingSpotlightArrow, getOnboardingButtonSpotlightStyle, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+import {
+  OnboardingSpotlightOverlay,
+  OnboardingTourHeader,
+  onboardingSpotlightSection,
+} from '@/components/dashboard/OnboardingSpotlight'
 import { getOnboardingLocalKeys, readStoredStep } from '@/utils/onboardingLocalStorage'
 import { smoothScrollToElement } from '@/utils/scroll'
 import { CATEGORIES_UPDATED_EVENT } from '@/utils/categorySyncEvents'
@@ -176,6 +181,8 @@ export default function DashboardPage() {
   }, [user?.id, onboardingLoading, shouldShowTour])
 
   const showTour = shouldShowTour && !onboardingLoading
+  const tourSpotlightActive = showTour && welcomeDone && !!onboardingStep
+  const isNotificationsStep = tourSpotlightActive && onboardingStep === 'notifications'
 
   /**
    * Abrir el menu de usuario cuando el tour llega a recordatorios.
@@ -193,6 +200,12 @@ export default function DashboardPage() {
     if (!showTour || !welcomeDone || !onboardingStep || isLoading || !user) {
       return
     }
+
+    if (onboardingStep === 'notifications') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
     const timer = window.setTimeout(() => {
       const el = document.querySelector(
         `[data-onboarding-section="${onboardingStep}"]`
@@ -235,9 +248,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (showTour && onboardingStep === 'notifications' && profilePlan.reminder_opt_in) {
-      void completeOnboarding()
+      setOnboardingStepAndPersist('whatsapp')
     }
-  }, [showTour, onboardingStep, profilePlan.reminder_opt_in, completeOnboarding])
+  }, [showTour, onboardingStep, profilePlan.reminder_opt_in, setOnboardingStepAndPersist])
 
   const handleWelcomeNext = useCallback(() => {
     if (!user?.id) return
@@ -259,7 +272,7 @@ export default function DashboardPage() {
 
   const handleFirstTransactionCreated = useCallback(() => {
     if (onboardingStep === 'add-transaction') {
-      setOnboardingStepAndPersist('whatsapp')
+      setOnboardingStepAndPersist('notifications')
     }
   }, [onboardingStep, setOnboardingStepAndPersist])
 
@@ -286,9 +299,9 @@ export default function DashboardPage() {
 
   const handleWhatsAppOpenedForTour = useCallback(async () => {
     if (onboardingStep === 'whatsapp') {
-      setOnboardingStepAndPersist('notifications')
+      await completeOnboarding()
     }
-  }, [onboardingStep, setOnboardingStepAndPersist])
+  }, [onboardingStep, completeOnboarding])
 
   const handleSkipCurrentOnboardingStep = useCallback(async () => {
     if (!onboardingStep) return
@@ -299,12 +312,18 @@ export default function DashboardPage() {
     }
 
     if (onboardingStep === 'add-transaction') {
+      setOnboardingStepAndPersist('notifications')
+      return
+    }
+
+    if (onboardingStep === 'notifications') {
+      setAccountMenuOpen(false)
       setOnboardingStepAndPersist('whatsapp')
       return
     }
 
     if (onboardingStep === 'whatsapp') {
-      setOnboardingStepAndPersist('notifications')
+      await completeOnboarding()
       return
     }
 
@@ -399,7 +418,8 @@ export default function DashboardPage() {
       )
 
       if (onboardingStep === 'notifications' && nextValue) {
-        await completeOnboarding()
+        setAccountMenuOpen(false)
+        setOnboardingStepAndPersist('whatsapp')
       }
     } catch (error: any) {
       setProfilePlan((prev) => ({
@@ -550,7 +570,14 @@ export default function DashboardPage() {
         onSkip={handleWelcomeSkip}
       />
 
-      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
+      <OnboardingSpotlightOverlay active={tourSpotlightActive} />
+
+      <header
+        className={cn(
+          'sticky top-0 border-b border-border bg-background/95 backdrop-blur-sm',
+          isNotificationsStep ? 'z-[50]' : 'z-40'
+        )}
+      >
         <div className="mx-auto max-w-7xl px-3 py-3 sm:px-4 sm:py-4 lg:px-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -562,7 +589,12 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            <div className="relative flex items-center space-x-2 sm:space-x-3">
+            <div
+              className={cn(
+                'relative flex items-center space-x-2 sm:space-x-3',
+                isNotificationsStep && 'z-[60] pointer-events-auto'
+              )}
+            >
               <ThemeToggle />
               <button
                 type="button"
@@ -575,8 +607,25 @@ export default function DashboardPage() {
               </button>
 
               {accountMenuOpen && (
-                <div className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl dark:border-white/15 dark:bg-[#0D1D35] dark:text-white">
-                  <div className="border-b border-border px-4 py-3 dark:border-white/10">
+                <div
+                  data-onboarding-section="notifications"
+                  className={cn(
+                    'absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl dark:border-white/15 dark:bg-[#0D1D35] dark:text-white',
+                    isNotificationsStep &&
+                      'z-[60] border-[rgba(34,211,238,0.3)] shadow-[0_0_32px_rgba(34,211,238,0.18)]'
+                  )}
+                >
+                  {isNotificationsStep && (
+                    <div className="border-b border-border px-3 pt-3 dark:border-white/10">
+                      <OnboardingTourHeader compact />
+                    </div>
+                  )}
+                  <div
+                    className={cn(
+                      'border-b border-border px-4 py-3 dark:border-white/10',
+                      isNotificationsStep && 'pointer-events-none opacity-40'
+                    )}
+                  >
                     <Link
                       href="/profile"
                       onClick={() => setAccountMenuOpen(false)}
@@ -598,7 +647,12 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="space-y-3 px-4 py-3">
-                    <div className="rounded-md border border-border bg-muted/40 p-3 dark:border-white/10 dark:bg-white/5">
+                    <div
+                      className={cn(
+                        'rounded-md border border-border bg-muted/40 p-3 dark:border-white/10 dark:bg-white/5',
+                        isNotificationsStep && 'pointer-events-none opacity-40'
+                      )}
+                    >
                       <div className="flex items-start gap-3">
                         <CreditCard className="mt-0.5 h-5 w-5 text-primary dark:text-[#5ce1e6]" />
                         <div className="min-w-0 flex-1">
@@ -619,17 +673,20 @@ export default function DashboardPage() {
                     </div>
 
                     <div
-                      data-onboarding-section="notifications"
-                      className="rounded-md border border-border bg-muted/40 p-3 dark:border-white/10 dark:bg-white/5"
+                      className={cn(
+                        'rounded-md border bg-muted/40 p-3 dark:bg-white/5',
+                        isNotificationsStep
+                          ? 'relative z-[1] border-[rgba(34,211,238,0.25)] shadow-[0_0_20px_rgba(34,211,238,0.12)] dark:border-[rgba(34,211,238,0.3)]'
+                          : 'border-border dark:border-white/10'
+                      )}
                     >
                       {onboardingStep === 'notifications' && (
                         <OnboardingVignette
-                          stepLabel="Paso 4 de 4"
-                          title="Activa tus recordatorios diarios"
-                          bullets={[
-                            'Recibiras un aviso por WhatsApp si no has registrado movimientos en el dia.',
-                            'Puedes desactivarlos cuando quieras desde este mismo menu.',
-                          ]}
+                          stepNumber={3}
+                          compact
+                          title="Activa recordatorios"
+                          icon={Bell}
+                          action="Activa las notificaciones para recibir avisos diarios por WhatsApp."
                           onSkip={handleSkipCurrentOnboardingStep}
                         />
                       )}
@@ -646,11 +703,28 @@ export default function DashboardPage() {
                               ? 'Te enviaremos WhatsApp si no registras movimientos en el dia.'
                               : 'No recibiras recordatorios hasta que los actives.'}
                           </p>
+                          {showTour && onboardingStep === 'notifications' && !profilePlan.reminder_opt_in && (
+                            <OnboardingSpotlightArrow align="center" className="mt-1" />
+                          )}
                           <button
                             type="button"
+                            data-onboarding-target="toggle-reminders"
                             onClick={handleToggleReminderOptIn}
                             disabled={isSavingReminderOptIn}
-                            className="mt-3 inline-flex w-full items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                            className={cn(
+                              'mt-3 inline-flex w-full items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10',
+                              onboardingStep === 'notifications' &&
+                                showTour &&
+                                !profilePlan.reminder_opt_in &&
+                                'relative z-10'
+                            )}
+                            style={
+                              showTour &&
+                              onboardingStep === 'notifications' &&
+                              !profilePlan.reminder_opt_in
+                                ? getOnboardingButtonSpotlightStyle()
+                                : undefined
+                            }
                           >
                             {isSavingReminderOptIn
                               ? 'Guardando...'
@@ -663,7 +737,12 @@ export default function DashboardPage() {
                     </div>
 
                     {planMessage && (
-                      <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground dark:bg-white/5 dark:text-white/70">
+                      <p
+                        className={cn(
+                          'rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground dark:bg-white/5 dark:text-white/70',
+                          isNotificationsStep && 'pointer-events-none opacity-40'
+                        )}
+                      >
                         {planMessage}
                       </p>
                     )}
@@ -673,26 +752,42 @@ export default function DashboardPage() {
                         type="button"
                         onClick={handleCancelPlan}
                         disabled={isCancellingPlan}
-                        className="w-full rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-300"
+                        className={cn(
+                          'w-full rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-300',
+                          isNotificationsStep && 'pointer-events-none opacity-40'
+                        )}
                       >
                         {isCancellingPlan ? 'Cancelando plan...' : 'Cancelar plan'}
                       </button>
                     ) : profilePlan.is_super_user ? (
-                      <p className="rounded-md border border-[#5ce1e6]/20 bg-[#5ce1e6]/10 px-3 py-2 text-center text-xs font-medium text-[#5ce1e6]">
+                      <p
+                        className={cn(
+                          'rounded-md border border-[#5ce1e6]/20 bg-[#5ce1e6]/10 px-3 py-2 text-center text-xs font-medium text-[#5ce1e6]',
+                          isNotificationsStep && 'pointer-events-none opacity-40'
+                        )}
+                      >
                         Acceso completo habilitado por administrador.
                       </p>
                     ) : (
                       <Link
                         href="/subscribe"
                         onClick={() => setAccountMenuOpen(false)}
-                        className="block w-full rounded-md bg-[#0D1D35] px-3 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-[#0D1D35]/90 dark:bg-[#5ce1e6] dark:text-[#0D1D35]"
+                        className={cn(
+                          'block w-full rounded-md bg-[#0D1D35] px-3 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-[#0D1D35]/90 dark:bg-[#5ce1e6] dark:text-[#0D1D35]',
+                          isNotificationsStep && 'pointer-events-none opacity-40'
+                        )}
                       >
                         Suscribirme a Pro
                       </Link>
                     )}
                   </div>
 
-                  <div className="border-t border-border p-2 dark:border-white/10">
+                  <div
+                    className={cn(
+                      'border-t border-border p-2 dark:border-white/10',
+                      isNotificationsStep && 'pointer-events-none opacity-40'
+                    )}
+                  >
                     <button
                       type="button"
                       onClick={handleLogout}
@@ -739,7 +834,18 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
+      <main
+        className={cn(
+          'mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8',
+          tourSpotlightActive && 'pointer-events-none',
+          isNotificationsStep && 'opacity-50'
+        )}
+      >
+        {tourSpotlightActive && !isNotificationsStep && (
+          <div className="relative z-[45] mb-4 pointer-events-none">
+            <OnboardingTourHeader />
+          </div>
+        )}
         <div className="mb-6 sm:mb-8">
           <BalanceMetric totalIncome={totalIncome} spentAmount={totalSpent} />
         </div>
@@ -771,11 +877,9 @@ export default function DashboardPage() {
 
         <div
           data-onboarding-section="budgets"
-          className={cn(
-            'mb-6 rounded-2xl transition-shadow sm:mb-8',
-            onboardingStep === 'budgets' &&
-              showTour &&
-              'ring-2 ring-primary ring-offset-2 ring-offset-background dark:ring-offset-background'
+          className={onboardingSpotlightSection(
+            tourSpotlightActive && onboardingStep === 'budgets',
+            'mb-6 transition-shadow sm:mb-8'
           )}
         >
           <BudgetByCategory
@@ -805,19 +909,22 @@ export default function DashboardPage() {
               loading={transactionsLoading}
             />
           </div>
-          <div className="min-w-0">
-            <MyCategoriesSection />
+          <div
+            className={onboardingSpotlightSection(
+              tourSpotlightActive && onboardingStep === 'budgets',
+              'min-w-0 scroll-mt-24 sm:scroll-mt-28'
+            )}
+          >
+            <MyCategoriesSection showOnboardingTip={showTour && onboardingStep === 'budgets'} />
           </div>
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-4 lg:mb-6 lg:grid-cols-3">
           <div
             data-onboarding-section="add-transaction"
-            className={cn(
-              'lg:col-span-1 lg:h-[100%]',
-              onboardingStep === 'add-transaction' &&
-                showTour &&
-                'rounded-2xl ring-2 ring-primary ring-offset-2 ring-offset-background dark:ring-offset-background'
+            className={onboardingSpotlightSection(
+              tourSpotlightActive && onboardingStep === 'add-transaction',
+              'lg:col-span-1 lg:h-[100%]'
             )}
           >
             <AddTransactionForm
@@ -849,11 +956,9 @@ export default function DashboardPage() {
 
         <div
           data-onboarding-section="whatsapp"
-          className={cn(
-            'mb-6 sm:mb-8',
-            onboardingStep === 'whatsapp' &&
-              showTour &&
-              'rounded-2xl p-1 ring-2 ring-primary ring-offset-2 ring-offset-background dark:ring-offset-background'
+          className={onboardingSpotlightSection(
+            tourSpotlightActive && onboardingStep === 'whatsapp',
+            'mb-6 sm:mb-8'
           )}
         >
           <WhatsAppChatButton

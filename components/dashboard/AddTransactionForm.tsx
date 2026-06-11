@@ -1,15 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Wallet, TrendingUp } from 'lucide-react'
+import { Plus, Wallet, TrendingUp, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useCategories } from '@/hooks/useCategories'
-import { OnboardingVignette, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+import { OnboardingVignette, OnboardingSpotlightArrow, getOnboardingButtonSpotlightStyle, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import { CategorySelectWithIcons } from '@/components/dashboard/CategorySelectWithIcons'
 import { formatCurrencyInput } from '@/utils/format'
+import { cn } from '@/lib/utils'
 
 type CreateTransactionFn = (data: {
   amount: number
@@ -110,13 +111,10 @@ export const AddTransactionForm = ({
     <div className={wrapperClass}>
       {onboardingStep === 'add-transaction' && (
         <OnboardingVignette
-          stepLabel="Paso 2 de 4"
-          title="Registra tu primera transacción"
-          bullets={[
-            'Pulsa «Agregar Nueva Transacción» para abrir el formulario.',
-            'Indica si es gasto o ingreso, el valor y la categoría correspondiente.',
-            'Al guardar, se actualizan el resumen y el seguimiento de tus presupuestos.',
-          ]}
+          stepNumber={2}
+          title="Registra tus movimientos"
+          icon={Receipt}
+          action="Añade ingresos o gastos indicando la categoría, el monto y la fecha."
           onSkip={onSkipOnboarding}
         />
       )}
@@ -131,16 +129,29 @@ export const AddTransactionForm = ({
       </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogTrigger asChild>
+        <div className="flex w-full flex-col items-center">
+          {onboardingStep === 'add-transaction' && (
+            <OnboardingSpotlightArrow align="center" className="w-full" />
+          )}
+          <DialogTrigger asChild>
           <Button
-            className="
+            data-onboarding-target="add-transaction"
+            className={cn(
+              `
               w-full py-2 sm:py-3 text-sm sm:text-base
               transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]
               bg-primary text-primary-foreground hover:bg-primary/90
               dark:bg-gradient-to-r dark:from-[#5ce1e6] dark:to-[#4dd0e1]
               dark:text-[#0D1D35] dark:hover:opacity-90
               shadow-lg dark:shadow-[#5ce1e6]/20
-            "
+            `,
+              onboardingStep === 'add-transaction' && 'relative z-10'
+            )}
+            style={
+              onboardingStep === 'add-transaction'
+                ? getOnboardingButtonSpotlightStyle()
+                : undefined
+            }
             onClick={() => setIsOpen(true)}
           >
             <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
@@ -148,6 +159,7 @@ export const AddTransactionForm = ({
             <span className="sm:hidden">Agregar</span>
           </Button>
         </DialogTrigger>
+        </div>
 
         <DialogContent
           className="
