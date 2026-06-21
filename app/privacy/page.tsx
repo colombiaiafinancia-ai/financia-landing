@@ -1,8 +1,11 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Política de Privacidad - FinancIA',
-  description: 'Política de privacidad y protección de datos de FinancIA',
+  title: 'Política de privacidad',
+  description: 'Política de privacidad y protección de datos de FinancIA, app de finanzas personales con IA.',
+  alternates: {
+    canonical: '/privacy',
+  },
 }
 
 export default function PrivacyPage() {

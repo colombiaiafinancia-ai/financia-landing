@@ -48,10 +48,10 @@ const HeroSection = () => {
             </span>
           </div>
 
-          <h2 className="font-sora text-3xl font-extrabold leading-[1.08] tracking-[-1.5px] text-slate-100 sm:text-4xl lg:text-[48px]">
-            Tu amigo de confianza
-            <span className="block text-[#06B6D4]">para el dinero.</span>
-          </h2>
+          <h1 className="font-sora text-3xl font-extrabold leading-[1.08] text-slate-100 sm:text-4xl lg:text-[48px]">
+            FinancIA, tu app de finanzas personales
+            <span className="block text-[#06B6D4]">por WhatsApp.</span>
+          </h1>
 
           <p className="mx-auto mt-4 max-w-[520px] text-[15px] leading-relaxed text-slate-400 sm:text-[17px] lg:mx-0">
             Registra gastos con un mensaje, recibe consejos personalizados y visualiza tus finanzas — sin

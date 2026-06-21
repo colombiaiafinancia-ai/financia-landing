@@ -15,12 +15,28 @@ const sora = Sora({
 })
 
 export const metadata: Metadata = {
-  title: 'FinancIA',
-  description: 'Organiza tus finanzas con un simple mensaje en WhatsApp. Controla gastos, ahorra dinero y alcanza tus metas financieras con Paz, tu asistente personal.',
-  keywords: 'finanzas personales, WhatsApp, asistente financiero, control de gastos, ahorro, presupuesto',
-  authors: [{ name: 'FinancIA Team' }],
+  title: {
+    default: 'FinancIA | App de finanzas personales por WhatsApp',
+    template: '%s | FinancIA',
+  },
+  description: 'FinancIA es una app de finanzas personales que registra gastos, crea presupuestos y muestra reportes desde WhatsApp con ayuda de inteligencia artificial.',
+  keywords: [
+    'FinancIA',
+    'financia',
+    'app finanzas personales',
+    'apps personales',
+    'aplicacion de finanzas personales',
+    'control de gastos por WhatsApp',
+    'asistente financiero',
+    'presupuesto personal',
+    'ahorro personal',
+    'finanzas personales Colombia',
+  ],
+  authors: [{ name: 'FinancIA' }],
   creator: 'FinancIA',
   publisher: 'FinancIA',
+  applicationName: 'FinancIA',
+  category: 'FinanceApplication',
   formatDetection: {
     email: false,
     address: false,
@@ -36,26 +52,27 @@ export const metadata: Metadata = {
     apple: '/favicon.ico', 
   },
   openGraph: {
-    title: 'FinancIA',
-    description: 'Organiza tus finanzas con un simple mensaje en WhatsApp. Controla gastos, ahorra dinero y alcanza tus metas financieras.',
+    title: 'FinancIA | Finanzas personales por WhatsApp',
+    description: 'Registra gastos, entiende tus habitos y controla tu presupuesto con una app de finanzas personales impulsada por IA.',
     url: 'https://financia.app',
     siteName: 'FinancIA',
     images: [
       {
-        url: '/favicon.ico',
+        url: '/opengraph-image',
         width: 1200,
         height: 630,
-        alt: 'FinancIA',
+        alt: 'FinancIA, app de finanzas personales por WhatsApp',
       },
     ],
-    locale: 'es_ES',
+    locale: 'es_CO',
+    alternateLocale: ['es_ES', 'es_MX'],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'FinancIA',
-    description: 'Organiza tus finanzas con un simple mensaje en WhatsApp. Controla gastos, ahorra dinero y alcanza tus metas financieras.',
-    images: ['/favicon.ico'],
+    title: 'FinancIA | App de finanzas personales',
+    description: 'Controla gastos, presupuestos y reportes desde WhatsApp con inteligencia artificial.',
+    images: ['/opengraph-image'],
   },
   robots: {
     index: true,
@@ -67,9 +84,6 @@ export const metadata: Metadata = {
       'max-image-preview': 'large',
       'max-snippet': -1,
     },
-  },
-  verification: {
-    google: 'your-google-verification-code',
   },
 }
 
