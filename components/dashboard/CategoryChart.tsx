@@ -16,13 +16,18 @@ interface CategoryData {
 
 interface CategoryChartProps {
   expensesByCategory: Record<string, number>
+  variant?: 'gasto' | 'ingreso'
   onCategoryClick?: (category: string) => void
 }
 
-export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryChartProps) => {
+export const CategoryChart = ({
+  expensesByCategory,
+  variant = 'gasto',
+  onCategoryClick,
+}: CategoryChartProps) => {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null)
   const [showAllModal, setShowAllModal] = useState(false)
-  const { gastoCategories } = useCategories()
+  const { gastoCategories, ingresoCategories } = useCategories()
 
   const { theme, systemTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -54,11 +59,12 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
 
   const iconByCategoryName = useMemo(() => {
     const map = new Map<string, string | null>()
-    for (const c of gastoCategories) {
+    const categories = variant === 'ingreso' ? ingresoCategories : gastoCategories
+    for (const c of categories) {
       map.set(c.nombre.trim().toLowerCase(), c.iconKey ?? null)
     }
     return map
-  }, [gastoCategories])
+  }, [gastoCategories, ingresoCategories, variant])
 
   const heatmapColorsDark = [
     'rgba(96, 165, 250, 0.18)',
@@ -121,7 +127,9 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
         "
       >
         <div className="text-center">
-          <p className="text-muted-foreground dark:text-white/70">No hay gastos registrados</p>
+          <p className="text-muted-foreground dark:text-white/70">
+            {variant === 'ingreso' ? 'No hay ingresos registrados' : 'No hay gastos registrados'}
+          </p>
           <p className="text-sm text-muted-foreground/80 dark:text-white/50 mt-1">
             Los gastos aparecerán aquí cuando registres transacciones
           </p>
@@ -207,7 +215,7 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
     >
       <div className="text-center mb-4 sm:mb-6">
         <h3 className="text-lg sm:text-xl font-semibold text-foreground dark:text-white">
-          Mapa de Calor por Categoría
+          {variant === 'ingreso' ? 'Mapa de Calor de Ingresos' : 'Mapa de Calor por Categoria'}
         </h3>
         <p className="text-xs sm:text-sm text-muted-foreground dark:text-white/70">
           Total: {formatCurrency(totalAmount)}
@@ -261,13 +269,13 @@ export const CategoryChart = ({ expensesByCategory, onCategoryClick }: CategoryC
       {/* Leyenda */}
       <div className="mt-4 sm:mt-6 flex items-center justify-center">
         <div className="flex items-center gap-2 text-xs text-muted-foreground dark:text-white/70">
-          <span>Menor gasto</span>
+          <span>{variant === 'ingreso' ? 'Menor ingreso' : 'Menor gasto'}</span>
           <div className="flex gap-1">
             {[0, 1, 2, 3, 4].map((level) => (
               <div key={level} className="w-4 h-2 rounded-sm" style={{ backgroundColor: getHeatmapColor(level) }} />
             ))}
           </div>
-          <span>Mayor gasto</span>
+          <span>{variant === 'ingreso' ? 'Mayor ingreso' : 'Mayor gasto'}</span>
         </div>
       </div>
 

@@ -60,17 +60,29 @@ export class MonthSummaryRepository {
   /**
    * Obtiene el resumen por categoría del mes para un usuario (solo gastos)
    */
-  async getMonthCategoryExpenses(userId: string, monthDate: string): Promise<MonthCategorySummary[]> {
+  async getMonthCategorySummary(
+    userId: string,
+    monthDate: string,
+    direction: 'gasto' | 'ingreso'
+  ): Promise<MonthCategorySummary[]> {
     const client = await this.getClient()
     const { data, error } = await client
       .from('user_month_category_summary')
       .select('*')
       .eq('user_id', userId)
       .eq('month', monthDate)
-      .eq('direction', 'gasto')
+      .eq('direction', direction)
 
     if (error) throw new Error(`Error fetching month category summary: ${error.message}`)
     return data || []
+  }
+
+  async getMonthCategoryExpenses(userId: string, monthDate: string): Promise<MonthCategorySummary[]> {
+    return this.getMonthCategorySummary(userId, monthDate, 'gasto')
+  }
+
+  async getMonthCategoryIncome(userId: string, monthDate: string): Promise<MonthCategorySummary[]> {
+    return this.getMonthCategorySummary(userId, monthDate, 'ingreso')
   }
 
   /**

@@ -59,6 +59,7 @@ export const useTransactionsUnified = () => {
         weekExpenses: result.weekExpenses,
         monthExpenses: result.monthExpenses,
         expensesByCategory: result.expensesByCategory,
+        incomeByCategory: result.incomeByCategory,
         weeklyTrend: result.weeklyTrend
       }, refetchSilent))
 
@@ -161,6 +162,7 @@ export const useTransactionsUnified = () => {
     weekExpenses: summaryData?.weekExpenses || 0,
     monthExpenses: summaryData?.monthExpenses || 0,
     expensesByCategory: summaryData?.expensesByCategory || {},
+    incomeByCategory: summaryData?.incomeByCategory || {},
     weeklyTrend: summaryData?.weeklyTrend || [],
     user,
     createTransaction,

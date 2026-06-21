@@ -20,7 +20,7 @@ import { useOnboardingStatus } from '@/hooks/useOnboardingStatus'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { OnboardingWelcomeModal } from '@/components/dashboard/OnboardingWelcomeModal'
 import { FeedbackForm } from '@/components/dashboard/FeedbackForm'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Bell, BellOff, CreditCard, LogOut, Menu, UserCircle, X } from 'lucide-react'
 import { OnboardingVignette, OnboardingSpotlightArrow, getOnboardingButtonSpotlightStyle, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import {
@@ -68,6 +68,7 @@ export default function DashboardPage() {
   const [transactionSuccessMessage, setTransactionSuccessMessage] = useState('')
   const [budgetRefreshKey, setBudgetRefreshKey] = useState(0)
   const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null)
+  const [selectedCategoryType, setSelectedCategoryType] = useState<'gasto' | 'ingreso'>('gasto')
 
   const {
     transactions,
@@ -76,6 +77,7 @@ export default function DashboardPage() {
     totalSpent,
     totalIncome,
     expensesByCategory,
+    incomeByCategory,
     weeklyTrend,
     dailyTrend,
     monthlyTrend,
@@ -432,23 +434,38 @@ export default function DashboardPage() {
     }
   }
 
-  const handleCategoryClick = (category: string) => {
+  const handleCategoryClick = (category: string, type: 'gasto' | 'ingreso' = 'gasto') => {
     setSelectedCategoryName(category)
+    setSelectedCategoryType(type)
   }
 
   const handleWeekClick = (week: string) => {
     console.log('Semana seleccionada:', week)
   }
 
+  const currentMonthRange = useMemo(() => {
+    const now = new Date()
+    return {
+      start: new Date(now.getFullYear(), now.getMonth(), 1).getTime(),
+      end: new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime(),
+    }
+  }, [])
+
   const selectedCategoryTransactions = useMemo(() => {
     if (!selectedCategoryName) return []
     return transactions
-      .filter((tx) => tx.type === 'gasto' && tx.category === selectedCategoryName)
+      .filter((tx) => {
+        if (tx.type !== selectedCategoryType || tx.category !== selectedCategoryName) return false
+        if (!tx.createdAt) return false
+
+        const occurredAt = new Date(tx.createdAt).getTime()
+        return occurredAt >= currentMonthRange.start && occurredAt < currentMonthRange.end
+      })
       .sort(
         (a, b) =>
           new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
       )
-  }, [selectedCategoryName, transactions])
+  }, [currentMonthRange, selectedCategoryName, selectedCategoryType, transactions])
 
   const selectedCategoryTotal = useMemo(
     () => selectedCategoryTransactions.reduce((sum, tx) => sum + tx.amount, 0),
@@ -561,6 +578,8 @@ export default function DashboardPage() {
     currentPlan !== 'free' &&
     (planStatus === 'active' || planStatus === 'pending')
   const showTrialBanner = !profilePlan.is_super_user && !hasPaidPlan
+  const showIncomeHeatmap =
+    Object.values(incomeByCategory).filter((value) => Number(value) > 0).length >= 2
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -855,7 +874,7 @@ export default function DashboardPage() {
             <div className="relative mx-auto lg:h-[464px]">
               <CategoryChart
                 expensesByCategory={expensesByCategory}
-                onCategoryClick={handleCategoryClick}
+                onCategoryClick={(category) => handleCategoryClick(category, 'gasto')}
               />
             </div>
           </div>
@@ -874,6 +893,16 @@ export default function DashboardPage() {
             />
           </div>
         </div>
+
+        {showIncomeHeatmap && (
+          <div className="mb-6 sm:mb-8">
+            <CategoryChart
+              expensesByCategory={incomeByCategory}
+              variant="ingreso"
+              onCategoryClick={(category) => handleCategoryClick(category, 'ingreso')}
+            />
+          </div>
+        )}
 
         <div
           data-onboarding-section="budgets"
@@ -988,6 +1017,11 @@ export default function DashboardPage() {
             <DialogTitle>
               {selectedCategoryName ? `Detalle: ${selectedCategoryName}` : 'Detalle de categoría'}
             </DialogTitle>
+            <DialogDescription>
+              {selectedCategoryType === 'ingreso'
+                ? 'Transacciones de ingreso registradas en esta categoria durante el mes actual.'
+                : 'Transacciones de gasto registradas en esta categoria durante el mes actual.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5">

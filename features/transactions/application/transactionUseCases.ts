@@ -54,6 +54,12 @@ export interface TransactionSummaryDTO {
     total: number
     percentage: number
   }>
+  incomeByCategory: Array<{
+    categoryId: string
+    categoryName: string
+    total: number
+    percentage: number
+  }>
   weeklyTrend: Array<{ week: string; amount: number; date: string }>
 }
 
@@ -157,9 +163,10 @@ export class TransactionUseCases {
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
 
-    const [monthSummary, categoryRows, weeklyTrend] = await Promise.all([
+    const [monthSummary, categoryRows, incomeCategoryRows, weeklyTrend] = await Promise.all([
       monthSummaryRepository.getMonthSummary(userId, monthStart),
       monthSummaryRepository.getMonthCategoryExpenses(userId, monthStart),
+      monthSummaryRepository.getMonthCategoryIncome(userId, monthStart),
       this.calculateWeeklyTrend(userId),
     ])
 
@@ -171,21 +178,30 @@ export class TransactionUseCases {
     const totalIncome = Number(monthSummary.income_total) || 0
     const balance = totalIncome - totalSpent
 
-    const categoryIds = categoryRows.map((r) => r.category_id)
+    const categoryIds = [
+      ...categoryRows.map((r) => r.category_id),
+      ...incomeCategoryRows.map((r) => r.category_id),
+    ]
     const categoryMap = await this.getCategoryMap(userId, categoryIds)
 
-    const expensesByCategory = categoryRows
+    const mapCategoryRows = (
+      rows: typeof categoryRows,
+      totalByDirection: number
+    ) => rows
       .map((row) => {
         const total = Number(row.total) || 0
         return {
           categoryId: row.category_id,
           categoryName: categoryMap.get(row.category_id) || 'Desconocida',
           total,
-          percentage: totalSpent > 0 ? (total / totalSpent) * 100 : 0,
+          percentage: totalByDirection > 0 ? (total / totalByDirection) * 100 : 0,
         }
       })
       .filter((x) => x.total > 0)
       .sort((a, b) => b.total - a.total)
+
+    const expensesByCategory = mapCategoryRows(categoryRows, totalSpent)
+    const incomeByCategory = mapCategoryRows(incomeCategoryRows, totalIncome)
 
     return {
       totalSpent,
@@ -194,6 +210,7 @@ export class TransactionUseCases {
       monthExpenses: totalSpent,
       monthIncome: totalIncome,
       expensesByCategory,
+      incomeByCategory,
       weeklyTrend,
     }
   }
@@ -226,17 +243,29 @@ export class TransactionUseCases {
       return acc
     }, new Map<string, number>())
 
-    const categoryIds = [...categoryTotals.keys()]
+    const incomeCategoryTotals = monthTransactions.reduce((acc, tx) => {
+      if (tx.direction !== 'ingreso') return acc
+      acc.set(tx.category_id, (acc.get(tx.category_id) || 0) + tx.amount)
+      return acc
+    }, new Map<string, number>())
+
+    const categoryIds = [...categoryTotals.keys(), ...incomeCategoryTotals.keys()]
     const categoryMap = await this.getCategoryMap(userId, categoryIds)
 
-    const expensesByCategory = [...categoryTotals.entries()]
+    const mapCategoryTotals = (
+      totals: Map<string, number>,
+      totalByDirection: number
+    ) => [...totals.entries()]
       .map(([categoryId, total]) => ({
         categoryId,
         categoryName: categoryMap.get(categoryId) || 'Desconocida',
         total,
-        percentage: totalSpent > 0 ? (total / totalSpent) * 100 : 0,
+        percentage: totalByDirection > 0 ? (total / totalByDirection) * 100 : 0,
       }))
       .sort((a, b) => b.total - a.total)
+
+    const expensesByCategory = mapCategoryTotals(categoryTotals, totalSpent)
+    const incomeByCategory = mapCategoryTotals(incomeCategoryTotals, totalIncome)
 
     return {
       totalSpent,
@@ -245,6 +274,7 @@ export class TransactionUseCases {
       monthExpenses: totalSpent,
       monthIncome: totalIncome,
       expensesByCategory,
+      incomeByCategory,
       weeklyTrend,
     }
   }
@@ -325,6 +355,10 @@ export class TransactionUseCases {
       weekExpenses: summary.weeklyTrend[0]?.amount || 0,
       monthExpenses: summary.monthExpenses,
       expensesByCategory: summary.expensesByCategory.reduce((acc, item) => {
+        acc[item.categoryName] = item.total
+        return acc
+      }, {} as Record<string, number>),
+      incomeByCategory: summary.incomeByCategory.reduce((acc, item) => {
         acc[item.categoryName] = item.total
         return acc
       }, {} as Record<string, number>),

@@ -359,7 +359,7 @@ export const TransactionsTableImproved = ({
                   <option value="all" className="bg-white text-slate-900 dark:bg-[#0D1D35] dark:text-white">Todas</option>
                   {[...gastoCategories, ...ingresoCategories].map((cat) => (
                     <option
-                      key={cat.nombre}
+                      key={cat.id}
                       value={cat.nombre}
                       className="bg-white text-slate-900 dark:bg-[#0D1D35] dark:text-white"
                     >
