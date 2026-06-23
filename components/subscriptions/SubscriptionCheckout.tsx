@@ -12,6 +12,7 @@ import {
   SUBSCRIBE_PLAN_KEYS,
   getLandingPlanByKey,
 } from '@/lib/pricing-plans'
+import { PROMOTIONAL_TRIAL_END_LABEL } from '@/lib/trial'
 
 export type SubscriptionPlanOption = {
   planKey: string
@@ -136,14 +137,14 @@ export default function SubscriptionCheckout({
           </h1>
           <div className="mx-auto mt-6 max-w-3xl rounded-2xl border border-cyan-300/30 bg-cyan-300/[0.1] px-6 py-5 text-cyan-50 shadow-lg shadow-cyan-950/10">
             <p className="font-sora text-xl font-extrabold text-slate-100 md:text-2xl">
-              {trialIsActive ? 'Tu prueba promocional esta activa: ' : 'Empiezas con '}
+              {trialIsActive ? 'Tu prueba promocional esta activa: ' : 'Empiezas gratis hasta el '}
               <span className="text-amber-300 drop-shadow-[0_0_18px_rgba(252,211,77,0.28)]">
-                {trialIsActive ? `${trialDaysRemaining} dias restantes` : '7 dias gratis'}
+                {trialIsActive ? `${trialDaysRemaining} dias restantes` : PROMOTIONAL_TRIAL_END_LABEL}
               </span>
             </p>
             <p className="mt-2 text-sm text-slate-300 md:text-base">
               {trialIsActive
-                ? `No necesitas pagar ni buscar descuentos en Mercado Pago. Podras suscribirte cuando termine tu prueba el ${trialEndDate?.toLocaleDateString('es-CO')}.`
+                ? `No necesitas pagar ni buscar descuentos en Mercado Pago. Podras suscribirte cuando termine tu prueba el ${PROMOTIONAL_TRIAL_END_LABEL}.`
                 : 'Mercado Pago procesara la suscripcion seleccionada.'}
             </p>
           </div>
@@ -156,7 +157,7 @@ export default function SubscriptionCheckout({
               plan={plan.display}
               index={index}
               animated
-              footerNote={`7 dias gratis; luego Mercado Pago cobra ${formatCheckoutAmount(plan.amount, plan.currencyId)}`}
+              footerNote={`Gratis hasta el ${PROMOTIONAL_TRIAL_END_LABEL}; luego Mercado Pago cobra ${formatCheckoutAmount(plan.amount, plan.currencyId)}`}
             >
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                 <button

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { SUBSCRIBE_PLAN_KEYS } from "@/lib/pricing-plans";
+import { getEffectiveTrialEndsAt, PROMOTIONAL_TRIAL_END_LABEL } from "@/lib/trial";
 
 const planOrder = [...SUBSCRIBE_PLAN_KEYS];
 
@@ -34,7 +35,7 @@ export default async function SubscribePage() {
     .eq("user_id", user.id)
     .maybeSingle();
 
-  const trialEndsAt = profile?.trial_ends_at || null;
+  const trialEndsAt = getEffectiveTrialEndsAt(profile?.trial_ends_at || null);
 
   const { data: plans, error: plansError } = await supabase
     .from("subscription_plans")
@@ -72,7 +73,7 @@ export default async function SubscribePage() {
           Volver al dashboard
         </Link>
         <span className="hidden text-xs font-semibold uppercase tracking-[2px] text-cyan-300/80 sm:inline">
-          7 dias gratis
+          Gratis hasta el {PROMOTIONAL_TRIAL_END_LABEL}
         </span>
       </header>
       <SubscriptionCheckout

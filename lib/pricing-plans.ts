@@ -1,4 +1,5 @@
 import { Crown, Star, Zap, type LucideIcon } from 'lucide-react'
+import { PROMOTIONAL_TRIAL_END_LABEL } from '@/lib/trial'
 
 export type PlanTone = 'standard' | 'annual' | 'founder'
 
@@ -44,7 +45,7 @@ export const LANDING_PLANS: LandingPlan[] = [
     price: '$3.50',
     detail: 'USD / usuario / mes',
     features: [
-      '7 dias gratis; pagas despues de la prueba',
+      `Gratis hasta el ${PROMOTIONAL_TRIAL_END_LABEL}`,
       'Acceso completo a la plataforma',
       'Sin compromiso de permanencia',
       'Cobro mes a mes',
@@ -65,7 +66,7 @@ export const LANDING_PLANS: LandingPlan[] = [
     helper: 'Ahorras USD $12.60 al año',
     badge: 'Más popular',
     features: [
-      '7 dias gratis; pagas despues de la prueba',
+      `Gratis hasta el ${PROMOTIONAL_TRIAL_END_LABEL}`,
       '30% de descuento sobre el precio mensual',
       'Un solo cobro al año, sin sorpresas',
       'Precio congelado por 12 meses',
@@ -87,7 +88,7 @@ export const LANDING_PLANS: LandingPlan[] = [
     helper: 'Solo 100 cupos en 2026',
     badge: 'Cupo limitado',
     features: [
-      '7 dias gratis; pagas despues de la prueba',
+      `Gratis hasta el ${PROMOTIONAL_TRIAL_END_LABEL}`,
       'Precio especial de fundador por 12 meses',
       'Acceso anticipado a nuevas funciones',
       'Canal directo con el equipo de producto',
@@ -102,7 +103,7 @@ export const LANDING_PLANS: LandingPlan[] = [
 ]
 
 export const PRICING_COMPARISON_ROWS = [
-  ['Prueba gratis', '7 dias antes del primer cobro', '7 dias antes del primer cobro', '7 dias antes del primer cobro'],
+  ['Prueba gratis', `Hasta el ${PROMOTIONAL_TRIAL_END_LABEL}`, `Hasta el ${PROMOTIONAL_TRIAL_END_LABEL}`, `Hasta el ${PROMOTIONAL_TRIAL_END_LABEL}`],
   ['Precio para ti', '$3.50 / mes', '$29.40 / año ($2.45/mes)', '$2.46 / mes'],
   ['Modalidad de pago', 'Mensual recurrente', 'Pago único anual', 'Mensual recurrente'],
   ['Ahorro vs. mensual', '—', '30%', '~30%'],

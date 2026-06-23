@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseClient } from "@/services/supabase/client-server";
 import { createMercadoPagoPendingSubscription } from "@/services/mercadopago/subscriptions";
+import { getEffectiveTrialEndsAt, PROMOTIONAL_TRIAL_END_LABEL } from "@/lib/trial";
 
 export async function POST(req: Request) {
   try {
@@ -32,15 +33,14 @@ export async function POST(req: Request) {
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (
-      profile?.trial_ends_at &&
-      new Date(profile.trial_ends_at).getTime() > Date.now()
-    ) {
+    const effectiveTrialEndsAt = getEffectiveTrialEndsAt(profile?.trial_ends_at || null);
+
+    if (effectiveTrialEndsAt) {
       return NextResponse.json(
         {
           ok: false,
           error:
-            "Tu prueba gratis sigue activa. No necesitas pagar ni buscar descuentos en Mercado Pago.",
+            `Tu prueba gratis sigue activa hasta el ${PROMOTIONAL_TRIAL_END_LABEL}. No necesitas pagar ni buscar descuentos en Mercado Pago.`,
         },
         { status: 409 }
       );

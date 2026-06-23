@@ -28,7 +28,7 @@ Problemas que resuelve:
 ## 🛠️ Stack Tecnológico
 - Frontend: Next.js (App Router) + React + TypeScript
 - Estilos: Tailwind CSS + Shadcn UI (Radix UI) + Framer Motion
-- Backend/BaaS: Supabase (Auth, Postgres, RLS, Realtime, Triggers)
+- Backend/BaaS: servicio gestionado de autenticación y datos
 - Integraciones: WhatsApp deep links (`wa.me`)
 - Deploy: Vercel
 
@@ -43,22 +43,20 @@ Problemas que resuelve:
   - `dashboard/CategoryChart.tsx`: heatmap de gastos por categoría
   - `dashboard/WhatsAppChatButton.tsx`: chat directo para usuarios registrados
 - Hooks (`hooks/`):
-  - `useTransactionsUnified.ts`: transacciones normalizadas y realtime
-  - `useBudget.ts`: presupuesto mensual total (tabla `public.presupuestos`)
-  - `useCategoryBudget.ts`: presupuesto por categoría (tabla `public.presupuesto`)
-  - `useCategories.ts`: catálogo `public.categorias`
+  - `useTransactionsUnified.ts`: transacciones normalizadas
+  - `useBudget.ts`: presupuesto mensual total
+  - `useCategoryBudget.ts`: presupuesto por categoría
+  - `useCategories.ts`: catálogo de categorías
 
 ## 🔐 Autenticación y registro
-- Registro vía `POST /api/auth/register` usando Supabase Auth.
-- Se guardan `full_name` y `phone` en `auth.users.user_metadata`.
-- Trigger Postgres `crear_usuario_simple()` inserta en `public.usuarios` cuando
-  el email se confirma. El teléfono se normaliza sin `+`.
+- Registro vía `POST /api/auth/register`.
+- Confirmación de email antes de habilitar la cuenta.
 - Login redirige al dashboard y saluda por nombre.
 
 ## 💰 Presupuestos y transacciones
-- Presupuesto mensual total en `public.presupuestos`.
-- Presupuesto por categoría en `public.presupuesto` (upsert por usuario/mes).
-- Transacciones en `public.transacciones` con `usuario_id`, `valor`, `creado_en`.
+- Presupuesto mensual total.
+- Presupuesto por categoría.
+- Transacciones con monto, categoría, tipo, descripción y fecha.
 - Heatmap por categoría y tendencia semanal calculada en el cliente.
 
 ## 📱 WhatsApp
@@ -99,13 +97,6 @@ financia-landing/
 └─ tsconfig.json
 ```
 
-## 🔧 Configuración y variables de entorno
-Crear `.env.local` con claves de Supabase:
-```
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-```
-
 ## ▶️ Desarrollo local
 ```
 npm install
@@ -113,9 +104,9 @@ npm run dev
 ```
 
 ## 🔒 Seguridad y privacidad
-- RLS habilitado en tablas de Postgres.
-- Inserción en `public.usuarios` sólo tras confirmación de email (trigger).
-- Normalización del teléfono sin `+` en trigger de Postgres.
+- Acceso autenticado para las áreas privadas.
+- Confirmación de email antes de completar el registro.
+- Datos personales tratados según las páginas de términos y privacidad.
 
 ## 🚀 Roadmap breve
 - Importación de extractos bancarios (CSV/OFX)

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSupabaseClient } from "@/services/supabase/client-server";
 import { createMercadoPagoSubscription } from "@/services/mercadopago/subscriptions";
 import { mapMercadoPagoStatus } from "@/lib/mercadopago";
+import { getEffectiveTrialEndsAt, PROMOTIONAL_TRIAL_END_LABEL } from "@/lib/trial";
 
 export async function POST(req: Request) {
   try {
@@ -20,6 +21,24 @@ export async function POST(req: Request) {
     }
 
     const supabase = await getServerSupabaseClient();
+
+    const { data: profile } = await supabase
+      .from("user_profiles")
+      .select("trial_ends_at")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const effectiveTrialEndsAt = getEffectiveTrialEndsAt(profile?.trial_ends_at || null);
+
+    if (effectiveTrialEndsAt) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Tu prueba gratis sigue activa hasta el ${PROMOTIONAL_TRIAL_END_LABEL}. No necesitas pagar todavía.`,
+        },
+        { status: 409 }
+      );
+    }
 
     const { data: plan, error: planError } = await supabase
       .from("subscription_plans")

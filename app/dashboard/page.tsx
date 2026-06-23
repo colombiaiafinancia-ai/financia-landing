@@ -31,6 +31,11 @@ import {
 import { getOnboardingLocalKeys, readStoredStep } from '@/utils/onboardingLocalStorage'
 import { smoothScrollToElement } from '@/utils/scroll'
 import { CATEGORIES_UPDATED_EVENT } from '@/utils/categorySyncEvents'
+import {
+  getEffectiveTrialEndsAt,
+  getPromotionalTrialTotalMs,
+  PROMOTIONAL_TRIAL_END_LABEL,
+} from '@/lib/trial'
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
@@ -531,9 +536,8 @@ export default function DashboardPage() {
   const welcomeModalOpen = showTour && !welcomeDone
   const planStatus = profilePlan.subscription_status || 'free'
   const currentPlan = profilePlan.current_plan || 'free'
-  const trialEndsAt = profilePlan.trial_ends_at
-    ? new Date(profilePlan.trial_ends_at)
-    : null
+  const effectiveTrialEndsAt = getEffectiveTrialEndsAt(profilePlan.trial_ends_at)
+  const trialEndsAt = effectiveTrialEndsAt ? new Date(effectiveTrialEndsAt) : null
   const trialIsActive = Boolean(trialEndsAt && trialEndsAt.getTime() > Date.now())
   const trialRemainingMs = trialIsActive && trialEndsAt
     ? Math.max(trialEndsAt.getTime() - Date.now(), 0)
@@ -543,7 +547,7 @@ export default function DashboardPage() {
     : 0
   const trialProgress = Math.max(
     0,
-    Math.min(100, (trialRemainingMs / (7 * 24 * 60 * 60 * 1000)) * 100)
+    Math.min(100, (trialRemainingMs / getPromotionalTrialTotalMs()) * 100)
   )
   const canCancelPlan =
     !profilePlan.is_super_user &&
@@ -684,7 +688,7 @@ export default function DashboardPage() {
                           </span>
                           {trialIsActive && trialEndsAt && (
                             <p className="mt-2 text-xs text-muted-foreground dark:text-white/60">
-                              Prueba gratis hasta {trialEndsAt.toISOString().slice(0, 10)}.
+                              Prueba gratis hasta el {PROMOTIONAL_TRIAL_END_LABEL}.
                             </p>
                           )}
                         </div>
