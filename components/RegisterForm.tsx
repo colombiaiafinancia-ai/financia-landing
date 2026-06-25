@@ -62,12 +62,14 @@ export const RegisterForm = () => {
     const formData = new FormData(e.currentTarget)
     // Añadir el código de país al número de teléfono
     const phoneNumber = formData.get('phone') as string
-    const fullPhone = countryCode + phoneNumber
+    const cleanPhoneNumber = phoneNumber.replace(/\D/g, '')
+    const fullPhone = countryCode + cleanPhoneNumber
     
     // LOGS CORREGIDOS PARA MOSTRAR VALORES REALES
     console.log('📱 FORM SUBMIT - Teléfono:', JSON.stringify({ 
       countryCode, 
       phoneNumber, 
+      cleanPhoneNumber,
       fullPhone
     }))
     

@@ -49,6 +49,7 @@ const worldCountries: CountryCode[] = [
   { code: '+55', country: 'Brasil', flag: '🇧🇷' },
   { code: '+56', country: 'Chile', flag: '🇨🇱' },
   { code: '+57', country: 'Colombia', flag: '🇨🇴' },
+  { code: '+51', country: 'Peru', flag: '🇵🇪' },
   { code: '+58', country: 'Venezuela', flag: '🇻🇪' },
   { code: '+591', country: 'Bolivia', flag: '🇧🇴' },
   { code: '+592', country: 'Guyana', flag: '🇬🇾' },
