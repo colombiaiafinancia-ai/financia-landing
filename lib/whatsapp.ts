@@ -16,7 +16,7 @@ export async function sendWhatsAppMessage(
       to: cleanPhone,
       type: 'template',
       template: {
-        name: 'recordatorio',       // Nombre exacto de tu plantilla en inglés
+        name: 'recordatorios',       // Nombre exacto de tu plantilla en inglés
         language: { code: 'en' },  // Idioma inglés
       },
     };
