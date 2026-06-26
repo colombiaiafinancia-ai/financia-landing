@@ -196,7 +196,7 @@ export const CategoryTrendChart = ({
   }
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-border bg-card p-4 text-card-foreground dark:border-white/20 dark:bg-white/10 dark:backdrop-blur-sm sm:p-6">
+    <div className="flex h-full min-h-[420px] flex-col rounded-lg border border-border bg-card p-4 text-card-foreground dark:border-white/20 dark:bg-white/10 dark:backdrop-blur-sm sm:p-6">
       <div className="mb-3 shrink-0 space-y-2 sm:mb-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <button
@@ -269,7 +269,7 @@ export const CategoryTrendChart = ({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1">
+      <div className="h-[220px] w-full shrink-0 sm:h-[260px] lg:h-0 lg:min-h-0 lg:flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data.length ? data : [{ label: 'Sin datos', amount: 0 }]}

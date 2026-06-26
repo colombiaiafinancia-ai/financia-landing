@@ -894,7 +894,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="order-2 lg:h-[464px]">
+          <div className="order-2 min-h-[420px] lg:h-[464px]">
             {selectedCategoryName ? (
               <CategoryTrendChart
                 categoryName={selectedCategoryName}
