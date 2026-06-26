@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { ArrowRight, ChevronDown, Lightbulb } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -173,7 +174,7 @@ export function OnboardingVignette({
   )
 }
 
-/** Flecha flotante animada — sin pill de texto (estilo premium). */
+/** Flecha flotante animada — sincronizada con el pulso del botón. */
 export function OnboardingSpotlightArrow({
   align = 'center',
   color = ONBOARDING_CYAN,
@@ -190,7 +191,7 @@ export function OnboardingSpotlightArrow({
   return (
     <div
       className={cn(
-        'pointer-events-none mb-1 flex w-full flex-col items-center',
+        'pointer-events-none mb-2 flex w-full flex-col items-center',
         align === 'center' && 'items-center',
         align === 'right' && 'items-end',
         align === 'left' && 'items-start',
@@ -198,39 +199,95 @@ export function OnboardingSpotlightArrow({
       )}
     >
       <span
-        className="mb-0.5 block h-2 w-2 animate-pulse rounded-full"
+        className="animate-onboarding-dot mb-0.5 block h-2.5 w-2.5 rounded-full sm:h-3 sm:w-3"
         style={{
           backgroundColor: arrowColor,
           boxShadow: highContrast
-            ? '0 0 10px rgba(255,255,255,0.9), 0 0 4px rgba(0,0,0,0.4)'
-            : `0 0 10px ${color}99`,
+            ? '0 0 10px rgba(255,255,255,0.85), 0 0 4px rgba(0,0,0,0.35)'
+            : `0 0 12px ${color}99`,
         }}
       />
       <ChevronDown
-        className="h-6 w-6 animate-onboarding-arrow sm:h-7 sm:w-7"
+        className="h-7 w-7 animate-onboarding-arrow sm:h-8 sm:w-8"
         style={{
           color: arrowColor,
           filter: highContrast
-            ? 'drop-shadow(0 2px 6px rgba(0,0,0,0.55)) drop-shadow(0 0 8px rgba(255,255,255,0.5))'
-            : `drop-shadow(0 0 8px ${color}88)`,
+            ? 'drop-shadow(0 2px 8px rgba(0,0,0,0.6)) drop-shadow(0 0 10px rgba(255,255,255,0.55))'
+            : `drop-shadow(0 0 12px ${color})`,
         }}
-        strokeWidth={2.5}
+        strokeWidth={3}
       />
     </div>
   )
 }
 
+/** Envuelve el botón de acción con flecha indicadora. */
+export function OnboardingActionTarget({
+  active,
+  children,
+  align = 'center',
+  highContrast = false,
+  className,
+}: {
+  active: boolean
+  children: ReactNode
+  align?: 'left' | 'center' | 'right'
+  highContrast?: boolean
+  className?: string
+}) {
+  if (!active) return <>{children}</>
+
+  return (
+    <div className={cn('flex flex-col items-center', className)}>
+      <OnboardingSpotlightArrow align={align} highContrast={highContrast} />
+      {children}
+    </div>
+  )
+}
+
+export const ONBOARDING_BUTTON_BREATHE_CLASS = 'animate-onboarding-button-breathe'
+export const ONBOARDING_WHATSAPP_BUTTON_BREATHE_CLASS = 'animate-onboarding-button-breathe-whatsapp'
+
+/** Clases extra para resaltar botones de acción del tour. */
+export function onboardingTargetButtonClass(
+  variant: 'primary' | 'reminders' | 'whatsapp' = 'primary'
+) {
+  const base = cn(ONBOARDING_BUTTON_BREATHE_CLASS, 'relative z-10 !font-bold')
+
+  if (variant === 'reminders') {
+    return cn(
+      base,
+      '!border-2 !border-[#06B6D4]/80 !bg-[#06B6D4]/18 !text-[#0e7490]',
+      'dark:!border-[#5ce1e6]/80 dark:!bg-[#5ce1e6]/20 dark:!text-[#5ce1e6]'
+    )
+  }
+
+  if (variant === 'whatsapp') {
+    return cn(
+      ONBOARDING_WHATSAPP_BUTTON_BREATHE_CLASS,
+      base,
+      '!border-2 !border-[#25D366]/80 !bg-white !text-[#14532d]'
+    )
+  }
+
+  return cn(
+    base,
+    '!border-2 !border-[#06B6D4]/90 !bg-[#06B6D4] !text-white',
+    'hover:!bg-[#06B6D4]/90',
+    'dark:!border-[#5ce1e6]/90 dark:!bg-gradient-to-r dark:!from-[#5ce1e6]/95 dark:!to-[#4dd0e1]/95',
+    'dark:!text-[#0D1D35]'
+  )
+}
+
 export function getOnboardingButtonSpotlightStyle(color: string = ONBOARDING_CYAN) {
   return {
-    boxShadow: `0 0 0 1px rgba(34,211,238,0.35), 0 0 24px rgba(34,211,238,0.2)`,
-    animation: 'onboarding-spotlight-pulse 2s ease-in-out infinite',
+    boxShadow: `0 0 24px ${color}55`,
   } as const
 }
 
 export function getOnboardingWhatsAppButtonSpotlightStyle() {
   return {
-    boxShadow: '0 0 0 1px rgba(37,211,102,0.5), 0 0 24px rgba(37,211,102,0.35)',
-    animation: 'onboarding-spotlight-pulse 2s ease-in-out infinite',
+    boxShadow: '0 0 24px rgba(37,211,102,0.45)',
   } as const
 }
 

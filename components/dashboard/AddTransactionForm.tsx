@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useCategories } from '@/hooks/useCategories'
-import { OnboardingVignette, OnboardingSpotlightArrow, getOnboardingButtonSpotlightStyle, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+import { OnboardingVignette, OnboardingActionTarget, onboardingTargetButtonClass, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import { CategorySelectWithIcons } from '@/components/dashboard/CategorySelectWithIcons'
 import { formatCurrencyInput } from '@/utils/format'
 import { cn } from '@/lib/utils'
@@ -129,10 +129,11 @@ export const AddTransactionForm = ({
       </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <div className="flex w-full flex-col items-center">
-          {onboardingStep === 'add-transaction' && (
-            <OnboardingSpotlightArrow align="center" className="w-full" />
-          )}
+        <OnboardingActionTarget
+          active={onboardingStep === 'add-transaction'}
+          align="center"
+          className="flex w-full flex-col items-center"
+        >
           <DialogTrigger asChild>
           <Button
             data-onboarding-target="add-transaction"
@@ -145,13 +146,8 @@ export const AddTransactionForm = ({
               dark:text-[#0D1D35] dark:hover:opacity-90
               shadow-lg dark:shadow-[#5ce1e6]/20
             `,
-              onboardingStep === 'add-transaction' && 'relative z-10'
+              onboardingStep === 'add-transaction' && onboardingTargetButtonClass()
             )}
-            style={
-              onboardingStep === 'add-transaction'
-                ? getOnboardingButtonSpotlightStyle()
-                : undefined
-            }
             onClick={() => setIsOpen(true)}
           >
             <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
@@ -159,7 +155,7 @@ export const AddTransactionForm = ({
             <span className="sm:hidden">Agregar</span>
           </Button>
         </DialogTrigger>
-        </div>
+        </OnboardingActionTarget>
 
         <DialogContent
           className="

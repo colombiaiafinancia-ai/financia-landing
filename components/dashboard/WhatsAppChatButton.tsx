@@ -4,8 +4,8 @@ import { MessageCircle } from 'lucide-react'
 import { motion } from 'framer-motion'
 import {
   OnboardingVignette,
-  OnboardingSpotlightArrow,
-  getOnboardingWhatsAppButtonSpotlightStyle,
+  OnboardingActionTarget,
+  onboardingTargetButtonClass,
   type OnboardingStep,
 } from '@/components/dashboard/OnboardingVignette'
 import { cn } from '@/lib/utils'
@@ -68,8 +68,7 @@ const WhatsAppChatButton = ({
           </p>
 
           {isTourStep ? (
-            <div className="flex w-full flex-col items-center">
-              <OnboardingSpotlightArrow align="center" highContrast />
+            <OnboardingActionTarget active highContrast className="w-full">
               <motion.a
                 href={whatsappUrl}
                 target="_blank"
@@ -78,13 +77,15 @@ const WhatsAppChatButton = ({
                 onClick={() => onWhatsAppOpened?.()}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="relative z-10 inline-flex items-center rounded-lg border border-[#25D366]/40 bg-white px-4 py-2 text-sm font-medium text-[#14532d] transition-colors hover:bg-white/95"
-                style={getOnboardingWhatsAppButtonSpotlightStyle()}
+                className={cn(
+                  'inline-flex items-center rounded-lg border border-[#25D366]/40 bg-white px-4 py-2 text-sm font-medium text-[#14532d] transition-colors hover:bg-white/95',
+                  onboardingTargetButtonClass('whatsapp')
+                )}
               >
                 <MessageCircle className="mr-2 h-4 w-4 text-[#25D366]" />
                 Iniciar Chat
               </motion.a>
-            </div>
+            </OnboardingActionTarget>
           ) : (
             <motion.a
               href={whatsappUrl}

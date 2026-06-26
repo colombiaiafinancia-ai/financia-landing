@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useCategories } from '@/hooks/useCategories'
 import { useCategoryBudget } from '@/hooks/useCategoryBudget'
-import { OnboardingVignette, OnboardingSpotlightArrow, getOnboardingButtonSpotlightStyle, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+import { OnboardingVignette, OnboardingActionTarget, onboardingTargetButtonClass, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import { CategoryGlyph } from '@/components/dashboard/CategoryGlyph'
 import { formatCurrencyInput } from '@/utils/format'
 import { cn } from '@/lib/utils'
@@ -203,7 +203,7 @@ export const BudgetByCategory = ({
     return (
       <div className={wrapperClass}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center text-slate-900 dark:text-white">
+          <h3 className="text-lg font-semibold flex items-center text-foreground dark:text-white">
             <DollarSign className="mr-2 h-5 w-5" />
             Progreso de presupuestos del mes
           </h3>
@@ -215,8 +215,8 @@ export const BudgetByCategory = ({
               key={i}
               className="flex justify-between items-center p-3 rounded-xl animate-pulse bg-muted dark:bg-white/5"
             >
-              <div className="h-4 bg-slate-300/70 dark:bg-white/15 rounded w-24" />
-              <div className="h-4 bg-slate-300/70 dark:bg-white/15 rounded w-16" />
+              <div className="h-4 bg-muted dark:bg-white/15 rounded w-24" />
+              <div className="h-4 bg-muted dark:bg-white/15 rounded w-16" />
             </div>
           ))}
         </div>
@@ -228,7 +228,7 @@ export const BudgetByCategory = ({
     return (
       <div className={wrapperClass}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold flex items-center text-slate-900 dark:text-white">
+          <h3 className="text-lg font-semibold flex items-center text-foreground dark:text-white">
             <DollarSign className="mr-2 h-5 w-5" />
             Progreso de presupuestos del mes
           </h3>
@@ -257,13 +257,13 @@ export const BudgetByCategory = ({
           stepNumber={1}
           title="Crea tu primer presupuesto"
           icon={Wallet}
-          action="Elige una categoría, ingresa el monto y pulsa «Agregar»."
+          action='Pulsa "Agregar", selecciona una categoría, asigna un presupuesto y luego pulsa "Guardar". Así podrás crear tus presupuestos.'
           tip="¿No encuentras una categoría? Créala en «Mis categorías»."
           onSkip={onSkipOnboarding}
         />
       )}
       <div className="relative mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold flex items-center text-slate-900 dark:text-white">
+        <h3 className="text-lg font-semibold flex items-center text-foreground dark:text-white">
           <DollarSign className="mr-2 h-5 w-5" />
           Progreso de presupuestos del mes
         </h3>
@@ -275,33 +275,29 @@ export const BudgetByCategory = ({
         )}
 
         <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-          <div className="flex shrink-0 flex-col items-center">
-            {onboardingStep === 'budgets' && (
-              <OnboardingSpotlightArrow align="center" className="min-w-[6.5rem]" />
-            )}
+          <OnboardingActionTarget
+            active={onboardingStep === 'budgets'}
+            align="center"
+            className="flex shrink-0 flex-col items-center"
+          >
             <DialogTrigger asChild>
             <Button
               size="sm"
               data-onboarding-target="add-budget"
               className={cn(
                 'bg-primary text-primary-foreground hover:bg-primary/90',
-                onboardingStep === 'budgets' && 'relative z-10'
+                onboardingStep === 'budgets' && onboardingTargetButtonClass()
               )}
-              style={
-                onboardingStep === 'budgets'
-                  ? getOnboardingButtonSpotlightStyle()
-                  : undefined
-              }
             >
               <Plus className="mr-2 h-4 w-4" />
               Agregar
             </Button>
           </DialogTrigger>
-          </div>
+          </OnboardingActionTarget>
 
           <DialogContent className="max-w-md bg-card border border-border text-card-foreground dark:bg-[#071224] dark:border-white/15 dark:text-white">
             <DialogHeader>
-              <DialogTitle className="text-center text-xl font-semibold text-slate-900 dark:text-white">
+              <DialogTitle className="text-center text-xl font-semibold text-foreground dark:text-white">
                 {editingBudget
                   ? `Editar Presupuesto - ${editingBudget.categoryName}`
                   : 'Agregar presupuesto'}
@@ -310,7 +306,7 @@ export const BudgetByCategory = ({
 
             <div className="space-y-5">
               <div className="space-y-2" ref={dropdownRef}>
-                <Label className="text-slate-900 dark:text-white/80 text-sm">
+                <Label className="text-foreground dark:text-white/80 text-sm">
                   Categoría
                 </Label>
 
@@ -413,13 +409,13 @@ export const BudgetByCategory = ({
               <div className="space-y-2">
                 <Label
                   htmlFor="budget"
-                  className="text-slate-900 dark:text-white/80 text-sm"
+                  className="text-foreground dark:text-white/80 text-sm"
                 >
                   Presupuesto
                 </Label>
 
                 <div className="relative">
-                  <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-white/40" />
+                  <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground dark:text-white/40" />
                   <Input
                     id="budget"
                     type="text"
@@ -428,7 +424,7 @@ export const BudgetByCategory = ({
                     placeholder="$0"
                     className="
                       pl-10
-                      bg-background border-border text-foreground placeholder:text-slate-400
+                      bg-background border-border text-foreground placeholder:text-muted-foreground
                       dark:bg-white/10 dark:border-white/20 dark:text-white dark:placeholder:text-white/40
                       focus-visible:ring-primary
                     "
@@ -468,11 +464,11 @@ export const BudgetByCategory = ({
 
       {budgetSummary.length === 0 ? (
         <div className="text-center py-8">
-          <TrendingUp className="mx-auto h-12 w-12 text-slate-400 dark:text-white/40 mb-4" />
-          <p className="text-slate-700 dark:text-white/70 mb-4">
+          <TrendingUp className="mx-auto h-12 w-12 text-muted-foreground dark:text-white/40 mb-4" />
+          <p className="text-muted-foreground dark:text-white/70 mb-4">
             No tienes presupuestos configurados para este mes
           </p>
-          <p className="text-sm text-slate-600 dark:text-white/50">
+          <p className="text-sm text-muted-foreground dark:text-white/50">
             Agrega presupuestos por categoría para medir el progreso mensual
           </p>
         </div>
@@ -492,7 +488,7 @@ export const BudgetByCategory = ({
               >
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium text-slate-900 dark:text-white">
+                    <span className="font-medium text-foreground dark:text-white">
                       {budget.categoryName}
                     </span>
                     <span className="text-lg font-bold text-green-600 dark:text-green-400">
@@ -501,7 +497,7 @@ export const BudgetByCategory = ({
                   </div>
 
                   <div className="mt-2">
-                    <div className="flex justify-between text-sm mb-1 text-slate-700 dark:text-white/70">
+                    <div className="flex justify-between text-sm mb-1 text-muted-foreground dark:text-white/70">
                       <span>Gastado: ${budget.actual.toLocaleString('es-CO')}</span>
                       <span
                         className={
@@ -515,7 +511,7 @@ export const BudgetByCategory = ({
                       </span>
                     </div>
 
-                    <div className="w-full rounded-full h-2 bg-slate-200 dark:bg-white/10">
+                    <div className="w-full rounded-full h-2 bg-muted dark:bg-white/10">
                       <div
                         className={`h-2 rounded-full transition-all duration-300 ${
                           budget.porcentajeUsado >= 100
@@ -528,7 +524,7 @@ export const BudgetByCategory = ({
                       />
                     </div>
 
-                    <div className="text-xs mt-1 text-slate-600 dark:text-white/50">
+                    <div className="text-xs mt-1 text-muted-foreground dark:text-white/50">
                       {budget.porcentajeUsado.toFixed(1)}% utilizado
                     </div>
                   </div>
@@ -585,7 +581,7 @@ export const BudgetByCategory = ({
         {budgetToDelete && (
           <div className="space-y-4">
             <div className="text-center">
-              <p className="text-slate-700 dark:text-white/80 mb-2">
+              <p className="text-muted-foreground dark:text-white/80 mb-2">
                 ¿Estás seguro de que quieres eliminar este presupuesto?
               </p>
 
@@ -603,7 +599,7 @@ export const BudgetByCategory = ({
                   </span>
                 </div>
 
-                <p className="text-slate-700 dark:text-white/70 text-sm">
+                <p className="text-muted-foreground dark:text-white/70 text-sm">
                   {budgetToDelete.categoryName}
                 </p>
               </div>

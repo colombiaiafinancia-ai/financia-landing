@@ -96,21 +96,57 @@
   animation: fadeIn 0.6s ease-out forwards;
 }
 
-@keyframes onboarding-spotlight-pulse {
+/* Ritmo único para animaciones del onboarding */
+:root {
+  --onboarding-sync-duration: 2.4s;
+  --onboarding-sync-easing: ease-in-out;
+}
+
+@keyframes onboarding-sync-breathe {
   0%,
   100% {
-    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.3), 0 0 20px rgba(34, 211, 238, 0.15);
+    transform: scale(1);
+    filter: brightness(1.02) saturate(1.08);
+    box-shadow:
+      0 0 0 2px rgba(34, 211, 238, 0.5),
+      0 0 20px rgba(34, 211, 238, 0.35),
+      0 0 40px rgba(34, 211, 238, 0.18);
   }
   50% {
-    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.45), 0 0 32px rgba(34, 211, 238, 0.28);
+    transform: scale(1.06);
+    filter: brightness(1.1) saturate(1.12);
+    box-shadow:
+      0 0 0 2px rgba(34, 211, 238, 0.75),
+      0 0 32px rgba(34, 211, 238, 0.55),
+      0 0 56px rgba(34, 211, 238, 0.28);
   }
 }
 
-@keyframes onboarding-arrow-bounce {
+@keyframes onboarding-sync-breathe-whatsapp {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1.02) saturate(1.06);
+    box-shadow:
+      0 0 0 2px rgba(37, 211, 102, 0.55),
+      0 0 20px rgba(37, 211, 102, 0.35),
+      0 0 40px rgba(37, 211, 102, 0.18);
+  }
+  50% {
+    transform: scale(1.06);
+    filter: brightness(1.08) saturate(1.1);
+    box-shadow:
+      0 0 0 2px rgba(37, 211, 102, 0.8),
+      0 0 32px rgba(37, 211, 102, 0.55),
+      0 0 56px rgba(37, 211, 102, 0.28);
+  }
+}
+
+@keyframes onboarding-sync-arrow {
   0%,
   100% {
     transform: translateY(0);
-    opacity: 0.9;
+    opacity: 0.82;
   }
   50% {
     transform: translateY(8px);
@@ -118,8 +154,38 @@
   }
 }
 
+@keyframes onboarding-sync-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+}
+
 .animate-onboarding-arrow {
-  animation: onboarding-arrow-bounce 1.6s ease-in-out infinite;
+  animation: onboarding-sync-arrow var(--onboarding-sync-duration) var(--onboarding-sync-easing)
+    infinite;
+}
+
+.animate-onboarding-dot {
+  animation: onboarding-sync-dot var(--onboarding-sync-duration) var(--onboarding-sync-easing)
+    infinite;
+}
+
+.animate-onboarding-button-breathe {
+  animation: onboarding-sync-breathe var(--onboarding-sync-duration) var(--onboarding-sync-easing)
+    infinite;
+  will-change: transform;
+}
+
+.animate-onboarding-button-breathe-whatsapp {
+  animation: onboarding-sync-breathe-whatsapp var(--onboarding-sync-duration)
+    var(--onboarding-sync-easing) infinite;
+  will-change: transform;
 }
 
 @keyframes message-in {

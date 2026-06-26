@@ -17,13 +17,15 @@ interface CategoryData {
 interface CategoryChartProps {
   expensesByCategory: Record<string, number>
   variant?: 'gasto' | 'ingreso'
+  selectedCategory?: string | null
   onCategoryClick?: (category: string) => void
 }
 
 export const CategoryChart = ({
   expensesByCategory,
   variant = 'gasto',
-  onCategoryClick,
+  selectedCategory = null,
+  onCategoryClick
 }: CategoryChartProps) => {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null)
   const [showAllModal, setShowAllModal] = useState(false)
@@ -141,6 +143,7 @@ export const CategoryChart = ({
   const HeatCard = (category: CategoryData) => {
     const bg = getHeatmapColor(category.heatLevel)
     const iconKey = iconByCategoryName.get(category.name.trim().toLowerCase()) ?? null
+    const isSelected = selectedCategory === category.name
 
     return (
       <div
@@ -149,6 +152,7 @@ export const CategoryChart = ({
           relative overflow-hidden rounded-xl p-3 sm:p-4 cursor-pointer transition-all duration-300 transform
           ${hoveredCategory === category.name ? 'scale-105 shadow-2xl' : 'hover:scale-102'}
           ${hoveredCategory && hoveredCategory !== category.name ? 'opacity-60' : ''}
+          ${isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-card dark:ring-[#9DFAD7] dark:ring-offset-[#0D1D35] scale-105 shadow-2xl' : ''}
         `}
         style={{
           backgroundColor: bg,

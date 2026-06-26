@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { BalanceMetric } from '@/components/dashboard/BalanceMetric'
 import { CategoryChart } from '@/components/dashboard/CategoryChart'
 import { WeeklyTrendChart } from '@/components/dashboard/WeeklyTrendChart'
+import { CategoryTrendChart } from '@/components/dashboard/CategoryTrendChart'
 import { AddTransactionForm } from '@/components/dashboard/AddTransactionForm'
 import WhatsAppChatButton from '@/components/dashboard/WhatsAppChatButton'
 import { BudgetByCategory } from '@/components/dashboard/BudgetByCategory'
@@ -17,18 +18,18 @@ import { TransactionsTableImproved } from '@/components/dashboard/TransactionsTa
 import { MyCategoriesSection } from '@/components/dashboard/MyCategoriesSection'
 import { useTransactionsUnified } from '@/hooks/useTransactionsUnified'
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus'
-import { ThemeToggle } from '@/components/ThemeToggle'
+import { useOnboardingTourLock } from '@/hooks/useOnboardingTourLock'
 import { OnboardingWelcomeModal } from '@/components/dashboard/OnboardingWelcomeModal'
 import { FeedbackForm } from '@/components/dashboard/FeedbackForm'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Bell, BellOff, CreditCard, LogOut, Menu, UserCircle, X } from 'lucide-react'
-import { OnboardingVignette, OnboardingSpotlightArrow, getOnboardingButtonSpotlightStyle, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+import { OnboardingVignette, OnboardingActionTarget, onboardingTargetButtonClass, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import {
   OnboardingSpotlightOverlay,
   OnboardingTourHeader,
   onboardingSpotlightSection,
 } from '@/components/dashboard/OnboardingSpotlight'
-import { getOnboardingLocalKeys, readStoredStep } from '@/utils/onboardingLocalStorage'
+import { getOnboardingLocalKeys } from '@/utils/onboardingLocalStorage'
 import { smoothScrollToElement } from '@/utils/scroll'
 import { CATEGORIES_UPDATED_EVENT } from '@/utils/categorySyncEvents'
 import {
@@ -74,6 +75,7 @@ export default function DashboardPage() {
   const [budgetRefreshKey, setBudgetRefreshKey] = useState(0)
   const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null)
   const [selectedCategoryType, setSelectedCategoryType] = useState<'gasto' | 'ingreso'>('gasto')
+  const [categoryDetailOpen, setCategoryDetailOpen] = useState(false)
 
   const {
     transactions,
@@ -190,39 +192,29 @@ export default function DashboardPage() {
   const showTour = shouldShowTour && !onboardingLoading
   const tourSpotlightActive = showTour && welcomeDone && !!onboardingStep
   const isNotificationsStep = tourSpotlightActive && onboardingStep === 'notifications'
+  const isAccountMenuBlocked =
+    (showTour && !welcomeDone) || (tourSpotlightActive && !isNotificationsStep)
+
+  useOnboardingTourLock({
+    active: tourSpotlightActive && !isLoading && !!user,
+    step: onboardingStep,
+    isLoading,
+  })
 
   /**
    * Abrir el menu de usuario cuando el tour llega a recordatorios.
+   * En los demás pasos, mantenerlo cerrado para evitar conflictos con el tour.
    */
   useEffect(() => {
+    if (isAccountMenuBlocked) {
+      setAccountMenuOpen(false)
+      return
+    }
+
     if (showTour && onboardingStep === 'notifications') {
       setAccountMenuOpen(true)
     }
-  }, [showTour, onboardingStep])
-
-  /**
-   * Scroll al paso activo de onboarding.
-   */
-  useEffect(() => {
-    if (!showTour || !welcomeDone || !onboardingStep || isLoading || !user) {
-      return
-    }
-
-    if (onboardingStep === 'notifications') {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
-    }
-
-    const timer = window.setTimeout(() => {
-      const el = document.querySelector(
-        `[data-onboarding-section="${onboardingStep}"]`
-      )
-      if (el instanceof HTMLElement) {
-        smoothScrollToElement(el, 1400, 96)
-      }
-    }, 300)
-    return () => window.clearTimeout(timer)
-  }, [onboardingStep, welcomeDone, showTour, isLoading, user])
+  }, [showTour, onboardingStep, isAccountMenuBlocked])
 
   const setOnboardingStepAndPersist = useCallback(
     (step: OnboardingStep) => {
@@ -442,6 +434,12 @@ export default function DashboardPage() {
   const handleCategoryClick = (category: string, type: 'gasto' | 'ingreso' = 'gasto') => {
     setSelectedCategoryName(category)
     setSelectedCategoryType(type)
+    setCategoryDetailOpen(true)
+  }
+
+  const handleClearCategorySelection = () => {
+    setSelectedCategoryName(null)
+    setCategoryDetailOpen(false)
   }
 
   const handleWeekClick = (week: string) => {
@@ -618,18 +616,29 @@ export default function DashboardPage() {
                 isNotificationsStep && 'z-[60] pointer-events-auto'
               )}
             >
-              <ThemeToggle />
               <button
                 type="button"
-                onClick={() => setAccountMenuOpen((open) => !open)}
+                disabled={isAccountMenuBlocked}
+                onClick={() => {
+                  if (isAccountMenuBlocked) return
+                  setAccountMenuOpen((open) => !open)
+                }}
                 aria-label="Abrir menu de usuario"
                 aria-expanded={accountMenuOpen}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-foreground transition-colors hover:bg-accent dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+                aria-disabled={isAccountMenuBlocked}
+                className={cn(
+                  'inline-flex h-10 w-10 items-center justify-center rounded-md border border-border bg-card text-foreground transition-colors hover:bg-accent dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10',
+                  isAccountMenuBlocked && 'cursor-not-allowed opacity-40'
+                )}
               >
-                {accountMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                {accountMenuOpen && !isAccountMenuBlocked ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
               </button>
 
-              {accountMenuOpen && (
+              {accountMenuOpen && !isAccountMenuBlocked && (
                 <div
                   data-onboarding-section="notifications"
                   className={cn(
@@ -726,35 +735,35 @@ export default function DashboardPage() {
                               ? 'Te enviaremos WhatsApp si no registras movimientos en el dia.'
                               : 'No recibiras recordatorios hasta que los actives.'}
                           </p>
-                          {showTour && onboardingStep === 'notifications' && !profilePlan.reminder_opt_in && (
-                            <OnboardingSpotlightArrow align="center" className="mt-1" />
-                          )}
-                          <button
-                            type="button"
-                            data-onboarding-target="toggle-reminders"
-                            onClick={handleToggleReminderOptIn}
-                            disabled={isSavingReminderOptIn}
-                            className={cn(
-                              'mt-3 inline-flex w-full items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10',
-                              onboardingStep === 'notifications' &&
-                                showTour &&
-                                !profilePlan.reminder_opt_in &&
-                                'relative z-10'
-                            )}
-                            style={
+                          <OnboardingActionTarget
+                            active={
                               showTour &&
                               onboardingStep === 'notifications' &&
                               !profilePlan.reminder_opt_in
-                                ? getOnboardingButtonSpotlightStyle()
-                                : undefined
                             }
+                            align="center"
+                            className="mt-1 w-full"
                           >
-                            {isSavingReminderOptIn
-                              ? 'Guardando...'
-                              : profilePlan.reminder_opt_in
-                                ? 'Desactivar recordatorios'
-                                : 'Activar recordatorios'}
-                          </button>
+                            <button
+                              type="button"
+                              data-onboarding-target="toggle-reminders"
+                              onClick={handleToggleReminderOptIn}
+                              disabled={isSavingReminderOptIn}
+                              className={cn(
+                                'mt-3 inline-flex w-full items-center justify-center rounded-md border border-border bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10',
+                                showTour &&
+                                  onboardingStep === 'notifications' &&
+                                  !profilePlan.reminder_opt_in &&
+                                  onboardingTargetButtonClass('reminders')
+                              )}
+                            >
+                              {isSavingReminderOptIn
+                                ? 'Guardando...'
+                                : profilePlan.reminder_opt_in
+                                  ? 'Desactivar recordatorios'
+                                  : 'Activar recordatorios'}
+                            </button>
+                          </OnboardingActionTarget>
                         </div>
                       </div>
                     </div>
@@ -831,7 +840,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {showTrialBanner && (
+          {showTrialBanner && !showTour && (
             <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 dark:border-[#5ce1e6]/20 dark:bg-[#5ce1e6]/10">
               <div className="mb-1 flex items-center justify-between gap-3 text-[11px] font-medium text-muted-foreground dark:text-white/70">
                 <span>
@@ -878,23 +887,33 @@ export default function DashboardPage() {
             <div className="relative mx-auto lg:h-[464px]">
               <CategoryChart
                 expensesByCategory={expensesByCategory}
+                selectedCategory={selectedCategoryType === 'gasto' ? selectedCategoryName : null}
                 onCategoryClick={(category) => handleCategoryClick(category, 'gasto')}
               />
             </div>
           </div>
 
-          <div className="order-2">
-            <WeeklyTrendChart
-              weeklyData={weeklyTrend}
-              dailyData={dailyTrend}
-              monthlyData={monthlyTrend}
-              loadingTrend={loadingTrend}
-              onFetchDaily={fetchDailyTrend}
-              onFetchMonthly={fetchMonthlyTrend}
-              onWeekClick={handleWeekClick}
-              onDayClick={(date) => console.log('Día seleccionado:', date)}
-              onMonthClick={(month) => console.log('Mes seleccionado:', month)}
-            />
+          <div className="order-2 lg:h-[464px]">
+            {selectedCategoryName ? (
+              <CategoryTrendChart
+                categoryName={selectedCategoryName}
+                transactionType={selectedCategoryType}
+                transactions={transactions}
+                onClose={handleClearCategorySelection}
+              />
+            ) : (
+              <WeeklyTrendChart
+                weeklyData={weeklyTrend}
+                dailyData={dailyTrend}
+                monthlyData={monthlyTrend}
+                loadingTrend={loadingTrend}
+                onFetchDaily={fetchDailyTrend}
+                onFetchMonthly={fetchMonthlyTrend}
+                onWeekClick={handleWeekClick}
+                onDayClick={(date) => console.log('Día seleccionado:', date)}
+                onMonthClick={(month) => console.log('Mes seleccionado:', month)}
+              />
+            )}
           </div>
         </div>
 
@@ -903,6 +922,7 @@ export default function DashboardPage() {
             <CategoryChart
               expensesByCategory={incomeByCategory}
               variant="ingreso"
+              selectedCategory={selectedCategoryType === 'ingreso' ? selectedCategoryName : null}
               onCategoryClick={(category) => handleCategoryClick(category, 'ingreso')}
             />
           </div>
@@ -1011,9 +1031,9 @@ export default function DashboardPage() {
       </main>
 
       <Dialog
-        open={selectedCategoryName !== null}
+        open={categoryDetailOpen}
         onOpenChange={(open) => {
-          if (!open) setSelectedCategoryName(null)
+          setCategoryDetailOpen(open)
         }}
       >
         <DialogContent className="max-w-lg border border-border bg-card text-card-foreground dark:border-white/20 dark:bg-[#0D1D35] dark:text-white">
