@@ -90,6 +90,14 @@ export function smoothScrollToElement(
 
 ): void {
 
+  if (typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches) {
+
+    element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+
+    return
+
+  }
+
   const rect = element.getBoundingClientRect()
 
   const targetY = rect.top + window.scrollY
@@ -102,5 +110,21 @@ export function smoothScrollToElement(
 
 export const ONBOARDING_SCROLL_DURATION_MS = 1400
 
+export const ONBOARDING_SCROLL_DURATION_MS_MOBILE = 650
+
 export const ONBOARDING_SCROLL_DELAY_MS = 300
+
+
+
+export function getOnboardingScrollDuration(): number {
+
+  if (typeof window === 'undefined') return ONBOARDING_SCROLL_DURATION_MS
+
+  return window.matchMedia('(max-width: 639px)').matches
+
+    ? ONBOARDING_SCROLL_DURATION_MS_MOBILE
+
+    : ONBOARDING_SCROLL_DURATION_MS
+
+}
 

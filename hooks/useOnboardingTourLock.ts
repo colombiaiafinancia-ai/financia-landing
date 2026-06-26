@@ -4,9 +4,16 @@ import { useEffect } from 'react'
 import type { OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import {
   smoothScrollToElement,
-  ONBOARDING_SCROLL_DURATION_MS,
+  getOnboardingScrollDuration,
   ONBOARDING_SCROLL_DELAY_MS,
 } from '@/utils/scroll'
+
+let activeTourStep: OnboardingStep = null
+
+function isMobileViewport() {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(max-width: 639px)').matches
+}
 
 function isInsideAllowedZone(target: EventTarget | null) {
   if (!(target instanceof Node)) return false
@@ -17,6 +24,13 @@ function isInsideAllowedZone(target: EventTarget | null) {
     )
   ) {
     return true
+  }
+
+  if (activeTourStep) {
+    const section = document.querySelector(`[data-onboarding-section="${activeTourStep}"]`)
+    if (section instanceof HTMLElement && (section === target || section.contains(target))) {
+      return true
+    }
   }
 
   if (
@@ -53,6 +67,15 @@ function onPreventBackgroundScroll(event: Event) {
   if (!tourLockMode) return
   if (isInsideAllowedZone(event.target)) return
   event.preventDefault()
+}
+
+function getTourLockMode(step: OnboardingStep): TourLockMode {
+  // position:fixed en body rompe el scroll en iOS/Android; solo en desktop para notificaciones.
+  if (isMobileViewport()) return 'body-only'
+  if (step === 'budgets' || step === 'add-transaction' || step === 'whatsapp') {
+    return 'body-only'
+  }
+  return step === 'notifications' ? 'fixed' : 'body-only'
 }
 
 function applyTourLock(mode: TourLockMode) {
@@ -105,6 +128,8 @@ export function useOnboardingTourLock({
   isLoading: boolean
 }) {
   useEffect(() => {
+    activeTourStep = active ? step : null
+
     if (!active || isLoading) {
       releaseTourLock()
       return
@@ -112,24 +137,25 @@ export function useOnboardingTourLock({
 
     let scrollTimer: number | undefined
     let lockTimer: number | undefined
+    const scrollDuration = getOnboardingScrollDuration()
 
-    const isBudgetsStep = step === 'budgets'
     const isNotificationsStep = step === 'notifications'
 
     scrollTimer = window.setTimeout(() => {
       if (isNotificationsStep) {
-        applyTourLock('fixed')
+        applyTourLock(getTourLockMode(step))
         return
       }
 
       const anchor = getScrollAnchor(step)
       if (!anchor) return
 
-      smoothScrollToElement(anchor, ONBOARDING_SCROLL_DURATION_MS, 96)
+      const scrollOffset = isMobileViewport() ? 72 : 96
+      smoothScrollToElement(anchor, scrollDuration, scrollOffset)
 
       lockTimer = window.setTimeout(() => {
-        applyTourLock(isBudgetsStep ? 'body-only' : 'fixed')
-      }, ONBOARDING_SCROLL_DURATION_MS + 80)
+        applyTourLock(getTourLockMode(step))
+      }, scrollDuration + 120)
     }, ONBOARDING_SCROLL_DELAY_MS)
 
     return () => {
@@ -139,5 +165,10 @@ export function useOnboardingTourLock({
     }
   }, [active, step, isLoading])
 
-  useEffect(() => () => releaseTourLock(), [])
+  useEffect(() => {
+    return () => {
+      activeTourStep = null
+      releaseTourLock()
+    }
+  }, [])
 }

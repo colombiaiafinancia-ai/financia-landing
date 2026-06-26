@@ -27,7 +27,7 @@ import { OnboardingVignette, OnboardingActionTarget, onboardingTargetButtonClass
 import {
   OnboardingSpotlightOverlay,
   OnboardingTourHeader,
-  onboardingSpotlightSection,
+  onboardingSpotlightSectionProps,
 } from '@/components/dashboard/OnboardingSpotlight'
 import { getOnboardingLocalKeys } from '@/utils/onboardingLocalStorage'
 import { smoothScrollToElement } from '@/utils/scroll'
@@ -641,6 +641,7 @@ export default function DashboardPage() {
               {accountMenuOpen && !isAccountMenuBlocked && (
                 <div
                   data-onboarding-section="notifications"
+                  {...(isNotificationsStep ? { 'data-onboarding-active': true as const } : {})}
                   className={cn(
                     'absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl dark:border-white/15 dark:bg-[#0D1D35] dark:text-white',
                     isNotificationsStep &&
@@ -930,7 +931,7 @@ export default function DashboardPage() {
 
         <div
           data-onboarding-section="budgets"
-          className={onboardingSpotlightSection(
+          {...onboardingSpotlightSectionProps(
             tourSpotlightActive && onboardingStep === 'budgets',
             'mb-6 transition-shadow sm:mb-8'
           )}
@@ -963,7 +964,7 @@ export default function DashboardPage() {
             />
           </div>
           <div
-            className={onboardingSpotlightSection(
+            {...onboardingSpotlightSectionProps(
               tourSpotlightActive && onboardingStep === 'budgets',
               'min-w-0 scroll-mt-24 sm:scroll-mt-28'
             )}
@@ -975,9 +976,9 @@ export default function DashboardPage() {
         <div className="mb-8 grid grid-cols-1 gap-4 lg:mb-6 lg:grid-cols-3">
           <div
             data-onboarding-section="add-transaction"
-            className={onboardingSpotlightSection(
+            {...onboardingSpotlightSectionProps(
               tourSpotlightActive && onboardingStep === 'add-transaction',
-              'lg:col-span-1 lg:h-[100%]'
+              'scroll-mt-20 lg:col-span-1 lg:h-[100%] sm:scroll-mt-24'
             )}
           >
             <AddTransactionForm
@@ -1009,7 +1010,7 @@ export default function DashboardPage() {
 
         <div
           data-onboarding-section="whatsapp"
-          className={onboardingSpotlightSection(
+          {...onboardingSpotlightSectionProps(
             tourSpotlightActive && onboardingStep === 'whatsapp',
             'mb-6 sm:mb-8'
           )}

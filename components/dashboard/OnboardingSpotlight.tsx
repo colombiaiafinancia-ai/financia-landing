@@ -15,6 +15,14 @@ export function onboardingSpotlightSection(isActive: boolean, className?: string
   )
 }
 
+/** Props de sección activa del tour (clase + marcador para scroll lock). */
+export function onboardingSpotlightSectionProps(isActive: boolean, className?: string) {
+  return {
+    className: onboardingSpotlightSection(isActive, className),
+    ...(isActive ? { 'data-onboarding-active': true as const } : {}),
+  }
+}
+
 /** Capa oscura tipo Duolingo / Linear sobre el resto de la interfaz. */
 export function OnboardingSpotlightOverlay({ active }: { active: boolean }) {
   if (!active) return null
