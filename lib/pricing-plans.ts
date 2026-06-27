@@ -69,13 +69,8 @@ export const LANDING_PLANS: LandingPlan[] = [
     helper: 'Ahorras USD $10.80 al año',
     badge: 'Más popular',
     features: [
-<<<<<<< HEAD
       `Gratis hasta el ${PROMOTIONAL_TRIAL_END_LABEL}`,
-      '30% de descuento sobre el precio mensual',
-=======
-      '7 dias gratis; pagas despues de la prueba',
       '20% de descuento sobre el precio mensual',
->>>>>>> c530f46 (feat: códigos promocionales por tiempo limitado, bandeja admin de sugerencias y precios en COP para Mercado Pago)
       'Un solo cobro al año, sin sorpresas',
       'Precio congelado por 12 meses',
       'Renovación con el mismo descuento',
@@ -112,13 +107,8 @@ export const LANDING_PLANS: LandingPlan[] = [
 ]
 
 export const PRICING_COMPARISON_ROWS = [
-<<<<<<< HEAD
   ['Prueba gratis', `Hasta el ${PROMOTIONAL_TRIAL_END_LABEL}`, `Hasta el ${PROMOTIONAL_TRIAL_END_LABEL}`, `Hasta el ${PROMOTIONAL_TRIAL_END_LABEL}`],
-  ['Precio para ti', '$3.50 / mes', '$29.40 / año ($2.45/mes)', '$2.46 / mes'],
-=======
-  ['Prueba gratis', '7 dias antes del primer cobro', '7 dias antes del primer cobro', '7 dias antes del primer cobro'],
   ['Precio para ti', '$4.50 / mes', '$43.20 / año ($3.60/mes)', '$4.00 / mes'],
->>>>>>> c530f46 (feat: códigos promocionales por tiempo limitado, bandeja admin de sugerencias y precios en COP para Mercado Pago)
   ['Modalidad de pago', 'Mensual recurrente', 'Pago único anual', 'Mensual recurrente'],
   ['Ahorro vs. mensual', '—', '20%', '~11%'],
   ['Duración del beneficio', 'Indefinido', '12 meses (renovable)', '12 meses (no renovable)'],

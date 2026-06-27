@@ -187,32 +187,6 @@ export default function SubscriptionCheckout({
         </motion.div>
 
         <div className="grid items-stretch gap-5 lg:grid-cols-3 lg:gap-6">
-<<<<<<< HEAD
-          {paidPlans.map((plan, index) => (
-            <PlanCard
-              key={plan.planKey}
-              plan={plan.display}
-              index={index}
-              animated
-              footerNote={`Gratis hasta el ${PROMOTIONAL_TRIAL_END_LABEL}; luego Mercado Pago cobra ${formatCheckoutAmount(plan.amount, plan.currencyId)}`}
-            >
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <button
-                  type="button"
-                  onClick={() => handleSubscribe(plan.planKey)}
-                  disabled={Boolean(loadingPlanKey) || trialIsActive}
-                  className={ctaClassName(plan.display)}
-                >
-                  {trialIsActive
-                    ? 'Disponible al terminar la prueba'
-                    : loadingPlanKey === plan.planKey
-                      ? 'Redirigiendo...'
-                      : 'Elegir plan'}
-                </button>
-              </motion.div>
-            </PlanCard>
-          ))}
-=======
           {paidPlans.map((plan, index) => {
             const period = periodLabel(plan)
             const usdAmt = plan.display.priceUsd
@@ -223,7 +197,7 @@ export default function SubscriptionCheckout({
 
             const footerNote = hasDiscount
               ? `Con ${discountPercentage}% descuento: ${fmtUsd(discountedUsd)}${period} (antes ${fmtUsd(usdAmt)}${period})`
-              : `7 dias gratis; luego Mercado Pago cobra ${fmtUsd(usdAmt)}${period}`
+              : `Gratis hasta el ${PROMOTIONAL_TRIAL_END_LABEL}; luego Mercado Pago cobra ${fmtUsd(usdAmt)}${period}`
 
             const displayPlan = hasDiscount
               ? {
@@ -258,7 +232,6 @@ export default function SubscriptionCheckout({
               </PlanCard>
             )
           })}
->>>>>>> c530f46 (feat: códigos promocionales por tiempo limitado, bandeja admin de sugerencias y precios en COP para Mercado Pago)
         </div>
 
         <motion.div

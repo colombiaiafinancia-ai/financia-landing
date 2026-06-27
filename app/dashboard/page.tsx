@@ -21,15 +21,9 @@ import { useOnboardingStatus } from '@/hooks/useOnboardingStatus'
 import { useOnboardingTourLock } from '@/hooks/useOnboardingTourLock'
 import { OnboardingWelcomeModal } from '@/components/dashboard/OnboardingWelcomeModal'
 import { FeedbackForm } from '@/components/dashboard/FeedbackForm'
-<<<<<<< HEAD
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Bell, BellOff, CreditCard, LogOut, Menu, UserCircle, X } from 'lucide-react'
-import { OnboardingVignette, OnboardingActionTarget, onboardingTargetButtonClass, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
-=======
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Bell, BellOff, CreditCard, LogOut, Menu, ShieldCheck, UserCircle, X } from 'lucide-react'
-import { OnboardingVignette, OnboardingSpotlightArrow, getOnboardingButtonSpotlightStyle, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
->>>>>>> c530f46 (feat: códigos promocionales por tiempo limitado, bandeja admin de sugerencias y precios en COP para Mercado Pago)
+import { OnboardingVignette, OnboardingSpotlightArrow, OnboardingActionTarget, getOnboardingButtonSpotlightStyle, onboardingTargetButtonClass, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import {
   OnboardingSpotlightOverlay,
   OnboardingTourHeader,
