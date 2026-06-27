@@ -68,6 +68,12 @@ export function useOnboardingStatus(user: User | null) {
       if (!insertError) {
         setStatus(ONBOARDING_STATUS_VERIFICADO)
         setProfileLoading(false)
+        if (user.user_metadata?.promo_code) {
+          fetch('/api/auth/apply-promo', { method: 'POST' })
+            .then((r) => r.json())
+            .then((json) => { if (json.applied) window.location.reload() })
+            .catch(() => {})
+        }
         return
       }
 

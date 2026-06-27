@@ -164,25 +164,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    if (promoCode) {
-      const { data: redemption, error: redemptionError } = await supabaseAdmin
-        .rpc('redeem_promo_code', {
-          p_user_id: data.user.id,
-          p_code: promoCode,
-          p_email: email.trim(),
-        })
-
-      const result = Array.isArray(redemption) ? redemption[0] : redemption
-
-      if (redemptionError || !result?.ok) {
-        console.error('Error aplicando codigo promocional:', redemptionError || result)
-        await supabaseAdmin.auth.admin.deleteUser(data.user.id)
-
-        return NextResponse.json({
-          error: 'No pudimos aplicar el codigo promocional. Intenta registrarte nuevamente.'
-        }, { status: 400 })
-      }
-    }
 
     // ✅ NUEVO FLUJO: Solo guardamos en metadata, el trigger se encarga del resto
     console.log('⏳ API ROUTE - Datos guardados en auth.user_metadata, esperando confirmación de email')

@@ -31,11 +31,19 @@ export default async function SubscribePage() {
 
   const { data: profile } = await supabase
     .from("user_profiles")
-    .select("trial_ends_at")
+    .select("trial_ends_at, discount_percentage, discount_months, discount_ends_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
+<<<<<<< HEAD
   const trialEndsAt = getEffectiveTrialEndsAt(profile?.trial_ends_at || null);
+=======
+  const trialEndsAt = profile?.trial_ends_at || null;
+  const discountEndsAt = profile?.discount_ends_at || null;
+  const discountExpired = discountEndsAt ? new Date(discountEndsAt).getTime() < Date.now() : false;
+  const discountPercentage = profile?.discount_percentage && !discountExpired ? Number(profile.discount_percentage) : 0;
+  const discountMonths = profile?.discount_months ? Number(profile.discount_months) : null;
+>>>>>>> c530f46 (feat: códigos promocionales por tiempo limitado, bandeja admin de sugerencias y precios en COP para Mercado Pago)
 
   const { data: plans, error: plansError } = await supabase
     .from("subscription_plans")
@@ -81,6 +89,8 @@ export default async function SubscribePage() {
         payerEmail={payerEmail}
         plans={orderedPlans}
         trialEndsAt={trialEndsAt}
+        discountPercentage={discountPercentage}
+        discountMonths={discountMonths}
       />
     </main>
   );

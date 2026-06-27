@@ -29,7 +29,7 @@ export async function POST(req: Request) {
 
     const { data: profile } = await supabase
       .from("user_profiles")
-      .select("trial_ends_at")
+      .select("trial_ends_at, discount_percentage, discount_months, discount_ends_at")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -46,6 +46,11 @@ export async function POST(req: Request) {
       );
     }
 
+    const discountEndsAt = profile?.discount_ends_at ? new Date(profile.discount_ends_at) : null;
+    const discountExpired = discountEndsAt ? discountEndsAt.getTime() < Date.now() : false;
+    const discountPct = profile?.discount_percentage && !discountExpired ? Number(profile.discount_percentage) : 0;
+    const discountMonths = profile?.discount_months ? Number(profile.discount_months) : null;
+
     const { data: plan, error: planError } = await supabase
       .from("subscription_plans")
       .select("*")
@@ -61,8 +66,9 @@ export async function POST(req: Request) {
     }
 
     const backUrl = process.env.MERCADOPAGO_BACK_URL;
+    const isDev = process.env.NODE_ENV === "development";
 
-    if (!backUrl || !backUrl.startsWith("https://")) {
+    if (!backUrl || (!backUrl.startsWith("https://") && !isDev)) {
       return NextResponse.json(
         {
           ok: false,
@@ -72,6 +78,10 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const resolvedBackUrl = backUrl.startsWith("https://")
+      ? backUrl
+      : `http://localhost:${process.env.PORT || 3000}/dashboard`;
 
     const frequencyType = String(plan.frequency_type).trim().toLowerCase();
 
@@ -89,15 +99,26 @@ export async function POST(req: Request) {
 
     const externalReference = `user:${userId}:plan:${plan.plan_key}`;
 
+    // COP prices sent to Mercado Pago — display stays in USD, MP always receives COP
+    const COP_PRICES: Record<string, number> = {
+      financia_monthly: 19000,
+      financia_annual: 182000,
+      financia_founder_monthly: 17000,
+    }
+    const baseAmountCOP = COP_PRICES[planKey] ?? Math.round(Number(plan.amount) * 4200)
+    const finalAmount = discountPct > 0
+      ? Math.max(1600, Math.round(baseAmountCOP * (1 - discountPct / 100)))
+      : baseAmountCOP;
+
     const subscription = await createMercadoPagoPendingSubscription({
       reason: plan.name,
       externalReference,
       payerEmail,
-      amount: Number(plan.amount),
-      currencyId: plan.currency_id,
+      amount: finalAmount,
+      currencyId: 'COP',
       frequency: Number(plan.frequency),
       frequencyType,
-      backUrl,
+      backUrl: resolvedBackUrl,
     });
 
     const initPoint = subscription.init_point || subscription.sandbox_init_point;
@@ -127,8 +148,8 @@ export async function POST(req: Request) {
         payer_email: payerEmail,
         external_reference: externalReference,
         status: "pending",
-        amount: Number(plan.amount),
-        currency_id: plan.currency_id,
+        amount: finalAmount,
+        currency_id: 'COP',
         started_at: new Date().toISOString(),
       });
 
@@ -144,6 +165,39 @@ export async function POST(req: Request) {
         },
         { status: 500 }
       );
+    }
+
+    // If discount is time-limited, schedule a QStash job to revert to full price when it expires
+    if (discountMonths && discountPct > 0) {
+      const endsAt = new Date();
+      endsAt.setMonth(endsAt.getMonth() + discountMonths);
+
+      const appUrl = process.env.APP_URL;
+      const qstashUrl = process.env.QSTASH_URL;
+      const qstashToken = process.env.QSTASH_TOKEN;
+
+      if (appUrl && qstashUrl && qstashToken) {
+        await fetch(`${qstashUrl}/v2/publish/${appUrl}/api/webhooks/discount-expiry`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${qstashToken}`,
+            "Content-Type": "application/json",
+            "Upstash-Not-Before": String(Math.floor(endsAt.getTime() / 1000)),
+          },
+          body: JSON.stringify({
+            userId,
+            mpPreapprovalId: subscription.id,
+            fullAmount: baseAmountCOP,
+            currencyId: 'COP',
+            secret: process.env.CRON_SECRET,
+          }),
+        }).catch((err) => console.error("Error scheduling discount expiry job:", err));
+
+        await supabase
+          .from("user_profiles")
+          .update({ discount_ends_at: endsAt.toISOString() })
+          .eq("user_id", userId);
+      }
     }
 
     return NextResponse.json({

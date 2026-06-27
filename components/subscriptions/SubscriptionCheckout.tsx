@@ -29,14 +29,27 @@ type SubscriptionCheckoutProps = {
   payerEmail: string
   plans: SubscriptionPlanOption[]
   trialEndsAt: string | null
+  discountPercentage?: number
+  discountMonths?: number | null
+}
+
+function isWholeCurrency(currencyId: string) {
+  return currencyId === 'COP' || currencyId === 'CLP' || currencyId === 'ARS'
 }
 
 function formatCheckoutAmount(amount: number, currencyId: string) {
+  const whole = isWholeCurrency(currencyId)
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: currencyId,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: whole ? 0 : 2,
+    maximumFractionDigits: whole ? 0 : 2,
   }).format(amount)
+}
+
+function periodLabel(plan: SubscriptionPlanOption) {
+  if (plan.frequencyType === 'months' && plan.frequency >= 12) return '/año'
+  return '/mes'
 }
 
 export default function SubscriptionCheckout({
@@ -44,6 +57,8 @@ export default function SubscriptionCheckout({
   payerEmail,
   plans,
   trialEndsAt,
+  discountPercentage = 0,
+  discountMonths = null,
 }: SubscriptionCheckoutProps) {
   const [loadingPlanKey, setLoadingPlanKey] = useState<string | null>(null)
   const [message, setMessage] = useState('')
@@ -52,6 +67,12 @@ export default function SubscriptionCheckout({
   const trialDaysRemaining = trialIsActive && trialEndDate
     ? Math.max(1, Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0
+  const hasDiscount = discountPercentage > 0
+
+  function discountedAmount(amount: number) {
+    if (!hasDiscount) return amount
+    return Math.max(1, Math.round(amount * (1 - discountPercentage / 100)))
+  }
 
   const paidPlans = useMemo(() => {
     const ordered = SUBSCRIBE_PLAN_KEYS.map((planKey) => {
@@ -148,9 +169,25 @@ export default function SubscriptionCheckout({
                 : 'Mercado Pago procesara la suscripcion seleccionada.'}
             </p>
           </div>
+
+          {hasDiscount && (
+            <div className="mx-auto mt-4 max-w-3xl rounded-2xl border border-emerald-400/30 bg-emerald-500/[0.08] px-6 py-4">
+              <p className="font-sora text-base font-bold text-emerald-300">
+                {discountMonths
+                  ? `Tienes ${discountPercentage}% de descuento por ${discountMonths} meses aplicado a tu cuenta`
+                  : `Tienes ${discountPercentage}% de descuento de por vida aplicado a tu cuenta`}
+              </p>
+              <p className="mt-1 text-sm text-slate-400">
+                {discountMonths
+                  ? `El descuento se aplica durante los primeros ${discountMonths} meses de tu suscripcion. Despues vuelves al precio normal.`
+                  : 'Los precios que ves a continuacion ya incluyen tu descuento.'}
+              </p>
+            </div>
+          )}
         </motion.div>
 
         <div className="grid items-stretch gap-5 lg:grid-cols-3 lg:gap-6">
+<<<<<<< HEAD
           {paidPlans.map((plan, index) => (
             <PlanCard
               key={plan.planKey}
@@ -175,6 +212,53 @@ export default function SubscriptionCheckout({
               </motion.div>
             </PlanCard>
           ))}
+=======
+          {paidPlans.map((plan, index) => {
+            const period = periodLabel(plan)
+            const usdAmt = plan.display.priceUsd
+            const discountedUsd = hasDiscount
+              ? Math.round(usdAmt * (1 - discountPercentage / 100) * 100) / 100
+              : usdAmt
+            const fmtUsd = (n: number) => `$${n.toFixed(2)}`
+
+            const footerNote = hasDiscount
+              ? `Con ${discountPercentage}% descuento: ${fmtUsd(discountedUsd)}${period} (antes ${fmtUsd(usdAmt)}${period})`
+              : `7 dias gratis; luego Mercado Pago cobra ${fmtUsd(usdAmt)}${period}`
+
+            const displayPlan = hasDiscount
+              ? {
+                  ...plan.display,
+                  price: fmtUsd(discountedUsd),
+                  oldPrice: fmtUsd(usdAmt),
+                }
+              : plan.display
+
+            return (
+              <PlanCard
+                key={plan.planKey}
+                plan={displayPlan}
+                index={index}
+                animated
+                footerNote={footerNote}
+              >
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <button
+                    type="button"
+                    onClick={() => handleSubscribe(plan.planKey)}
+                    disabled={Boolean(loadingPlanKey) || trialIsActive}
+                    className={ctaClassName(plan.display)}
+                  >
+                    {trialIsActive
+                      ? 'Disponible al terminar la prueba'
+                      : loadingPlanKey === plan.planKey
+                        ? 'Redirigiendo...'
+                        : 'Elegir plan'}
+                  </button>
+                </motion.div>
+              </PlanCard>
+            )
+          })}
+>>>>>>> c530f46 (feat: códigos promocionales por tiempo limitado, bandeja admin de sugerencias y precios en COP para Mercado Pago)
         </div>
 
         <motion.div
@@ -192,7 +276,7 @@ export default function SubscriptionCheckout({
                 <tr className="bg-[#06B6D4]/15 text-left text-slate-200">
                   <th className="px-4 py-3 font-semibold" />
                   <th className="px-4 py-3 font-semibold">Plan Mensual</th>
-                  <th className="px-4 py-3 font-semibold text-[#06B6D4]">Plan Anual 30% OFF</th>
+                  <th className="px-4 py-3 font-semibold text-[#06B6D4]">Plan Anual 20% OFF</th>
                   <th className="px-4 py-3 font-semibold text-amber-300">Founders 100</th>
                 </tr>
               </thead>

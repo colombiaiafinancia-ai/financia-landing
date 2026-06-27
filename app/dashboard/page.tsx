@@ -21,9 +21,15 @@ import { useOnboardingStatus } from '@/hooks/useOnboardingStatus'
 import { useOnboardingTourLock } from '@/hooks/useOnboardingTourLock'
 import { OnboardingWelcomeModal } from '@/components/dashboard/OnboardingWelcomeModal'
 import { FeedbackForm } from '@/components/dashboard/FeedbackForm'
+<<<<<<< HEAD
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Bell, BellOff, CreditCard, LogOut, Menu, UserCircle, X } from 'lucide-react'
 import { OnboardingVignette, OnboardingActionTarget, onboardingTargetButtonClass, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+=======
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Bell, BellOff, CreditCard, LogOut, Menu, ShieldCheck, UserCircle, X } from 'lucide-react'
+import { OnboardingVignette, OnboardingSpotlightArrow, getOnboardingButtonSpotlightStyle, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
+>>>>>>> c530f46 (feat: códigos promocionales por tiempo limitado, bandeja admin de sugerencias y precios en COP para Mercado Pago)
 import {
   OnboardingSpotlightOverlay,
   OnboardingTourHeader,
@@ -793,14 +799,19 @@ export default function DashboardPage() {
                         {isCancellingPlan ? 'Cancelando plan...' : 'Cancelar plan'}
                       </button>
                     ) : profilePlan.is_super_user ? (
-                      <p
-                        className={cn(
-                          'rounded-md border border-[#5ce1e6]/20 bg-[#5ce1e6]/10 px-3 py-2 text-center text-xs font-medium text-[#5ce1e6]',
-                          isNotificationsStep && 'pointer-events-none opacity-40'
-                        )}
-                      >
-                        Acceso completo habilitado por administrador.
-                      </p>
+                      <div className={cn('space-y-2', isNotificationsStep && 'pointer-events-none opacity-40')}>
+                        <p className="rounded-md border border-[#5ce1e6]/20 bg-[#5ce1e6]/10 px-3 py-2 text-center text-xs font-medium text-[#5ce1e6]">
+                          Acceso completo habilitado por administrador.
+                        </p>
+                        <Link
+                          href="/admin"
+                          onClick={() => setAccountMenuOpen(false)}
+                          className="flex w-full items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                        >
+                          <ShieldCheck className="h-4 w-4 text-[#5ce1e6]" />
+                          Administrar codigos
+                        </Link>
+                      </div>
                     ) : (
                       <Link
                         href="/subscribe"
@@ -1027,6 +1038,7 @@ export default function DashboardPage() {
             userId={user?.id}
             userEmail={user?.email}
             userName={user?.user_metadata?.full_name}
+            isSuperUser={profilePlan.is_super_user}
           />
         </div>
       </main>
