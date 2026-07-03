@@ -6,11 +6,19 @@ import { motion } from 'framer-motion'
 interface BalanceMetricProps {
   totalIncome: number
   spentAmount: number
+  initialBalance?: number
+  availableBalance?: number
 }
 
-export const BalanceMetric = ({ totalIncome, spentAmount }: BalanceMetricProps) => {
-  const balance = totalIncome - spentAmount
-  const hasTransactions = totalIncome > 0 || spentAmount > 0
+export const BalanceMetric = ({
+  totalIncome,
+  spentAmount,
+  initialBalance = 0,
+  availableBalance,
+}: BalanceMetricProps) => {
+  const operationalBalance = totalIncome - spentAmount
+  const balance = availableBalance ?? initialBalance + operationalBalance
+  const hasTransactions = totalIncome > 0 || spentAmount > 0 || initialBalance !== 0
 
   const formatCOP = (value: number) =>
     new Intl.NumberFormat('es-CO', {
@@ -82,7 +90,7 @@ export const BalanceMetric = ({ totalIncome, spentAmount }: BalanceMetricProps) 
           <div>
             <h2 className="text-xl font-bold dark:text-white">Balance Mensual</h2>
             <p className="text-sm text-muted-foreground dark:text-white/70">
-              Ingresos vs Gastos
+              Saldo inicial + ingresos reales - gastos
             </p>
           </div>
         </div>
@@ -121,16 +129,30 @@ export const BalanceMetric = ({ totalIncome, spentAmount }: BalanceMetricProps) 
               </p>
 
               <p className="text-sm mt-1 text-muted-foreground dark:text-white/60">
-                {balance >= 0 ? 'Tienes un excedente' : 'Tienes un déficit'}
+                {balance >= 0 ? 'Disponible estimado este mes' : 'Déficit estimado este mes'}
               </p>
             </div>
 
             {/* Desglose de ingresos y gastos */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="text-center p-4 rounded-xl bg-sky-500/10 border border-sky-500/20">
+                <DollarSign className="h-8 w-8 mx-auto mb-2 text-sky-700 dark:text-sky-300" />
+                <p className="text-sm mb-1 text-muted-foreground dark:text-white/70">
+                  Saldo Inicial
+                </p>
+                <p className={`text-2xl font-bold ${
+                  initialBalance >= 0
+                    ? 'text-sky-700 dark:text-sky-300'
+                    : 'text-amber-700 dark:text-amber-300'
+                }`}>
+                  {formatCOP(Math.abs(initialBalance))}
+                </p>
+              </div>
+
               <div className="text-center p-4 rounded-xl bg-green-500/10 border border-green-500/20">
                 <TrendingUp className="h-8 w-8 mx-auto mb-2 text-green-600 dark:text-green-400" />
                 <p className="text-sm mb-1 text-muted-foreground dark:text-white/70">
-                  Total Ingresos
+                  Ingresos Reales
                 </p>
                 <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                   {formatCOP(totalIncome)}
@@ -141,7 +163,7 @@ export const BalanceMetric = ({ totalIncome, spentAmount }: BalanceMetricProps) 
               <div className="text-center p-4 rounded-xl bg-amber-500/10 border border-amber-500/25">
                 <TrendingDown className="h-8 w-8 mx-auto mb-2 text-amber-700 dark:text-amber-400" />
                 <p className="text-sm mb-1 text-muted-foreground dark:text-white/70">
-                  Total Gastos
+                  Gastos Reales
                 </p>
                 <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
                   {formatCOP(spentAmount)}

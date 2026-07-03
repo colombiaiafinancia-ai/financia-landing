@@ -85,6 +85,25 @@ export class MonthSummaryRepository {
     return this.getMonthCategorySummary(userId, monthDate, 'ingreso')
   }
 
+  async getMonthlyRolloverBalance(userId: string, monthDate: string): Promise<number> {
+    const client = await this.getClient()
+    const { data, error } = await client
+      .from('transactions')
+      .select('amount, direction')
+      .eq('user_id', userId)
+      .contains('meta', {
+        type: 'monthly_rollover',
+        target_month: monthDate,
+      })
+
+    if (error) throw new Error(`Error fetching monthly rollover: ${error.message}`)
+
+    return (data || []).reduce((sum, item) => {
+      const amount = Number(item.amount) || 0
+      return sum + (item.direction === 'ingreso' ? amount : -amount)
+    }, 0)
+  }
+
   /**
    * Obtiene el resumen diario para calcular tendencia semanal
    * (últimos 28 días)

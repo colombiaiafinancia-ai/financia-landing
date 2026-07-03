@@ -22,7 +22,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useCategories } from '@/hooks/useCategories'
-import { useCategoryBudget } from '@/hooks/useCategoryBudget'
+import { useCategoryBudget, type CategoryBudgetSummaryItem } from '@/hooks/useCategoryBudget'
 import { OnboardingVignette, OnboardingActionTarget, onboardingTargetButtonClass, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import { CategoryGlyph } from '@/components/dashboard/CategoryGlyph'
 import { formatCurrencyInput } from '@/utils/format'
@@ -37,6 +37,7 @@ interface BudgetByCategoryProps {
   onSkipOnboarding?: () => void
   /** Tras guardar un presupuesto nuevo (no al editar) */
   onFirstBudgetCreated?: () => void
+  onBudgetSummaryChange?: (summary: CategoryBudgetSummaryItem[]) => void
 }
 
 export const BudgetByCategory = ({
@@ -45,6 +46,7 @@ export const BudgetByCategory = ({
   onboardingStep = null,
   onSkipOnboarding,
   onFirstBudgetCreated,
+  onBudgetSummaryChange,
 }: BudgetByCategoryProps) => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingBudget, setEditingBudget] = useState<{
@@ -78,6 +80,10 @@ export const BudgetByCategory = ({
   } = useCategoryBudget(userId, refreshKey)
 
   const loading = categoriesLoading || budgetsLoading
+
+  useEffect(() => {
+    onBudgetSummaryChange?.(budgetSummary)
+  }, [budgetSummary, onBudgetSummaryChange])
 
   const selectedCategory = gastoCategories.find(
     (cat) => cat.id === selectedCategoryId

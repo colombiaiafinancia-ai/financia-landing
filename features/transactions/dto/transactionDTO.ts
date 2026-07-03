@@ -18,6 +18,7 @@ export interface TransactionDTO {
   readonly createdAt: string | null
   readonly formattedAmount: string
   readonly formattedDate: string
+  readonly isRollover: boolean
 }
 
 export interface TransactionSummaryDTO {
@@ -108,6 +109,7 @@ export class TransactionDTOMapper {
     occurredAt: string
     formattedAmount: string
     formattedDate: string
+    isRollover?: boolean
   }): TransactionDTO {
     if (DEBUG_TRANSACTIONS) {
       console.log('[TransactionDTOMapper] Convirtiendo transacción:', {
@@ -129,6 +131,7 @@ export class TransactionDTOMapper {
       createdAt: t.occurredAt,
       formattedAmount: t.formattedAmount,
       formattedDate: t.formattedDate,
+      isRollover: t.isRollover === true,
     }
   }
 
@@ -143,6 +146,7 @@ export class TransactionDTOMapper {
     occurredAt: string
     formattedAmount: string
     formattedDate: string
+    isRollover?: boolean
   }>): TransactionDTO[] {  // 👈 Cambiado de readonly a mutable
     if (DEBUG_TRANSACTIONS) {
       console.log('[TransactionDTOMapper] Convirtiendo', transactions.length, 'transacciones a DTOs')

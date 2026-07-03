@@ -16,12 +16,13 @@ import WhatsAppChatButton from '@/components/dashboard/WhatsAppChatButton'
 import { BudgetByCategory } from '@/components/dashboard/BudgetByCategory'
 import { TransactionsTableImproved } from '@/components/dashboard/TransactionsTableImproved'
 import { MyCategoriesSection } from '@/components/dashboard/MyCategoriesSection'
+import { MoneyLeakDetector } from '@/components/dashboard/MoneyLeakDetector'
 import { useTransactionsUnified } from '@/hooks/useTransactionsUnified'
+import type { CategoryBudgetSummaryItem } from '@/hooks/useCategoryBudget'
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus'
 import { useOnboardingTourLock } from '@/hooks/useOnboardingTourLock'
 import { OnboardingWelcomeModal } from '@/components/dashboard/OnboardingWelcomeModal'
 import { FeedbackForm } from '@/components/dashboard/FeedbackForm'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Bell, BellOff, CreditCard, LogOut, Menu, ShieldCheck, UserCircle, X } from 'lucide-react'
 import { OnboardingVignette, OnboardingSpotlightArrow, OnboardingActionTarget, getOnboardingButtonSpotlightStyle, onboardingTargetButtonClass, type OnboardingStep } from '@/components/dashboard/OnboardingVignette'
 import {
@@ -37,6 +38,11 @@ import {
   getPromotionalTrialTotalMs,
   PROMOTIONAL_TRIAL_END_LABEL,
 } from '@/lib/trial'
+import {
+  buildCategoryDailyTrend,
+  buildCategoryMonthlyTrend,
+  buildCategoryWeeklyTrend,
+} from '@/utils/categoryTrend'
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null)
@@ -73,9 +79,9 @@ export default function DashboardPage() {
   const [onboardingStep, setOnboardingStepState] = useState<OnboardingStep>(null)
   const [transactionSuccessMessage, setTransactionSuccessMessage] = useState('')
   const [budgetRefreshKey, setBudgetRefreshKey] = useState(0)
-  const [selectedCategoryName, setSelectedCategoryName] = useState<string | null>(null)
-  const [selectedCategoryType, setSelectedCategoryType] = useState<'gasto' | 'ingreso'>('gasto')
-  const [categoryDetailOpen, setCategoryDetailOpen] = useState(false)
+  const [budgetSummaryForLeaks, setBudgetSummaryForLeaks] = useState<CategoryBudgetSummaryItem[]>([])
+  const [selectedExpenseCategory, setSelectedExpenseCategory] = useState<string | null>(null)
+  const [selectedIncomeCategory, setSelectedIncomeCategory] = useState<string | null>(null)
 
   const {
     transactions,
@@ -83,6 +89,8 @@ export default function DashboardPage() {
     error: transactionsError,
     totalSpent,
     totalIncome,
+    initialBalance,
+    availableBalance,
     expensesByCategory,
     incomeByCategory,
     weeklyTrend,
@@ -431,49 +439,13 @@ export default function DashboardPage() {
     }
   }
 
-  const handleCategoryClick = (category: string, type: 'gasto' | 'ingreso' = 'gasto') => {
-    setSelectedCategoryName(category)
-    setSelectedCategoryType(type)
-    setCategoryDetailOpen(true)
-  }
-
-  const handleClearCategorySelection = () => {
-    setSelectedCategoryName(null)
-    setCategoryDetailOpen(false)
-  }
+  const handleBudgetSummaryChange = useCallback((summary: CategoryBudgetSummaryItem[]) => {
+    setBudgetSummaryForLeaks(summary)
+  }, [])
 
   const handleWeekClick = (week: string) => {
     console.log('Semana seleccionada:', week)
   }
-
-  const currentMonthRange = useMemo(() => {
-    const now = new Date()
-    return {
-      start: new Date(now.getFullYear(), now.getMonth(), 1).getTime(),
-      end: new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime(),
-    }
-  }, [])
-
-  const selectedCategoryTransactions = useMemo(() => {
-    if (!selectedCategoryName) return []
-    return transactions
-      .filter((tx) => {
-        if (tx.type !== selectedCategoryType || tx.category !== selectedCategoryName) return false
-        if (!tx.createdAt) return false
-
-        const occurredAt = new Date(tx.createdAt).getTime()
-        return occurredAt >= currentMonthRange.start && occurredAt < currentMonthRange.end
-      })
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-      )
-  }, [currentMonthRange, selectedCategoryName, selectedCategoryType, transactions])
-
-  const selectedCategoryTotal = useMemo(
-    () => selectedCategoryTransactions.reduce((sum, tx) => sum + tx.amount, 0),
-    [selectedCategoryTransactions]
-  )
 
   const createTransactionWithBudgetRefresh = useCallback(
     async (data: {
@@ -516,6 +488,27 @@ export default function DashboardPage() {
       return success
     },
     [updateTransaction]
+  )
+
+  const incomeTransactions = useMemo(
+    () => transactions.filter((tx) => !tx.isRollover && tx.type === 'ingreso'),
+    [transactions]
+  )
+  const realTransactions = useMemo(
+    () => transactions.filter((tx) => !tx.isRollover),
+    [transactions]
+  )
+  const incomeWeeklyTrend = useMemo(
+    () => buildCategoryWeeklyTrend(incomeTransactions),
+    [incomeTransactions]
+  )
+  const incomeDailyTrend = useMemo(
+    () => buildCategoryDailyTrend(incomeTransactions, 7),
+    [incomeTransactions]
+  )
+  const incomeMonthlyTrend = useMemo(
+    () => buildCategoryMonthlyTrend(incomeTransactions, 12),
+    [incomeTransactions]
   )
 
   if (isLoading || !user || onboardingLoading) {
@@ -885,7 +878,12 @@ export default function DashboardPage() {
           </div>
         )}
         <div className="mb-6 sm:mb-8">
-          <BalanceMetric totalIncome={totalIncome} spentAmount={totalSpent} />
+          <BalanceMetric
+            totalIncome={totalIncome}
+            spentAmount={totalSpent}
+            initialBalance={initialBalance}
+            availableBalance={availableBalance}
+          />
         </div>
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:mb-8 sm:gap-6 lg:gap-8 xl:grid-cols-2">
@@ -893,19 +891,19 @@ export default function DashboardPage() {
             <div className="relative mx-auto lg:h-[464px]">
               <CategoryChart
                 expensesByCategory={expensesByCategory}
-                selectedCategory={selectedCategoryType === 'gasto' ? selectedCategoryName : null}
-                onCategoryClick={(category) => handleCategoryClick(category, 'gasto')}
+                selectedCategory={selectedExpenseCategory}
+                onCategoryClick={setSelectedExpenseCategory}
               />
             </div>
           </div>
 
           <div className="order-2 min-h-[420px] lg:h-[464px]">
-            {selectedCategoryName ? (
+            {selectedExpenseCategory ? (
               <CategoryTrendChart
-                categoryName={selectedCategoryName}
-                transactionType={selectedCategoryType}
-                transactions={transactions}
-                onClose={handleClearCategorySelection}
+                categoryName={selectedExpenseCategory}
+                transactionType="gasto"
+                transactions={realTransactions}
+                onClose={() => setSelectedExpenseCategory(null)}
               />
             ) : (
               <WeeklyTrendChart
@@ -924,13 +922,36 @@ export default function DashboardPage() {
         </div>
 
         {showIncomeHeatmap && (
-          <div className="mb-6 sm:mb-8">
-            <CategoryChart
-              expensesByCategory={incomeByCategory}
-              variant="ingreso"
-              selectedCategory={selectedCategoryType === 'ingreso' ? selectedCategoryName : null}
-              onCategoryClick={(category) => handleCategoryClick(category, 'ingreso')}
-            />
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:mb-8 sm:gap-6 lg:gap-8 xl:grid-cols-2">
+            <div>
+              <div className="relative mx-auto lg:h-[464px]">
+                <CategoryChart
+                  expensesByCategory={incomeByCategory}
+                  variant="ingreso"
+                  selectedCategory={selectedIncomeCategory}
+                  onCategoryClick={setSelectedIncomeCategory}
+                />
+              </div>
+            </div>
+
+            <div className="min-h-[420px] lg:h-[464px]">
+              {selectedIncomeCategory ? (
+                <CategoryTrendChart
+                  categoryName={selectedIncomeCategory}
+                  transactionType="ingreso"
+                  transactions={realTransactions}
+                  onClose={() => setSelectedIncomeCategory(null)}
+                />
+              ) : (
+                <WeeklyTrendChart
+                  title="Tendencia de Ingresos"
+                  variant="ingreso"
+                  weeklyData={incomeWeeklyTrend}
+                  dailyData={incomeDailyTrend}
+                  monthlyData={incomeMonthlyTrend}
+                />
+              )}
+            </div>
           </div>
         )}
 
@@ -947,6 +968,7 @@ export default function DashboardPage() {
             onboardingStep={showTour ? onboardingStep : null}
             onSkipOnboarding={handleSkipCurrentOnboardingStep}
             onFirstBudgetCreated={handleBudgetCreatedForTour}
+            onBudgetSummaryChange={handleBudgetSummaryChange}
           />
         </div>
 
@@ -996,20 +1018,14 @@ export default function DashboardPage() {
           </div>
 
           <div className="lg:col-span-2">
-            <div className="rounded-2xl border border-border bg-card p-4 text-card-foreground dark:bg-transparent dark:bg-gradient-to-br dark:from-white/5 dark:to-white/2 dark:text-white dark:backdrop-blur-sm dark:border-white/10 sm:p-6">
-              <div className="py-8 text-center sm:py-12">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 dark:bg-[#5ce1e6]/20 sm:h-20 sm:w-20">
-                  <span className="text-2xl sm:text-3xl">📊</span>
-                </div>
-                <h3 className="mb-2 text-lg font-semibold text-slate-900 dark:text-white sm:text-xl">
-                  ¡Más funciones próximamente!
-                </h3>
-                <p className="mx-auto max-w-md text-sm text-muted-foreground dark:text-white/70 sm:text-base">
-                  Estamos trabajando en nuevas métricas y análisis avanzados para ayudarte
-                  a tomar mejores decisiones financieras.
-                </p>
-              </div>
-            </div>
+            <MoneyLeakDetector
+              transactions={realTransactions}
+              expensesByCategory={expensesByCategory}
+              weeklyTrend={weeklyTrend}
+              monthlyTrend={monthlyTrend}
+              totalSpent={totalSpent}
+              budgetSummary={budgetSummaryForLeaks}
+            />
           </div>
         </div>
 
@@ -1037,54 +1053,6 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      <Dialog
-        open={categoryDetailOpen}
-        onOpenChange={(open) => {
-          setCategoryDetailOpen(open)
-        }}
-      >
-        <DialogContent className="max-w-lg border border-border bg-card text-card-foreground dark:border-white/20 dark:bg-[#0D1D35] dark:text-white">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedCategoryName ? `Detalle: ${selectedCategoryName}` : 'Detalle de categoría'}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedCategoryType === 'ingreso'
-                ? 'Transacciones de ingreso registradas en esta categoria durante el mes actual.'
-                : 'Transacciones de gasto registradas en esta categoria durante el mes actual.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5">
-              Total del mes: ${selectedCategoryTotal.toLocaleString('es-CO')}
-            </div>
-            {selectedCategoryTransactions.length === 0 ? (
-              <p className="text-sm text-muted-foreground dark:text-white/70">
-                No hay transacciones para esta categoría en el mes actual.
-              </p>
-            ) : (
-              <div className="max-h-80 space-y-2 overflow-y-auto">
-                {selectedCategoryTransactions.map((tx) => (
-                  <div
-                    key={tx.id}
-                    className="rounded-lg border border-border bg-muted px-3 py-2 text-sm dark:border-white/10 dark:bg-white/5"
-                  >
-                    <p className="font-medium text-foreground dark:text-white">
-                      {tx.formattedAmount}
-                    </p>
-                    <p className="text-muted-foreground dark:text-white/70">
-                      {tx.description || 'Sin descripción'}
-                    </p>
-                    <p className="text-xs text-muted-foreground/80 dark:text-white/50">
-                      {tx.formattedDate}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

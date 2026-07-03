@@ -32,6 +32,8 @@ interface MonthlyData {
 }
 
 interface WeeklyTrendChartProps {
+  title?: string
+  variant?: 'gasto' | 'ingreso'
   weeklyData: WeeklyData[]
   dailyData?: DailyData[]
   monthlyData?: MonthlyData[]
@@ -44,6 +46,8 @@ interface WeeklyTrendChartProps {
 }
 
 export const WeeklyTrendChart = ({ 
+  title = 'Tendencia de Gastos',
+  variant = 'gasto',
   weeklyData, 
   dailyData = [], 
   monthlyData = [], 
@@ -123,9 +127,11 @@ export const WeeklyTrendChart = ({
   const trend = getTrend()
 
   const getTrendIcon = () => {
+    const upClass = variant === 'ingreso' ? 'text-green-500' : 'text-red-500'
+    const downClass = variant === 'ingreso' ? 'text-red-500' : 'text-green-500'
     switch (trend.direction) {
-      case 'up': return <TrendingUp className="h-5 w-5 text-red-500" />
-      case 'down': return <TrendingDown className="h-5 w-5 text-green-500" />
+      case 'up': return <TrendingUp className={`h-5 w-5 ${upClass}`} />
+      case 'down': return <TrendingDown className={`h-5 w-5 ${downClass}`} />
       default: return <Minus className="h-5 w-5 text-slate-700 dark:text-white/70" />
     }
   }
@@ -139,9 +145,11 @@ export const WeeklyTrendChart = ({
   }
 
   const getTrendColor = () => {
+    const upClass = variant === 'ingreso' ? 'text-green-500' : 'text-red-500'
+    const downClass = variant === 'ingreso' ? 'text-red-500' : 'text-green-500'
     switch (trend.direction) {
-      case 'up': return 'text-red-500'
-      case 'down': return 'text-green-500'
+      case 'up': return upClass
+      case 'down': return downClass
       default: return 'text-slate-700 dark:text-white/70'
     }
   }
@@ -193,7 +201,7 @@ export const WeeklyTrendChart = ({
     <div className="rounded-lg p-6 h-full bg-card border border-border text-card-foreground dark:bg-white/10 dark:backdrop-blur-sm dark:border-white/20">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Tendencia de Gastos</h3>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h3>
           <p className="text-sm text-slate-700 dark:text-white/70">
             {period === 'weekly' && 'Últimas 4 semanas'}
             {period === 'daily' && 'Últimos 7 días'}

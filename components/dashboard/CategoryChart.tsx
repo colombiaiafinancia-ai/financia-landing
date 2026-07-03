@@ -5,6 +5,7 @@ import { useTheme } from 'next-themes'
 import { useCategories } from '@/hooks/useCategories'
 import { CategoryGlyph } from './CategoryGlyph'
 import { formatCurrency } from '@/utils/format'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface CategoryData {
   name: string
@@ -25,7 +26,7 @@ export const CategoryChart = ({
   expensesByCategory,
   variant = 'gasto',
   selectedCategory = null,
-  onCategoryClick
+  onCategoryClick,
 }: CategoryChartProps) => {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null)
   const [showAllModal, setShowAllModal] = useState(false)
@@ -55,9 +56,10 @@ export const CategoryChart = ({
     return { totalAmount: total, categoryData: data }
   }, [expensesByCategory])
 
-  const hasMoreBg = categoryData.length > 8
   const top5 = categoryData.slice(0, 5)
   const top7 = categoryData.slice(0, 7)
+  const mobileVisible = categoryData.length > 5 ? categoryData.slice(0, 4) : top5
+  const desktopVisible = categoryData.length > 7 ? categoryData.slice(0, 7) : top7
 
   const iconByCategoryName = useMemo(() => {
     const map = new Map<string, string | null>()
@@ -209,6 +211,25 @@ export const CategoryChart = ({
     )
   }
 
+  const ViewAllCard = ({ hiddenCount }: { hiddenCount: number }) => (
+    <button
+      type="button"
+      onClick={() => setShowAllModal(true)}
+      className="
+        relative flex min-h-[116px] flex-col items-center justify-center rounded-xl border border-border bg-muted p-3 text-center transition-all duration-300 hover:-translate-y-0.5 hover:bg-muted/80
+        dark:border-white/20 dark:bg-white/5 dark:hover:bg-white/10
+        sm:min-h-[140px] sm:p-4
+      "
+    >
+      <span className="text-sm font-semibold text-foreground dark:text-white">
+        Ver todas
+      </span>
+      <span className="mt-1 text-xs text-muted-foreground dark:text-white/70">
+        +{hiddenCount} categorias
+      </span>
+    </button>
+  )
+
   return (
     <div
       className="
@@ -219,7 +240,7 @@ export const CategoryChart = ({
     >
       <div className="text-center mb-4 sm:mb-6">
         <h3 className="text-lg sm:text-xl font-semibold text-foreground dark:text-white">
-          {variant === 'ingreso' ? 'Mapa de Calor de Ingresos' : 'Mapa de Calor por Categoria'}
+          {variant === 'ingreso' ? 'Mapa de Calor por Ingresos' : 'Mapa de Calor por Gastos'}
         </h3>
         <p className="text-xs sm:text-sm text-muted-foreground dark:text-white/70">
           Total: {formatCurrency(totalAmount)}
@@ -228,45 +249,17 @@ export const CategoryChart = ({
 
       {/* Grid móvil/tablet */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:hidden">
-        {top5.map(HeatCard)}
-
-        {categoryData.length > 5 && (
-          <div
-            className="
-              relative rounded-xl p-3 sm:p-4 cursor-pointer transition-all duration-300
-              flex flex-col items-center justify-center
-              bg-muted hover:bg-muted/80 border border-border
-              dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/20
-            "
-            onClick={() => setShowAllModal(true)}
-          >
-            <span className="font-semibold text-sm text-foreground dark:text-white">Mostrar todo</span>
-            <span className="text-xs mt-1 text-muted-foreground dark:text-white/70">
-              +{categoryData.length - 5}
-            </span>
-          </div>
+        {mobileVisible.map(HeatCard)}
+        {categoryData.length > mobileVisible.length && (
+          <ViewAllCard hiddenCount={categoryData.length - mobileVisible.length} />
         )}
       </div>
 
       {/* Grid desktop */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 hidden lg:grid">
-        {top7.map(HeatCard)}
-
-        {hasMoreBg && (
-          <div
-            className="
-              relative rounded-xl p-3 sm:p-4 cursor-pointer transition-all duration-300
-              flex flex-col items-center justify-center
-              bg-muted hover:bg-muted/80 border border-border
-              dark:bg-white/5 dark:hover:bg-white/10 dark:border-white/20
-            "
-            onClick={() => setShowAllModal(true)}
-          >
-            <span className="font-semibold text-sm text-foreground dark:text-white">Mostrar todo</span>
-            <span className="text-xs mt-1 text-muted-foreground dark:text-white/70">
-              +{categoryData.length - 7}
-            </span>
-          </div>
+        {desktopVisible.map(HeatCard)}
+        {categoryData.length > desktopVisible.length && (
+          <ViewAllCard hiddenCount={categoryData.length - desktopVisible.length} />
         )}
       </div>
 
@@ -283,53 +276,59 @@ export const CategoryChart = ({
         </div>
       </div>
 
-      {/* Modal */}
-      {showAllModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div
-            className="
-              rounded-xl p-4 sm:p-6 max-w-md w-full max-h-[80vh] overflow-y-auto
-              bg-card border border-border text-card-foreground
-              dark:bg-[#0D1D35] dark:border-white/20
-            "
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-foreground dark:text-white">Todas las categorías</h3>
-              <button
-                onClick={() => setShowAllModal(false)}
-                className="text-muted-foreground hover:text-foreground dark:text-white/70 dark:hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
+      <Dialog open={showAllModal} onOpenChange={setShowAllModal}>
+        <DialogContent className="max-w-lg border border-border bg-card text-card-foreground dark:border-white/20 dark:bg-[#0D1D35] dark:text-white">
+          <DialogHeader>
+            <DialogTitle>
+              {variant === 'ingreso' ? 'Todas las categorias de ingresos' : 'Todas las categorias de gastos'}
+            </DialogTitle>
+          </DialogHeader>
 
-            <div className="space-y-2">
-              {categoryData.map((category) => (
-                <div
+          <div className="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
+            {categoryData.map((category) => {
+              const iconKey = iconByCategoryName.get(category.name.trim().toLowerCase()) ?? null
+              const isSelected = selectedCategory === category.name
+
+              return (
+                <button
                   key={category.name}
-                  className="
-                    flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors
-                    hover:bg-muted
-                    dark:hover:bg-white/10
-                  "
+                  type="button"
                   onClick={() => {
                     onCategoryClick?.(category.name)
                     setShowAllModal(false)
                   }}
+                  className={`
+                    flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left transition hover:bg-muted
+                    dark:hover:bg-white/10
+                    ${isSelected ? 'border-primary bg-primary/10 dark:border-[#9DFAD7] dark:bg-[#9DFAD7]/10' : 'border-border bg-background dark:border-white/10 dark:bg-white/5'}
+                  `}
                 >
-                  <div>
-                    <p className="text-sm font-medium text-foreground dark:text-white">{category.name}</p>
-                    <p className="text-xs text-muted-foreground dark:text-white/70">
-                      {formatCurrency(category.value)} ({category.percentage.toFixed(1)}%)
-                    </p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted dark:bg-white/10">
+                      <CategoryGlyph
+                        iconKey={iconKey}
+                        className="h-4 w-4 text-foreground dark:text-white"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground dark:text-white">
+                        {category.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground dark:text-white/70">
+                        {category.percentage.toFixed(1)}% del total
+                      </p>
+                    </div>
                   </div>
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getDotColor(category.heatLevel) }} />
-                </div>
-              ))}
-            </div>
+                  <p className="shrink-0 text-sm font-bold text-foreground dark:text-white">
+                    {formatCurrency(category.value)}
+                  </p>
+                </button>
+              )
+            })}
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }

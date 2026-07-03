@@ -1,17 +1,19 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { categoryBudgetService, type CategoryBudgetWithSpent } from '@/features/budgets/application/categoryBudgetService'
 
+export type CategoryBudgetSummaryItem = {
+  categoryId: string
+  categoryName: string
+  presupuestado: number
+  actual: number
+  excedente: number
+  porcentajeUsado: number
+}
+
 interface UseCategoryBudgetResult {
-  budgetSummary: Array<{
-    categoryId: string
-    categoryName: string
-    presupuestado: number
-    actual: number
-    excedente: number
-    porcentajeUsado: number
-  }>
+  budgetSummary: CategoryBudgetSummaryItem[]
   stats: {
     totalPresupuestado: number
     totalGastado: number
@@ -75,23 +77,23 @@ export const useCategoryBudget = (userId: string, refreshKey: number = 0): UseCa
     await fetchBudgets(false)
   }
 
-  const stats = {
+  const stats = useMemo(() => ({
     totalPresupuestado: budgets.reduce((sum, b) => sum + b.budgeted, 0),
     totalGastado: budgets.reduce((sum, b) => sum + b.spent, 0),
     totalExcedente: budgets.reduce((sum, b) => sum + b.remaining, 0),
     categoriasConPresupuesto: budgets.length,
     categoriasSobrepasadas: budgets.filter(b => b.status === 'danger').length,
     categoriasBajoPresupuesto: budgets.filter(b => b.status === 'safe').length
-  }
+  }), [budgets])
 
-  const budgetSummary = budgets.map(b => ({
+  const budgetSummary = useMemo(() => budgets.map(b => ({
     categoryId: b.categoryId,
     categoryName: b.categoryName,
     presupuestado: b.budgeted,
     actual: b.spent,
     excedente: b.remaining,
     porcentajeUsado: b.percentage
-  }))
+  })), [budgets])
 
   return {
     budgetSummary,

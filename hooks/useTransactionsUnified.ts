@@ -55,6 +55,8 @@ export const useTransactionsUnified = () => {
       setState(AsyncStateUtils.createWithData({
         totalSpent: result.totalSpent,
         totalIncome: result.totalIncome,
+        initialBalance: result.initialBalance,
+        availableBalance: result.availableBalance,
         todayExpenses: result.todayExpenses,
         weekExpenses: result.weekExpenses,
         monthExpenses: result.monthExpenses,
@@ -158,6 +160,8 @@ export const useTransactionsUnified = () => {
     fetchMonthlyTrend,
     totalSpent: summaryData?.totalSpent || 0,
     totalIncome: summaryData?.totalIncome || 0,
+    initialBalance: summaryData?.initialBalance || 0,
+    availableBalance: summaryData?.availableBalance || 0,
     todayExpenses: summaryData?.todayExpenses || 0,
     weekExpenses: summaryData?.weekExpenses || 0,
     monthExpenses: summaryData?.monthExpenses || 0,

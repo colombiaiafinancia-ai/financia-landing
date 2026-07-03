@@ -2,6 +2,7 @@ import { transactionRepository, TransactionEntity, CreateTransactionData } from 
 import { monthSummaryRepository } from '../infrastructure/monthSummaryRepository'
 import { categoryRepository } from '@/features/categories/infrastructure/categoryRepository'
 import { validateTransactionCreation } from '../domain/transactionLogic'
+import { formatDateKey, getBogotaCurrentWeekWindows } from '@/utils/bogotaDate'
 
 export interface TransactionCreationRequest {
   amount: number
@@ -40,11 +41,14 @@ export interface TransactionDTO {
   occurredAt: string
   formattedAmount: string
   formattedDate: string
+  isRollover: boolean
 }
 
 export interface TransactionSummaryDTO {
   totalSpent: number
   totalIncome: number
+  initialBalance: number
+  availableBalance: number
   balance: number
   monthExpenses: number
   monthIncome: number
@@ -85,7 +89,8 @@ export class TransactionUseCases {
       description: entity.description,
       occurredAt: entity.occurred_at,
       formattedAmount: new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(entity.amount),
-      formattedDate: new Date(entity.occurred_at).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })
+      formattedDate: new Date(entity.occurred_at).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' }),
+      isRollover: entity.meta?.type === 'monthly_rollover'
     }
   }
 
@@ -163,11 +168,12 @@ export class TransactionUseCases {
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
 
-    const [monthSummary, categoryRows, incomeCategoryRows, weeklyTrend] = await Promise.all([
+    const [monthSummary, categoryRows, incomeCategoryRows, weeklyTrend, initialBalance] = await Promise.all([
       monthSummaryRepository.getMonthSummary(userId, monthStart),
       monthSummaryRepository.getMonthCategoryExpenses(userId, monthStart),
       monthSummaryRepository.getMonthCategoryIncome(userId, monthStart),
       this.calculateWeeklyTrend(userId),
+      monthSummaryRepository.getMonthlyRolloverBalance(userId, monthStart),
     ])
 
     if (!monthSummary) {
@@ -177,6 +183,7 @@ export class TransactionUseCases {
     const totalSpent = Number(monthSummary.expense_total) || 0
     const totalIncome = Number(monthSummary.income_total) || 0
     const balance = totalIncome - totalSpent
+    const availableBalance = initialBalance + balance
 
     const categoryIds = [
       ...categoryRows.map((r) => r.category_id),
@@ -206,6 +213,8 @@ export class TransactionUseCases {
     return {
       totalSpent,
       totalIncome,
+      initialBalance,
+      availableBalance,
       balance,
       monthExpenses: totalSpent,
       monthIncome: totalIncome,
@@ -229,21 +238,27 @@ export class TransactionUseCases {
       `${monthEnd}T23:59:59.999Z`
     )
 
-    const totalIncome = monthTransactions
+    const realMonthTransactions = monthTransactions.filter((tx) => tx.meta?.type !== 'monthly_rollover')
+    const initialBalance = monthTransactions
+      .filter((tx) => tx.meta?.type === 'monthly_rollover')
+      .reduce((sum, tx) => sum + (tx.direction === 'ingreso' ? tx.amount : -tx.amount), 0)
+
+    const totalIncome = realMonthTransactions
       .filter((tx) => tx.direction === 'ingreso')
       .reduce((sum, tx) => sum + tx.amount, 0)
-    const totalSpent = monthTransactions
+    const totalSpent = realMonthTransactions
       .filter((tx) => tx.direction === 'gasto')
       .reduce((sum, tx) => sum + tx.amount, 0)
     const balance = totalIncome - totalSpent
+    const availableBalance = initialBalance + balance
 
-    const categoryTotals = monthTransactions.reduce((acc, tx) => {
+    const categoryTotals = realMonthTransactions.reduce((acc, tx) => {
       if (tx.direction !== 'gasto') return acc
       acc.set(tx.category_id, (acc.get(tx.category_id) || 0) + tx.amount)
       return acc
     }, new Map<string, number>())
 
-    const incomeCategoryTotals = monthTransactions.reduce((acc, tx) => {
+    const incomeCategoryTotals = realMonthTransactions.reduce((acc, tx) => {
       if (tx.direction !== 'ingreso') return acc
       acc.set(tx.category_id, (acc.get(tx.category_id) || 0) + tx.amount)
       return acc
@@ -270,6 +285,8 @@ export class TransactionUseCases {
     return {
       totalSpent,
       totalIncome,
+      initialBalance,
+      availableBalance,
       balance,
       monthExpenses: totalSpent,
       monthIncome: totalIncome,
@@ -280,31 +297,23 @@ export class TransactionUseCases {
   }
 
   private async calculateWeeklyTrend(userId: string): Promise<Array<{ week: string; amount: number; date: string }>> {
-    const today = new Date()
-    const endDate = today.toISOString().split('T')[0]
-    const startDate = new Date(today.getTime() - 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const weekWindows = getBogotaCurrentWeekWindows(4)
+    const startDate = weekWindows[0].startKey
+    const endDate = weekWindows[weekWindows.length - 1].endKey
 
     const dailyExpenses = await monthSummaryRepository.getDailyExpenses(userId, startDate, endDate)
 
-    const weeks: Array<{ week: string; amount: number; date: string }> = []
-    for (let i = 3; i >= 0; i--) {
-      const weekStart = new Date(today.getTime() - (i * 7 * 24 * 60 * 60 * 1000))
-      const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000)
-      const weekStartStr = weekStart.toISOString().split('T')[0]
-      const weekEndStr = weekEnd.toISOString().split('T')[0]
-
+    return weekWindows.map((week) => {
       const weekTotal = dailyExpenses
-        .filter(d => d.day >= weekStartStr && d.day <= weekEndStr)
+        .filter(d => d.day >= week.startKey && d.day <= week.endKey)
         .reduce((sum, d) => sum + d.total, 0)
 
-      const weekLabel = i === 0 ? 'Esta semana' : `Hace ${i} semana${i > 1 ? 's' : ''}`
-      weeks.push({
-        week: weekLabel,
+      return {
+        week: week.label,
         amount: weekTotal,
-        date: weekStart.toLocaleDateString('es-CO')
-      })
-    }
-    return weeks
+        date: formatDateKey(week.startKey)
+      }
+    })
   }
 
   async getDailyTrend(userId: string, days: number = 7): Promise<Array<{ date: string; amount: number }>> {
@@ -346,13 +355,16 @@ export class TransactionUseCases {
       this.getDailyTrend(userId, 7),
       this.getMonthlyTrend(userId, 12)
     ])
+    const currentWeek = summary.weeklyTrend[summary.weeklyTrend.length - 1]
 
     return {
       transactions,
       totalSpent: summary.totalSpent,
       totalIncome: summary.totalIncome,
+      initialBalance: summary.initialBalance,
+      availableBalance: summary.availableBalance,
       todayExpenses: 0,
-      weekExpenses: summary.weeklyTrend[0]?.amount || 0,
+      weekExpenses: currentWeek?.amount || 0,
       monthExpenses: summary.monthExpenses,
       expensesByCategory: summary.expensesByCategory.reduce((acc, item) => {
         acc[item.categoryName] = item.total

@@ -38,7 +38,7 @@ export const CategoryTrendChart = ({
   onClose
 }: CategoryTrendChartProps) => {
   const [period, setPeriod] = useState<'weekly' | 'daily' | 'monthly'>('weekly')
-  const { gastoCategories } = useCategories()
+  const { gastoCategories, ingresoCategories } = useCategories()
   const { theme, systemTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
@@ -46,11 +46,12 @@ export const CategoryTrendChart = ({
   const isDark = mounted ? resolvedTheme === 'dark' : true
 
   const categoryIconKey = useMemo(() => {
-    const match = gastoCategories.find(
+    const categories = transactionType === 'ingreso' ? ingresoCategories : gastoCategories
+    const match = categories.find(
       (c) => c.nombre.trim().toLowerCase() === categoryName.trim().toLowerCase()
     )
     return match?.iconKey ?? null
-  }, [gastoCategories, categoryName])
+  }, [categoryName, gastoCategories, ingresoCategories, transactionType])
 
   const periodLabel =
     period === 'weekly'

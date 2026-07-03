@@ -102,7 +102,9 @@ export const TransactionsTableImproved = ({
         transaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         transaction.category?.toLowerCase().includes(searchTerm.toLowerCase())
 
-      const matchesType = typeFilter === 'all' || transaction.type === typeFilter
+      const matchesType = transaction.isRollover
+        ? typeFilter === 'all'
+        : typeFilter === 'all' || transaction.type === typeFilter
       const matchesCategory = categoryFilter === 'all' || transaction.category === categoryFilter
 
       return matchesSearch && matchesType && matchesCategory
@@ -242,7 +244,13 @@ export const TransactionsTableImproved = ({
     return <TrendingDown className="h-4 w-4 text-amber-700 dark:text-amber-400" />
   }
 
-  const getTransactionColor = (type: string | null) => {
+  const getDisplayIcon = (transaction: TransactionDTO) => {
+    if (transaction.isRollover) return <Wallet className="h-4 w-4 text-sky-700 dark:text-sky-300" />
+    return getTransactionIcon(transaction.type)
+  }
+
+  const getTransactionColor = (type: string | null, isRollover = false) => {
+    if (isRollover) return 'text-sky-700 dark:text-sky-300'
     if (type === 'ingreso') return 'text-green-600 dark:text-green-400'
     return 'text-amber-700 dark:text-amber-400'
   }
@@ -426,13 +434,18 @@ export const TransactionsTableImproved = ({
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="flex-shrink-0">{getTransactionIcon(transaction.type)}</div>
+                    <div className="flex-shrink-0">{getDisplayIcon(transaction)}</div>
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`font-semibold ${getTransactionColor(transaction.type)}`}>
+                        <span className={`font-semibold ${getTransactionColor(transaction.type, transaction.isRollover)}`}>
                           {formatCOP(transaction.amount)}
                         </span>
+                        {transaction.isRollover && (
+                          <span className="rounded-full bg-sky-500/10 px-2 py-1 text-xs font-medium text-sky-700 dark:bg-sky-400/15 dark:text-sky-300">
+                            Saldo inicial
+                          </span>
+                        )}
                         <span
                           className="
                             text-xs px-2 py-1 rounded-full
@@ -457,7 +470,7 @@ export const TransactionsTableImproved = ({
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {onUpdateTransaction && (
+                    {onUpdateTransaction && !transaction.isRollover && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -472,23 +485,25 @@ export const TransactionsTableImproved = ({
                         <span className="ml-1 text-xs">Editar</span>
                       </Button>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteClick(transaction)}
-                      disabled={deletingId === transaction.id}
-                      className="
-                        border-red-500/30 text-red-600 hover:bg-red-500/10 hover:border-red-500/50
-                        dark:border-red-500/20 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:border-red-500/40
-                      "
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      {deletingId === transaction.id ? (
-                        <span className="ml-1 text-xs">...</span>
-                      ) : (
-                        <span className="ml-1 text-xs">Del</span>
-                      )}
-                    </Button>
+                    {!transaction.isRollover && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteClick(transaction)}
+                        disabled={deletingId === transaction.id}
+                        className="
+                          border-red-500/30 text-red-600 hover:bg-red-500/10 hover:border-red-500/50
+                          dark:border-red-500/20 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:border-red-500/40
+                        "
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        {deletingId === transaction.id ? (
+                          <span className="ml-1 text-xs">...</span>
+                        ) : (
+                          <span className="ml-1 text-xs">Del</span>
+                        )}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

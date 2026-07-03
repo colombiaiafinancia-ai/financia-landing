@@ -1,19 +1,12 @@
 import type { TransactionDTO } from '@/features/transactions/dto/transactionDTO'
-
-function parseTxDate(createdAt: string | null): Date | null {
-  if (!createdAt) return null
-  const dateOnly = createdAt.split('T')[0]
-  const [year, month, day] = dateOnly.split('-').map(Number)
-  if (!year || !month || !day) return null
-  return new Date(year, month - 1, day)
-}
-
-function toDateKey(date: Date): string {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
+import {
+  addDaysToDateKey,
+  formatDateKey,
+  getBogotaCurrentWeekWindows,
+  getBogotaDateKey,
+  getTransactionBogotaDateKey,
+  parseDateKeyToLocalDate,
+} from '@/utils/bogotaDate'
 
 export function filterCategoryExpenses(
   transactions: TransactionDTO[],
@@ -21,7 +14,7 @@ export function filterCategoryExpenses(
   transactionType: 'gasto' | 'ingreso' = 'gasto'
 ): TransactionDTO[] {
   return transactions.filter(
-    (tx) => tx.type === transactionType && tx.category === categoryName
+    (tx) => !tx.isRollover && tx.type === transactionType && tx.category === categoryName
   )
 }
 
@@ -33,16 +26,14 @@ export function buildCategoryDailyTrend(
   const totals = new Map<string, number>()
 
   for (const tx of transactions) {
-    const date = parseTxDate(tx.createdAt)
-    if (!date) continue
-    const key = toDateKey(date)
+    const key = getTransactionBogotaDateKey(tx.createdAt)
+    if (!key) continue
     totals.set(key, (totals.get(key) || 0) + tx.amount)
   }
 
+  const todayKey = getBogotaDateKey()
   for (let i = days - 1; i >= 0; i--) {
-    const date = new Date()
-    date.setDate(date.getDate() - i)
-    const key = toDateKey(date)
+    const key = addDaysToDateKey(todayKey, -i)
     result.push({ date: key, amount: totals.get(key) || 0 })
   }
 
@@ -52,37 +43,27 @@ export function buildCategoryDailyTrend(
 export function buildCategoryWeeklyTrend(
   transactions: TransactionDTO[]
 ): Array<{ week: string; amount: number; date: string }> {
-  const today = new Date()
-  const weeks: Array<{ week: string; amount: number; date: string }> = []
+  const weeks = getBogotaCurrentWeekWindows(4)
+  const totals = new Map<string, number>()
 
-  for (let i = 3; i >= 0; i--) {
-    const weekStart = new Date(today)
-    weekStart.setDate(today.getDate() - i * 7)
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekStart.getDate() + 6)
-
-    const weekStartKey = toDateKey(weekStart)
-    const weekEndKey = toDateKey(weekEnd)
-
-    let weekTotal = 0
-    for (const tx of transactions) {
-      const date = parseTxDate(tx.createdAt)
-      if (!date) continue
-      const key = toDateKey(date)
-      if (key >= weekStartKey && key <= weekEndKey) {
-        weekTotal += tx.amount
-      }
-    }
-
-    const weekLabel = i === 0 ? 'Esta semana' : `Hace ${i} semana${i > 1 ? 's' : ''}`
-    weeks.push({
-      week: weekLabel,
-      amount: weekTotal,
-      date: weekStart.toLocaleDateString('es-CO'),
-    })
+  for (const tx of transactions) {
+    const key = getTransactionBogotaDateKey(tx.createdAt)
+    if (!key) continue
+    totals.set(key, (totals.get(key) || 0) + tx.amount)
   }
 
-  return weeks
+  return weeks.map((week) => {
+    let weekTotal = 0
+    totals.forEach((amount, key) => {
+      if (key >= week.startKey && key <= week.endKey) weekTotal += amount
+    })
+
+    return {
+      week: week.label,
+      amount: weekTotal,
+      date: formatDateKey(week.startKey),
+    }
+  })
 }
 
 export function buildCategoryMonthlyTrend(
@@ -92,14 +73,15 @@ export function buildCategoryMonthlyTrend(
   const totals = new Map<string, number>()
 
   for (const tx of transactions) {
-    const date = parseTxDate(tx.createdAt)
-    if (!date) continue
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-    totals.set(key, (totals.get(key) || 0) + tx.amount)
+    const dateKey = getTransactionBogotaDateKey(tx.createdAt)
+    if (!dateKey) continue
+    const date = parseDateKeyToLocalDate(dateKey)
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    totals.set(monthKey, (totals.get(monthKey) || 0) + tx.amount)
   }
 
   const result: Array<{ month: string; amount: number }> = []
-  const now = new Date()
+  const now = parseDateKeyToLocalDate(getBogotaDateKey())
 
   for (let i = months - 1; i >= 0; i--) {
     const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
