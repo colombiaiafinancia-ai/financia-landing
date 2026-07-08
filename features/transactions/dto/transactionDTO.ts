@@ -19,6 +19,7 @@ export interface TransactionDTO {
   readonly formattedAmount: string
   readonly formattedDate: string
   readonly isRollover: boolean
+  readonly isRecurring: boolean
 }
 
 export interface TransactionSummaryDTO {
@@ -110,6 +111,7 @@ export class TransactionDTOMapper {
     formattedAmount: string
     formattedDate: string
     isRollover?: boolean
+    isRecurring?: boolean
   }): TransactionDTO {
     if (DEBUG_TRANSACTIONS) {
       console.log('[TransactionDTOMapper] Convirtiendo transacción:', {
@@ -132,6 +134,7 @@ export class TransactionDTOMapper {
       formattedAmount: t.formattedAmount,
       formattedDate: t.formattedDate,
       isRollover: t.isRollover === true,
+      isRecurring: t.isRecurring === true,
     }
   }
 
@@ -147,6 +150,7 @@ export class TransactionDTOMapper {
     formattedAmount: string
     formattedDate: string
     isRollover?: boolean
+    isRecurring?: boolean
   }>): TransactionDTO[] {  // 👈 Cambiado de readonly a mutable
     if (DEBUG_TRANSACTIONS) {
       console.log('[TransactionDTOMapper] Convirtiendo', transactions.length, 'transacciones a DTOs')

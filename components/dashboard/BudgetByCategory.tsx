@@ -479,7 +479,7 @@ export const BudgetByCategory = ({
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="max-h-[31rem] space-y-3 overflow-y-auto pr-1">
           {budgetSummary.map((budget) => {
             const usedPct = Math.min(budget.porcentajeUsado, 100)
 

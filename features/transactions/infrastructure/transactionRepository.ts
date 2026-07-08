@@ -23,6 +23,8 @@ export interface CreateTransactionData {
   category_id: string
   description?: string | null
   occurred_at?: string // si no se envía, se usa now()
+  merchant?: string | null
+  meta?: Record<string, any>
 }
 
 export class TransactionRepository {
@@ -76,8 +78,8 @@ export class TransactionRepository {
         amount: data.amount,
         category_id: data.category_id,
         description: data.description || null,
-        merchant: null,
-        meta: {}
+        merchant: data.merchant || null,
+        meta: data.meta || {}
       })
       .select()
       .single()

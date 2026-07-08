@@ -446,6 +446,11 @@ export const TransactionsTableImproved = ({
                             Saldo inicial
                           </span>
                         )}
+                        {transaction.isRecurring && (
+                          <span className="rounded-full bg-cyan-500/10 px-2 py-1 text-xs font-medium text-cyan-700 dark:bg-cyan-400/15 dark:text-cyan-200">
+                            Automático
+                          </span>
+                        )}
                         <span
                           className="
                             text-xs px-2 py-1 rounded-full

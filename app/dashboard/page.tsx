@@ -17,6 +17,7 @@ import { BudgetByCategory } from '@/components/dashboard/BudgetByCategory'
 import { TransactionsTableImproved } from '@/components/dashboard/TransactionsTableImproved'
 import { MyCategoriesSection } from '@/components/dashboard/MyCategoriesSection'
 import { MoneyLeakDetector } from '@/components/dashboard/MoneyLeakDetector'
+import { RecurringExpensesSection } from '@/components/dashboard/RecurringExpensesSection'
 import { useTransactionsUnified } from '@/hooks/useTransactionsUnified'
 import type { CategoryBudgetSummaryItem } from '@/hooks/useCategoryBudget'
 import { useOnboardingStatus } from '@/hooks/useOnboardingStatus'
@@ -1000,12 +1001,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="mb-8 grid grid-cols-1 gap-4 lg:mb-6 lg:grid-cols-3">
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:mb-8 lg:grid-cols-2 lg:gap-6">
           <div
             data-onboarding-section="add-transaction"
             {...onboardingSpotlightSectionProps(
               tourSpotlightActive && onboardingStep === 'add-transaction',
-              'scroll-mt-20 lg:col-span-1 lg:h-[100%] sm:scroll-mt-24'
+              'scroll-mt-20 sm:scroll-mt-24'
             )}
           >
             <AddTransactionForm
@@ -1017,16 +1018,26 @@ export default function DashboardPage() {
             />
           </div>
 
-          <div className="lg:col-span-2">
-            <MoneyLeakDetector
-              transactions={realTransactions}
-              expensesByCategory={expensesByCategory}
-              weeklyTrend={weeklyTrend}
-              monthlyTrend={monthlyTrend}
-              totalSpent={totalSpent}
-              budgetSummary={budgetSummaryForLeaks}
+          <div className="min-w-0">
+            <RecurringExpensesSection
+              monthlyIncome={totalIncome}
+              onTransactionCreated={async () => {
+                await refetchTransactions()
+                setBudgetRefreshKey((prev) => prev + 1)
+              }}
             />
           </div>
+        </div>
+
+        <div className="mb-8 lg:mb-6">
+          <MoneyLeakDetector
+            transactions={realTransactions}
+            expensesByCategory={expensesByCategory}
+            weeklyTrend={weeklyTrend}
+            monthlyTrend={monthlyTrend}
+            totalSpent={totalSpent}
+            budgetSummary={budgetSummaryForLeaks}
+          />
         </div>
 
         <div

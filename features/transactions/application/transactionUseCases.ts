@@ -2,7 +2,12 @@ import { transactionRepository, TransactionEntity, CreateTransactionData } from 
 import { monthSummaryRepository } from '../infrastructure/monthSummaryRepository'
 import { categoryRepository } from '@/features/categories/infrastructure/categoryRepository'
 import { validateTransactionCreation } from '../domain/transactionLogic'
-import { formatDateKey, getBogotaCurrentWeekWindows } from '@/utils/bogotaDate'
+import {
+  addDaysToDateKey,
+  formatDateKey,
+  getBogotaCurrentWeekWindows,
+  getBogotaDateKey,
+} from '@/utils/bogotaDate'
 
 export interface TransactionCreationRequest {
   amount: number
@@ -42,6 +47,7 @@ export interface TransactionDTO {
   formattedAmount: string
   formattedDate: string
   isRollover: boolean
+  isRecurring: boolean
 }
 
 export interface TransactionSummaryDTO {
@@ -90,7 +96,8 @@ export class TransactionUseCases {
       occurredAt: entity.occurred_at,
       formattedAmount: new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(entity.amount),
       formattedDate: new Date(entity.occurred_at).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' }),
-      isRollover: entity.meta?.type === 'monthly_rollover'
+      isRollover: entity.meta?.type === 'monthly_rollover',
+      isRecurring: entity.meta?.type === 'recurring_expense'
     }
   }
 
@@ -165,77 +172,23 @@ export class TransactionUseCases {
 
  
   async getTransactionSummary(userId: string): Promise<TransactionSummaryDTO> {
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-
-    const [monthSummary, categoryRows, incomeCategoryRows, weeklyTrend, initialBalance] = await Promise.all([
-      monthSummaryRepository.getMonthSummary(userId, monthStart),
-      monthSummaryRepository.getMonthCategoryExpenses(userId, monthStart),
-      monthSummaryRepository.getMonthCategoryIncome(userId, monthStart),
-      this.calculateWeeklyTrend(userId),
-      monthSummaryRepository.getMonthlyRolloverBalance(userId, monthStart),
-    ])
-
-    if (!monthSummary) {
-      return this.getTransactionSummaryFromTransactions(userId, weeklyTrend)
-    }
-
-    const totalSpent = Number(monthSummary.expense_total) || 0
-    const totalIncome = Number(monthSummary.income_total) || 0
-    const balance = totalIncome - totalSpent
-    const availableBalance = initialBalance + balance
-
-    const categoryIds = [
-      ...categoryRows.map((r) => r.category_id),
-      ...incomeCategoryRows.map((r) => r.category_id),
-    ]
-    const categoryMap = await this.getCategoryMap(userId, categoryIds)
-
-    const mapCategoryRows = (
-      rows: typeof categoryRows,
-      totalByDirection: number
-    ) => rows
-      .map((row) => {
-        const total = Number(row.total) || 0
-        return {
-          categoryId: row.category_id,
-          categoryName: categoryMap.get(row.category_id) || 'Desconocida',
-          total,
-          percentage: totalByDirection > 0 ? (total / totalByDirection) * 100 : 0,
-        }
-      })
-      .filter((x) => x.total > 0)
-      .sort((a, b) => b.total - a.total)
-
-    const expensesByCategory = mapCategoryRows(categoryRows, totalSpent)
-    const incomeByCategory = mapCategoryRows(incomeCategoryRows, totalIncome)
-
-    return {
-      totalSpent,
-      totalIncome,
-      initialBalance,
-      availableBalance,
-      balance,
-      monthExpenses: totalSpent,
-      monthIncome: totalIncome,
-      expensesByCategory,
-      incomeByCategory,
-      weeklyTrend,
-    }
+    const weeklyTrend = await this.calculateWeeklyTrend(userId)
+    return this.getTransactionSummaryFromTransactions(userId, weeklyTrend)
   }
 
   private async getTransactionSummaryFromTransactions(
     userId: string,
     weeklyTrend: Array<{ week: string; amount: number; date: string }>
   ): Promise<TransactionSummaryDTO> {
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+    const today = getBogotaDateKey()
+    const monthStart = `${today.slice(0, 7)}-01`
+    const startUtc = `${monthStart}T05:00:00.000Z`
+    const endUtc = `${addDaysToDateKey(today, 1)}T04:59:59.999Z`
 
     const monthTransactions = await transactionRepository.findByUserAndPeriod(
       userId,
-      `${monthStart}T00:00:00.000Z`,
-      `${monthEnd}T23:59:59.999Z`
+      startUtc,
+      endUtc
     )
 
     const realMonthTransactions = monthTransactions.filter((tx) => tx.meta?.type !== 'monthly_rollover')
