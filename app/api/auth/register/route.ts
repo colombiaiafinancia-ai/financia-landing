@@ -7,13 +7,9 @@ function normalizePromoCode(value: unknown) {
 }
 
 export async function POST(request: NextRequest) {
-  console.log('🚀🚀🚀 API ROUTE CALLED - /api/auth/register')
-  console.log('⏰⏰⏰ API ROUTE - Timestamp:', new Date().toISOString())
-  
   try {
     const body = await request.json()
-    console.log('📥📥📥 API ROUTE - Body recibido:', body)
-    
+
     const { name, email, phone, password, repeatPassword } = body
     const promoCode = normalizePromoCode(body.promoCode)
 
@@ -79,21 +75,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('🔍 API ROUTE - Datos extraídos:', {
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      password: '***',
-      repeatPassword: '***'
-    })
-
-    console.log('✅ API ROUTE - Todas las validaciones pasaron')
-
     const supabase = await createSupabaseClient()
-    console.log('🔗 API ROUTE - Cliente Supabase creado')
 
-    console.log('📝 API ROUTE - Iniciando auth.signUp...')
-    
     // Create user in Supabase Auth with phone in metadata
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -108,14 +91,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    console.log('📊 API ROUTE - Resultado auth.signUp:', { 
-      userId: data?.user?.id, 
-      error: error?.message,
-      userMetadata: data?.user?.user_metadata
-    })
-
     if (error) {
-      console.log('❌ API ROUTE - Error en auth.signUp:', error)
+      console.error('[register] auth.signUp error:', error.message)
       const errMsg = error.message.toLowerCase()
       if (
         errMsg.includes('telefono') ||
@@ -150,7 +127,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (!data?.user) {
-      console.log('❌ API ROUTE - No se creó el usuario')
       return NextResponse.json({ 
         error: 'Error al crear la cuenta' 
       }, { status: 400 })
@@ -158,29 +134,18 @@ export async function POST(request: NextRequest) {
 
     // Usuario ya existente: Supabase devuelve success con identities vacío
     if (!data.user.identities || data.user.identities.length === 0) {
-      console.log('⚠️ API ROUTE - Email/phone ya registrado (identities vacío)')
       return NextResponse.json({ 
         error: 'Ya existe una cuenta con este email o teléfono. Inicia sesión.' 
       }, { status: 400 })
     }
 
-
-    // ✅ NUEVO FLUJO: Solo guardamos en metadata, el trigger se encarga del resto
-    console.log('⏳ API ROUTE - Datos guardados en auth.user_metadata, esperando confirmación de email')
-    console.log('📋 API ROUTE - Metadata guardado:', {
-      full_name: name.trim(),
-      phone: phone.trim(),
-      email: email.trim()
-    })
-    
-    console.log('🏆 API ROUTE - Registro completado exitosamente')
-
+    // Solo guardamos en metadata; el trigger de base de datos completa el perfil al confirmar el email
     return NextResponse.json({ 
       success: 'Te enviamos un correo de verificación. Revisa tu bandeja de entrada, si no lo encuentras, revisa la carpeta de spam' 
     })
 
   } catch (error) {
-    console.log('💥 API ROUTE - Error general:', error)
+    console.error('[register] unexpected error:', error)
     return NextResponse.json({ 
       error: 'Error interno del servidor' 
     }, { status: 500 })

@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseClient } from "@/services/supabase/client-server";
 import { createMercadoPagoPlan } from "@/services/mercadopago/plans";
+import { assertSuperUser } from "@/lib/auth/assert-super-user";
 
+// Endpoint de configuracion: crea/enlaza planes en Mercado Pago. Solo super usuarios.
 export async function POST(req: Request) {
+  const denied = await assertSuperUser();
+  if (denied) return denied;
+
   try {
     const body = await req.json();
 

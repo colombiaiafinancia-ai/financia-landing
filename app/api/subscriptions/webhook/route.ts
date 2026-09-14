@@ -2,28 +2,33 @@ import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/services/supabase/admin";
 import { getMercadoPagoSubscription } from "@/services/mercadopago/subscriptions";
 import { mapMercadoPagoStatus } from "@/lib/mercadopago";
+import { verifyMercadoPagoSignature } from "@/lib/mercadopago-webhook";
 
 export async function POST(req: Request) {
+  // Rechazar cualquier notificacion que no venga firmada por Mercado Pago
+  const signature = verifyMercadoPagoSignature(req);
+  if (!signature.ok) {
+    console.warn("Webhook Mercado Pago rechazado:", signature.reason);
+    return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
+  }
+
   try {
     const url = new URL(req.url);
     const body = await req.json().catch(() => ({}));
 
     const type =
-      body?.type ||
-      body?.topic ||
       url.searchParams.get("type") ||
-      url.searchParams.get("topic");
+      url.searchParams.get("topic") ||
+      body?.type ||
+      body?.topic;
 
+    // El id firmado es el de la query string; el body solo se usa como respaldo
     const preapprovalId =
-      body?.data?.id ||
       url.searchParams.get("data.id") ||
-      url.searchParams.get("id");
+      url.searchParams.get("id") ||
+      body?.data?.id;
 
-    console.log("Webhook Mercado Pago recibido:", {
-      type,
-      preapprovalId,
-      body,
-    });
+    console.log("Webhook Mercado Pago recibido:", { type, preapprovalId });
 
     if (!preapprovalId) {
       return NextResponse.json({
