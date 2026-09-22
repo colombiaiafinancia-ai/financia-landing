@@ -83,6 +83,7 @@ export const RecurringExpensesSection = ({
     loading,
     error,
     activeMonthlyTotal,
+    activeMonthlyIncomeTotal,
     create,
     update,
     pause,
@@ -90,7 +91,7 @@ export const RecurringExpensesSection = ({
     remove,
     generateNow,
   } = useRecurringExpenses(onTransactionCreated)
-  const { gastoCategories, loading: categoriesLoading } = useCategories()
+  const { gastoCategories, ingresoCategories, loading: categoriesLoading } = useCategories()
 
   const [filter, setFilter] = useState<FilterStatus>('active')
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -101,6 +102,7 @@ export const RecurringExpensesSection = ({
 
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
+  const [direction, setDirection] = useState<'gasto' | 'ingreso'>('gasto')
   const [categoryId, setCategoryId] = useState('')
   const [frequency, setFrequency] = useState<RecurringFrequency>('monthly')
   const [nextChargeDate, setNextChargeDate] = useState(getTodayKey())
@@ -126,6 +128,7 @@ export const RecurringExpensesSection = ({
     setEditingItem(null)
     setName('')
     setAmount('')
+    setDirection('gasto')
     setCategoryId('')
     setFrequency('monthly')
     setNextChargeDate(getTodayKey())
@@ -138,6 +141,7 @@ export const RecurringExpensesSection = ({
     setEditingItem(item)
     setName(item.name)
     setAmount(String(Math.round(item.amount)))
+    setDirection(item.direction)
     setCategoryId(item.categoryId)
     setFrequency(item.frequency)
     setNextChargeDate(item.nextChargeDate)
@@ -175,6 +179,7 @@ export const RecurringExpensesSection = ({
         name,
         amount: numericAmount,
         categoryId,
+        direction,
         merchant: name,
         frequency,
         billingDay: Number(nextChargeDate.slice(8, 10)),
@@ -295,10 +300,26 @@ export const RecurringExpensesSection = ({
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="recurring-direction">Tipo</Label>
+                <select
+                  id="recurring-direction"
+                  value={direction}
+                  onChange={(event) => {
+                    setDirection(event.target.value as 'gasto' | 'ingreso')
+                    setCategoryId('')
+                  }}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary dark:border-white/20 dark:bg-white/10 dark:text-white"
+                >
+                  <option value="gasto">Gasto fijo</option>
+                  <option value="ingreso">Ingreso fijo</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="recurring-category">Categoria *</Label>
                 <CategorySelectWithIcons
                   id="recurring-category"
-                  categories={gastoCategories}
+                  categories={direction === 'ingreso' ? ingresoCategories : gastoCategories}
                   value={categoryId}
                   onChange={setCategoryId}
                   disabled={categoriesLoading}
@@ -380,7 +401,7 @@ export const RecurringExpensesSection = ({
       <div className="mb-4 grid grid-cols-2 gap-2">
         <div className="rounded-xl border border-border bg-muted/40 p-3 dark:border-white/10 dark:bg-white/5">
           <p className="text-[11px] text-muted-foreground dark:text-white/60">
-            Fijos activos / mes
+            Gastos fijos / mes
           </p>
           <p className="mt-1 text-base font-bold text-slate-900 dark:text-white">
             {formatCurrency(activeMonthlyTotal)}
@@ -490,6 +511,7 @@ export const RecurringExpensesSection = ({
                   </div>
                   <p className="truncate text-xs text-muted-foreground dark:text-white/65">
                     {item.categoryName} · {frequencyLabels[item.frequency]}
+                    {item.direction === 'ingreso' ? ' · Ingreso' : ' · Gasto'}
                     {item.frequency === 'monthly' && item.billingDay ? ` · Dia ${item.billingDay}` : ''}
                   </p>
                 </div>

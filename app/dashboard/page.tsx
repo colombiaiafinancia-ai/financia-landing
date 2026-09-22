@@ -36,8 +36,7 @@ import { smoothScrollToElement } from '@/utils/scroll'
 import { CATEGORIES_UPDATED_EVENT } from '@/utils/categorySyncEvents'
 import {
   getEffectiveTrialEndsAt,
-  getPromotionalTrialTotalMs,
-  PROMOTIONAL_TRIAL_END_LABEL,
+  getTrialTotalMs,
 } from '@/lib/trial'
 import {
   buildCategoryDailyTrend,
@@ -375,7 +374,6 @@ export default function DashboardPage() {
         subscription_status: 'cancelled',
         current_plan: 'free',
         mp_preapproval_id: null,
-        trial_ends_at: null,
       }))
       setPlanMessage('Tu plan fue cancelado correctamente.')
       void fetchProfilePlan(user.id)
@@ -539,23 +537,21 @@ export default function DashboardPage() {
     : 0
   const trialProgress = Math.max(
     0,
-    Math.min(100, (trialRemainingMs / getPromotionalTrialTotalMs()) * 100)
+    Math.min(100, (trialRemainingMs / getTrialTotalMs()) * 100)
   )
   const canCancelPlan =
     !profilePlan.is_super_user &&
     currentPlan !== 'free' &&
     (planStatus === 'active' || planStatus === 'pending' || trialIsActive)
   const planNames: Record<string, string> = {
-    free: 'Plan gratis',
+    free: 'Acceso gratuito',
     financia_monthly: 'Plan mensual',
-    financia_annual: 'Plan anual 30% OFF',
-    financia_founder_monthly: 'Founders 100',
-    financia_founder_annual: 'Founder anual',
+    financia_annual: 'Plan anual 20% OFF',
     financia_test_weekly: 'Plan prueba semanal',
   }
   const planLabel = profilePlan.is_super_user
     ? 'Super user'
-    : planNames[currentPlan] || currentPlan
+    : planNames[currentPlan] || 'Plan de suscripción'
   const statusLabel: Record<string, string> = {
     free: 'Gratis',
     pending: 'Pendiente',
@@ -572,7 +568,7 @@ export default function DashboardPage() {
       : statusLabel[planStatus] || planStatus
   const hasPaidPlan =
     currentPlan !== 'free' &&
-    (planStatus === 'active' || planStatus === 'pending')
+    planStatus === 'active'
   const showTrialBanner = !profilePlan.is_super_user && !hasPaidPlan
   const showIncomeHeatmap =
     Object.values(incomeByCategory).filter((value) => Number(value) > 0).length >= 2
@@ -692,7 +688,7 @@ export default function DashboardPage() {
                           </span>
                           {trialIsActive && trialEndsAt && (
                             <p className="mt-2 text-xs text-muted-foreground dark:text-white/60">
-                              Prueba gratis hasta el {PROMOTIONAL_TRIAL_END_LABEL}.
+                              Acceso gratuito: {trialDaysRemaining} días restantes.
                             </p>
                           )}
                         </div>

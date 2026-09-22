@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { hasPlatformAccess } from '@/lib/trial'
 import {
   buildRecurringTransactionMeta,
   getNextChargeDate,
@@ -16,6 +17,7 @@ interface RecurringExpenseRow {
   name: string
   amount: number
   category_id: string
+  direction: 'gasto' | 'ingreso'
   merchant: string | null
   frequency: RecurringFrequency
   billing_day: number | null
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest) {
   try {
     const { data: dueItems, error } = await supabaseAdmin
       .from('recurring_expenses')
-      .select('id,user_id,name,amount,category_id,merchant,frequency,billing_day,next_charge_date')
+      .select('id,user_id,name,amount,category_id,direction,merchant,frequency,billing_day,next_charge_date')
       .eq('status', 'active')
       .eq('auto_create', true)
       .lte('next_charge_date', todayKey)
@@ -48,6 +50,13 @@ export async function GET(request: NextRequest) {
     const results = []
 
     for (const item of (dueItems || []) as RecurringExpenseRow[]) {
+      const { data: profile, error: profileError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('is_super_user,subscription_status,current_plan,trial_ends_at')
+        .eq('user_id', item.user_id).maybeSingle()
+      if (profileError) throw profileError
+      if (!hasPlatformAccess(profile)) continue
+
       let chargeDateKey = item.next_charge_date
       let nextChargeDate = chargeDateKey
       let created = 0
@@ -80,11 +89,11 @@ export async function GET(request: NextRequest) {
             .insert({
               user_id: item.user_id,
               occurred_at: `${chargeDateKey}T12:00:00.000Z`,
-              direction: 'gasto',
+              direction: item.direction || 'gasto',
               status: 'confirmada',
               amount: item.amount,
               category_id: item.category_id,
-              description: `Gasto fijo: ${item.name}`,
+              description: `${item.direction === 'ingreso' ? 'Ingreso fijo' : 'Gasto fijo'}: ${item.name}`,
               merchant: item.merchant || item.name,
               meta,
             })
@@ -134,4 +143,3 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
-

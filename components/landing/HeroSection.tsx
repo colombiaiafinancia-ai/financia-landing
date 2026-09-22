@@ -2,7 +2,6 @@
 
 import { MessageCircle } from 'lucide-react'
 import PhoneMockup from '@/components/landing/PhoneMockup'
-import { PROMOTIONAL_TRIAL_END_LABEL } from '@/lib/trial'
 const AVATARS = [
   { initial: 'M', gradient: 'from-purple-400 to-pink-400' },
   { initial: 'C', gradient: 'from-blue-400 to-cyan-400' },
@@ -69,7 +68,7 @@ const HeroSection = () => {
               }}
             >
               <MessageCircle size={20} />
-              Gratis hasta el {PROMOTIONAL_TRIAL_END_LABEL}
+              Prueba 30 días gratis
             </a>
             <a
               href="#producto"
@@ -99,7 +98,7 @@ const HeroSection = () => {
             {[
               ['$0', 'para empezar'],
               ['3s', 'por registro'],
-              ['25 jul', 'prueba gratis'],
+              ['30 días', 'prueba gratis'],
             ].map(([num, label]) => (
               <div key={label}>
                 <div className="font-sora text-2xl font-extrabold text-[#06B6D4]">{num}</div>

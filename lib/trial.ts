@@ -1,20 +1,24 @@
-export const PROMOTIONAL_TRIAL_END_LABEL = '25 de julio de 2026'
-export const PROMOTIONAL_TRIAL_START_ISO = '2026-06-21T05:00:00.000Z'
-export const PROMOTIONAL_TRIAL_END_ISO = '2026-07-26T04:59:59.999Z'
+export const TRIAL_DAYS = 30
 
-export function getEffectiveTrialEndsAt(profileTrialEndsAt?: string | null) {
-  const now = Date.now()
-  const promotionalEnd = new Date(PROMOTIONAL_TRIAL_END_ISO).getTime()
-  const profileEnd = profileTrialEndsAt ? new Date(profileTrialEndsAt).getTime() : 0
-  const effectiveEnd = Math.max(profileEnd, promotionalEnd)
-
-  return effectiveEnd > now ? new Date(effectiveEnd).toISOString() : null
+export function getEffectiveTrialEndsAt(profileTrialEndsAt?: string | null, now = Date.now()) {
+  const end = profileTrialEndsAt ? Date.parse(profileTrialEndsAt) : NaN
+  return Number.isFinite(end) && end > now ? new Date(end).toISOString() : null
 }
 
-export function getPromotionalTrialTotalMs() {
-  return Math.max(
-    new Date(PROMOTIONAL_TRIAL_END_ISO).getTime() -
-      new Date(PROMOTIONAL_TRIAL_START_ISO).getTime(),
-    1
-  )
+export function getTrialTotalMs() {
+  return TRIAL_DAYS * 24 * 60 * 60 * 1000
+}
+
+export type AccessProfile = {
+  is_super_user?: boolean | null
+  subscription_status?: string | null
+  current_plan?: string | null
+  trial_ends_at?: string | null
+}
+
+export function hasPlatformAccess(profile: AccessProfile | null, now = Date.now()) {
+  if (!profile) return false
+  return profile.is_super_user === true ||
+    (profile.subscription_status === 'active' && Boolean(profile.current_plan) && profile.current_plan !== 'free') ||
+    getEffectiveTrialEndsAt(profile.trial_ends_at, now) !== null
 }

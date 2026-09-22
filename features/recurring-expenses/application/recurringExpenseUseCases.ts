@@ -30,6 +30,7 @@ export class RecurringExpenseUseCases {
       name: data.name.trim(),
       amount: data.amount,
       category_id: data.categoryId,
+      direction: data.direction || 'gasto',
       merchant: data.merchant?.trim() || data.name.trim(),
       frequency: data.frequency,
       billing_day: data.billingDay || this.getDayFromDateKey(data.nextChargeDate),
@@ -58,6 +59,7 @@ export class RecurringExpenseUseCases {
       ...(data.name !== undefined ? { name: data.name.trim() } : {}),
       ...(data.amount !== undefined ? { amount: data.amount } : {}),
       ...(data.categoryId !== undefined ? { category_id: data.categoryId } : {}),
+      ...(data.direction !== undefined ? { direction: data.direction } : {}),
       ...(data.merchant !== undefined ? { merchant: data.merchant?.trim() || null } : {}),
       ...(data.frequency !== undefined ? { frequency: data.frequency } : {}),
       ...(data.billingDay !== undefined ? { billing_day: data.billingDay } : {}),
@@ -111,10 +113,10 @@ export class RecurringExpenseUseCases {
 
     await transactionRepository.create({
       user_id: userId,
-      direction: 'gasto',
+      direction: recurringExpense.direction,
       amount: recurringExpense.amount,
       category_id: recurringExpense.categoryId,
-      description: `Gasto fijo: ${recurringExpense.name}`,
+      description: `${recurringExpense.direction === 'ingreso' ? 'Ingreso fijo' : 'Gasto fijo'}: ${recurringExpense.name}`,
       merchant: recurringExpense.merchant || recurringExpense.name,
       occurred_at: `${chargeDateKey}T12:00:00.000Z`,
       meta: buildRecurringTransactionMeta(
@@ -156,6 +158,7 @@ export class RecurringExpenseUseCases {
       amount: Number(row.amount) || 0,
       categoryId: row.category_id,
       categoryName: category?.name || 'Sin categoria',
+      direction: row.direction || 'gasto',
       merchant: row.merchant,
       frequency: row.frequency,
       billingDay: row.billing_day,

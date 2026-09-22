@@ -5,11 +5,9 @@ import { motion } from 'framer-motion'
 import { PlanCard } from '@/components/pricing/PlanCard'
 import {
   ANNUAL_PLAN_CONDITIONS,
-  FOUNDERS_PLAN_CONDITIONS,
   LANDING_PLANS,
   PRICING_COMPARISON_ROWS,
 } from '@/lib/pricing-plans'
-import { PROMOTIONAL_TRIAL_END_LABEL } from '@/lib/trial'
 import { cn } from '@/lib/utils'
 
 const PricingSection = () => {
@@ -43,18 +41,18 @@ const PricingSection = () => {
           </h2>
           <div className="mx-auto mt-6 max-w-3xl rounded-2xl border border-cyan-300/30 bg-cyan-300/[0.1] px-6 py-5 text-cyan-50 shadow-lg shadow-cyan-950/10">
             <p className="font-sora text-xl font-extrabold text-slate-100 md:text-2xl">
-              Prueba gratis hasta el{' '}
+              Prueba gratis durante{' '}
               <span className="text-amber-300 drop-shadow-[0_0_18px_rgba(252,211,77,0.28)]">
-                {PROMOTIONAL_TRIAL_END_LABEL}
+                30 días
               </span>
             </p>
             <p className="mt-2 text-sm text-slate-300 md:text-base">
-              Puedes usar FinancIA sin pagar durante la prueba promocional. Al terminar, eliges el plan que prefieras.
+              Puedes usar FinancIA sin pagar durante los primeros 30 días. Al terminar, eliges el plan que prefieras.
             </p>
           </div>
         </motion.div>
 
-        <div className="grid items-stretch gap-5 lg:grid-cols-3 lg:gap-6">
+        <div className="grid items-stretch gap-5 lg:grid-cols-2 lg:gap-6">
           {LANDING_PLANS.map((plan, index) => (
             <PlanCard key={plan.id} plan={plan} index={index}>
               <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -69,7 +67,7 @@ const PricingSection = () => {
                       'border border-white/15 bg-white/10 text-white hover:bg-white/15'
                   )}
                 >
-                  Elegir plan
+                  Probar 30 días gratis
                 </Link>
               </motion.div>
             </PlanCard>
@@ -92,8 +90,7 @@ const PricingSection = () => {
                 <tr className="bg-[#06B6D4]/15 text-left text-slate-200">
                   <th className="px-4 py-3 font-semibold" />
                   <th className="px-4 py-3 font-semibold">Plan Mensual</th>
-                  <th className="px-4 py-3 font-semibold text-[#06B6D4]">Plan Anual 30% OFF</th>
-                  <th className="px-4 py-3 font-semibold text-amber-300">Founders 100</th>
+                  <th className="px-4 py-3 font-semibold text-[#06B6D4]">Plan Anual 20% OFF</th>
                 </tr>
               </thead>
               <tbody>
@@ -114,7 +111,7 @@ const PricingSection = () => {
           </div>
         </motion.div>
 
-        <div className="mt-8 grid gap-5 md:grid-cols-2">
+        <div className="mt-8 grid gap-5">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -135,25 +132,7 @@ const PricingSection = () => {
             </ul>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.08 }}
-            viewport={{ once: true }}
-            className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] p-5"
-          >
-            <h4 className="mb-3 font-sora text-sm font-bold uppercase tracking-wide text-amber-300">
-              Sobre Founders 100
-            </h4>
-            <ul className="space-y-2 text-sm text-slate-400">
-              {FOUNDERS_PLAN_CONDITIONS.map((item) => (
-                <li key={item} className="flex gap-2">
-                  <span className="text-amber-400">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </motion.div>
+
         </div>
 
         <p className="mt-8 text-center text-xs text-slate-500 sm:text-sm">

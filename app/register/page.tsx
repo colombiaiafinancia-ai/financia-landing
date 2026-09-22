@@ -1,6 +1,5 @@
 import { RegisterForm } from '@/components/RegisterForm'
 import Link from 'next/link'
-import { PROMOTIONAL_TRIAL_END_LABEL } from '@/lib/trial'
 
 export default function RegisterPage() {
   return (
@@ -25,7 +24,7 @@ export default function RegisterPage() {
               Crear Cuenta
             </h1>
             <p className='text-white/80 text-base md:text-lg'>
-              Crea tu cuenta y empieza gratis hasta el <span className='font-bold text-[#9DFAD7]'>{PROMOTIONAL_TRIAL_END_LABEL}</span>. Luego podras elegir el plan que mejor se adapte a ti.
+              Crea tu cuenta y disfruta <span className='font-bold text-[#9DFAD7]'>30 días de prueba gratis</span>. Luego podras elegir el plan que mejor se adapte a ti.
             </p>
           </div>
           

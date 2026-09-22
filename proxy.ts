@@ -5,7 +5,9 @@ import {
   clearMiddlewareAuthCookies,
   isProtectedRoute,
   isAuthRoute,
+  getMiddlewareSupabaseClient,
 } from '@/services/supabase/client-middleware'
+import { hasPlatformAccess } from '@/lib/trial'
 import { isRefreshTokenError } from '@/services/supabase/types'
 
 export async function proxy(request: NextRequest) {
@@ -36,7 +38,20 @@ export async function proxy(request: NextRequest) {
   // Si el refresh token es inválido/no existe, limpiamos cookies y seguimos como NO auth
   if (authResult.error && isRefreshTokenError(authResult.error)) {
     response = clearMiddlewareAuthCookies(response)
-    return addSecurityHeaders(response)
+    return handleAuthRedirects(request, pathname, false, response)
+  }
+
+  if (isAuthenticated && needsAuth) {
+    const supabase = getMiddlewareSupabaseClient(request, response)
+    const { data: profile, error } = await supabase
+      .from('user_profiles')
+      .select('is_super_user,subscription_status,current_plan,trial_ends_at')
+      .eq('user_id', authResult.user!.id)
+      .maybeSingle()
+    if (error || !hasPlatformAccess(profile)) {
+      return addSecurityHeaders(withCookies(response,
+        NextResponse.redirect(new URL('/subscribe', request.url))))
+    }
   }
 
   // Redirecciones preservando cookies

@@ -7,12 +7,10 @@ import { cn } from '@/lib/utils'
 import { PlanCard } from '@/components/pricing/PlanCard'
 import {
   ANNUAL_PLAN_CONDITIONS,
-  FOUNDERS_PLAN_CONDITIONS,
   PRICING_COMPARISON_ROWS,
   SUBSCRIBE_PLAN_KEYS,
   getLandingPlanByKey,
 } from '@/lib/pricing-plans'
-import { PROMOTIONAL_TRIAL_END_LABEL } from '@/lib/trial'
 
 export type SubscriptionPlanOption = {
   planKey: string
@@ -158,15 +156,15 @@ export default function SubscriptionCheckout({
           </h1>
           <div className="mx-auto mt-6 max-w-3xl rounded-2xl border border-cyan-300/30 bg-cyan-300/[0.1] px-6 py-5 text-cyan-50 shadow-lg shadow-cyan-950/10">
             <p className="font-sora text-xl font-extrabold text-slate-100 md:text-2xl">
-              {trialIsActive ? 'Tu prueba promocional esta activa: ' : 'Empiezas gratis hasta el '}
+              {trialIsActive ? 'Tu acceso gratuito está activo: ' : 'Tu acceso gratuito terminó'}
               <span className="text-amber-300 drop-shadow-[0_0_18px_rgba(252,211,77,0.28)]">
-                {trialIsActive ? `${trialDaysRemaining} dias restantes` : PROMOTIONAL_TRIAL_END_LABEL}
+                {trialIsActive ? `${trialDaysRemaining} días restantes` : ''}
               </span>
             </p>
             <p className="mt-2 text-sm text-slate-300 md:text-base">
               {trialIsActive
-                ? `No necesitas pagar ni buscar descuentos en Mercado Pago. Podras suscribirte cuando termine tu prueba el ${PROMOTIONAL_TRIAL_END_LABEL}.`
-                : 'Mercado Pago procesara la suscripcion seleccionada.'}
+                ? 'Puedes seguir usando FinancIA sin pagar durante tu acceso gratuito. Al terminar, elige un plan para continuar.'
+                : 'Elige un plan para recuperar el acceso. Mercado Pago procesará la suscripción seleccionada.'}
             </p>
           </div>
 
@@ -186,7 +184,7 @@ export default function SubscriptionCheckout({
           )}
         </motion.div>
 
-        <div className="grid items-stretch gap-5 lg:grid-cols-3 lg:gap-6">
+        <div className="grid items-stretch gap-5 lg:grid-cols-2 lg:gap-6">
           {paidPlans.map((plan, index) => {
             const period = periodLabel(plan)
             const usdAmt = plan.display.priceUsd
@@ -197,7 +195,7 @@ export default function SubscriptionCheckout({
 
             const footerNote = hasDiscount
               ? `Con ${discountPercentage}% descuento: ${fmtUsd(discountedUsd)}${period} (antes ${fmtUsd(usdAmt)}${period})`
-              : `Gratis hasta el ${PROMOTIONAL_TRIAL_END_LABEL}; luego Mercado Pago cobra ${fmtUsd(usdAmt)}${period}`
+              : `Al suscribirte, Mercado Pago cobra ${fmtUsd(usdAmt)}${period}`
 
             const displayPlan = hasDiscount
               ? {
@@ -250,7 +248,6 @@ export default function SubscriptionCheckout({
                   <th className="px-4 py-3 font-semibold" />
                   <th className="px-4 py-3 font-semibold">Plan Mensual</th>
                   <th className="px-4 py-3 font-semibold text-[#06B6D4]">Plan Anual 20% OFF</th>
-                  <th className="px-4 py-3 font-semibold text-amber-300">Founders 100</th>
                 </tr>
               </thead>
               <tbody>
@@ -271,7 +268,7 @@ export default function SubscriptionCheckout({
           </div>
         </motion.div>
 
-        <div className="mt-8 grid gap-5 md:grid-cols-2">
+        <div className="mt-8 grid gap-5">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
             <h4 className="mb-3 font-sora text-sm font-bold uppercase tracking-wide text-[#06B6D4]">
               Condiciones del plan anual
@@ -285,19 +282,7 @@ export default function SubscriptionCheckout({
               ))}
             </ul>
           </div>
-          <div className="rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] p-5">
-            <h4 className="mb-3 font-sora text-sm font-bold uppercase tracking-wide text-amber-300">
-              Sobre Founders 100
-            </h4>
-            <ul className="space-y-2 text-sm text-slate-400">
-              {FOUNDERS_PLAN_CONDITIONS.map((item) => (
-                <li key={item} className="flex gap-2">
-                  <span className="text-amber-400">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+
         </div>
 
         {message && (

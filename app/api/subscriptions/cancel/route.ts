@@ -65,7 +65,6 @@ export async function POST() {
         subscription_status: "cancelled",
         current_plan: "free",
         mp_preapproval_id: null,
-        trial_ends_at: null,
       })
       .eq("user_id", user.id);
 

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseClient } from "@/services/supabase/client-server";
 import { createMercadoPagoPendingSubscription } from "@/services/mercadopago/subscriptions";
-import { getEffectiveTrialEndsAt, PROMOTIONAL_TRIAL_END_LABEL } from "@/lib/trial";
+import { getEffectiveTrialEndsAt } from "@/lib/trial";
+
+import { SUBSCRIBE_PLAN_KEYS } from '@/lib/pricing-plans';
+import { getSupabaseAdminClient } from '@/services/supabase/admin';
 
 export async function POST(req: Request) {
   try {
@@ -13,6 +16,10 @@ export async function POST(req: Request) {
         { ok: false, error: "Faltan datos: userId, planKey o payerEmail" },
         { status: 400 }
       );
+    }
+
+    if (!SUBSCRIBE_PLAN_KEYS.some((key) => key === planKey)) {
+      return NextResponse.json({ ok: false, error: 'Plan no disponible' }, { status: 400 });
     }
 
     const supabase = await getServerSupabaseClient();
@@ -40,7 +47,7 @@ export async function POST(req: Request) {
         {
           ok: false,
           error:
-            `Tu prueba gratis sigue activa hasta el ${PROMOTIONAL_TRIAL_END_LABEL}. No necesitas pagar ni buscar descuentos en Mercado Pago.`,
+            'Tu acceso gratuito sigue activo. Podrás elegir un plan cuando termine.',
         },
         { status: 409 }
       );
@@ -103,7 +110,6 @@ export async function POST(req: Request) {
     const COP_PRICES: Record<string, number> = {
       financia_monthly: 19000,
       financia_annual: 182000,
-      financia_founder_monthly: 17000,
     }
     const baseAmountCOP = COP_PRICES[planKey] ?? Math.round(Number(plan.amount) * 4200)
     const finalAmount = discountPct > 0
@@ -193,7 +199,7 @@ export async function POST(req: Request) {
           }),
         }).catch((err) => console.error("Error scheduling discount expiry job:", err));
 
-        await supabase
+        await getSupabaseAdminClient()
           .from("user_profiles")
           .update({ discount_ends_at: endsAt.toISOString() })
           .eq("user_id", userId);

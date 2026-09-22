@@ -7,6 +7,7 @@ export interface RecurringExpenseEntity {
   name: string
   amount: number
   category_id: string
+  direction: 'gasto' | 'ingreso'
   merchant: string | null
   frequency: RecurringFrequency
   billing_day: number | null
@@ -26,6 +27,7 @@ export interface CreateRecurringExpenseData {
   name: string
   amount: number
   category_id: string
+  direction?: 'gasto' | 'ingreso'
   merchant?: string | null
   frequency: RecurringFrequency
   billing_day?: number | null
@@ -65,6 +67,7 @@ export class RecurringExpenseRepository {
         name: data.name,
         amount: data.amount,
         category_id: data.category_id,
+        direction: data.direction || 'gasto',
         merchant: data.merchant || null,
         frequency: data.frequency,
         billing_day: data.billing_day || null,
@@ -111,4 +114,3 @@ export class RecurringExpenseRepository {
 }
 
 export const recurringExpenseRepository = new RecurringExpenseRepository()
-

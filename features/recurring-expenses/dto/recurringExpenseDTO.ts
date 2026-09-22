@@ -7,6 +7,7 @@ export interface RecurringExpenseDTO {
   readonly amount: number
   readonly categoryId: string
   readonly categoryName: string
+  readonly direction: 'gasto' | 'ingreso'
   readonly merchant: string | null
   readonly frequency: RecurringFrequency
   readonly billingDay: number | null
@@ -24,6 +25,7 @@ export interface CreateRecurringExpenseDTO {
   readonly name: string
   readonly amount: number
   readonly categoryId: string
+  readonly direction?: 'gasto' | 'ingreso'
   readonly merchant?: string | null
   readonly frequency: RecurringFrequency
   readonly billingDay?: number | null
@@ -37,6 +39,7 @@ export interface UpdateRecurringExpenseDTO {
   readonly name?: string
   readonly amount?: number
   readonly categoryId?: string
+  readonly direction?: 'gasto' | 'ingreso'
   readonly merchant?: string | null
   readonly frequency?: RecurringFrequency
   readonly billingDay?: number | null
@@ -46,4 +49,3 @@ export interface UpdateRecurringExpenseDTO {
   readonly notes?: string | null
   readonly status?: RecurringExpenseStatus
 }
-

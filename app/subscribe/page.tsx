@@ -6,7 +6,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { SUBSCRIBE_PLAN_KEYS } from "@/lib/pricing-plans";
-import { getEffectiveTrialEndsAt, PROMOTIONAL_TRIAL_END_LABEL } from "@/lib/trial";
+import { getEffectiveTrialEndsAt } from "@/lib/trial";
 
 const planOrder = [...SUBSCRIBE_PLAN_KEYS];
 
@@ -77,7 +77,7 @@ export default async function SubscribePage() {
           Volver al dashboard
         </Link>
         <span className="hidden text-xs font-semibold uppercase tracking-[2px] text-cyan-300/80 sm:inline">
-          Gratis hasta el {PROMOTIONAL_TRIAL_END_LABEL}
+          Planes mensual y anual
         </span>
       </header>
       <SubscriptionCheckout

@@ -107,15 +107,25 @@ export function useRecurringExpenses(onTransactionCreated?: () => Promise<void> 
     [fetchItems, onTransactionCreated, user?.id]
   )
 
+  const getMonthlyAmount = (item: RecurringExpenseDTO) => {
+    if (item.frequency === 'yearly') return item.amount / 12
+    if (item.frequency === 'weekly') return item.amount * 4
+    return item.amount
+  }
+
   const activeMonthlyTotal = useMemo(
     () =>
       items
-        .filter((item) => item.status === 'active')
-        .reduce((sum, item) => {
-          if (item.frequency === 'yearly') return sum + item.amount / 12
-          if (item.frequency === 'weekly') return sum + item.amount * 4
-          return sum + item.amount
-        }, 0),
+        .filter((item) => item.status === 'active' && item.direction === 'gasto')
+        .reduce((sum, item) => sum + getMonthlyAmount(item), 0),
+    [items]
+  )
+
+  const activeMonthlyIncomeTotal = useMemo(
+    () =>
+      items
+        .filter((item) => item.status === 'active' && item.direction === 'ingreso')
+        .reduce((sum, item) => sum + getMonthlyAmount(item), 0),
     [items]
   )
 
@@ -124,6 +134,7 @@ export function useRecurringExpenses(onTransactionCreated?: () => Promise<void> 
     loading,
     error,
     activeMonthlyTotal,
+    activeMonthlyIncomeTotal,
     refetch: fetchItems,
     create,
     update,

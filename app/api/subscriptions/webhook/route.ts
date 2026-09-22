@@ -155,7 +155,6 @@ export async function POST(req: Request) {
           internalStatus === "active" ? localSubscription.plan_key : "free",
         mp_preapproval_id:
           internalStatus === "active" ? preapprovalId : null,
-        trial_ends_at: null,
       })
       .eq("user_id", localSubscription.user_id);
 
