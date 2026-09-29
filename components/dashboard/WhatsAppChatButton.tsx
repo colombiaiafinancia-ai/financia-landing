@@ -9,6 +9,7 @@ import {
   type OnboardingStep,
 } from '@/components/dashboard/OnboardingVignette'
 import { cn } from '@/lib/utils'
+import { WhatsAppLinkCard } from './WhatsAppLinkCard'
 
 interface WhatsAppChatButtonProps {
   onboardingStep?: OnboardingStep | null
@@ -21,6 +22,9 @@ const WhatsAppChatButton = ({
   onSkipOnboarding,
   onWhatsAppOpened,
 }: WhatsAppChatButtonProps) => {
+  if (process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED === 'true') {
+    return <WhatsAppLinkCard onVerified={onboardingStep === 'whatsapp' ? onWhatsAppOpened : undefined} onContinueWeb={onSkipOnboarding} />
+  }
   const whatsappUrl =
     'https://wa.me/573227031301?text=👋%20Hola%20FinancIA,%20soy%20parte%20del%20combo%20💼💸%20¿Cómo%20empiezo%20para%20poner%20en%20orden%20mis%20finanzas?'
 

@@ -1,0 +1,20 @@
+[
+  {
+    "id": "ME1Bja8SRYLJVsf7",
+    "name": "Financia-original mejora",
+    "active": true,
+    "sha256": "da99476b92a1ad163774ed678ddea43d7d0b3d98eaef8675aa9cbb99e9f949d9"
+  },
+  {
+    "id": "mpwuLhBmIYDfd4fm",
+    "name": "msj_si_v2",
+    "active": false,
+    "sha256": "13030e1cf36b91f742539e793d2b15bdf7815a0adaebe2069a240a9339ca4429"
+  },
+  {
+    "id": "GmeQZiQXlEVQx1qN",
+    "name": "msj_no_v2",
+    "active": false,
+    "sha256": "c868af8dc3d05d993444677b72e55a16c8d071883584f711aa90e2cccdf281e5"
+  }
+]

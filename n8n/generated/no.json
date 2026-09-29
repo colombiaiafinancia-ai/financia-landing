@@ -1,0 +1,254 @@
+{
+  "name": "msj_no_v2 - WhatsApp identidad v3",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        128,
+        304
+      ],
+      "id": "d50cd579-249a-4686-9697-bde2df37f583",
+      "name": "Contexto WhatsApp"
+    },
+    {
+      "id": "c6d1f0b2-8939-4a30-9cc0-fcbd89c5e3d8",
+      "name": "Delete a row1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all().flatMap((item,i)=>{const r=item.json.result;return (Array.isArray(r)?(r.length?r:[{}]):[r]).map(json=>({json,pairedItem:{item:i}}));});"
+      },
+      "position": [
+        496,
+        304
+      ]
+    },
+    {
+      "id": "4bbe41d6-2c9c-4213-a8c2-4e7d6e24a303",
+      "name": "Send message and wait for response3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "position": [
+        704,
+        304
+      ]
+    },
+    {
+      "id": "792a372c-11c9-44e4-a23f-eedcf7834f1b",
+      "name": "Datos whtas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return [{json:$('Contexto WhatsApp').first().json}];"
+      },
+      "position": [
+        320,
+        304
+      ]
+    },
+    {
+      "id": "155c3496-221d-4bc5-ad75-60b5e8730219",
+      "name": "Delete a row1 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/operation';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,kind:\"cancel\",index:$json.operation_index??0,payload:{}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        76,
+        304
+      ]
+    },
+    {
+      "id": "d87ac191-8c8e-4724-93e5-0a38f120b78e",
+      "name": "Delete a row1 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        286,
+        304
+      ]
+    },
+    {
+      "id": "51834c87-4565-4c78-bee1-d398f233f08d",
+      "name": "Send message and wait for response3 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response3\",content:{type:'text',text:\"🗑️ ¡Listo! Todas las transacciones pendientes por confirmar fueron eliminados. No se hizo ningún movimiento, así que estás con todo en orden 💼\"}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        284,
+        304
+      ]
+    },
+    {
+      "id": "c64ba685-deab-4b5b-87c9-4687de935cf0",
+      "name": "Send message and wait for response3 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        494,
+        304
+      ]
+    }
+  ],
+  "connections": {
+    "Delete a row1": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response3 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos whtas": {
+      "main": [
+        [
+          {
+            "node": "Delete a row1 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Datos whtas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete a row1 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Delete a row1 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete a row1 · API": {
+      "main": [
+        [
+          {
+            "node": "Delete a row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response3 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response3 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response3 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  }
+}

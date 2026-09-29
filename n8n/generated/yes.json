@@ -1,0 +1,1090 @@
+{
+  "name": "msj_si_v2 - WhatsApp identidad v3",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -800,
+        -784
+      ],
+      "id": "b0e77355-471e-4cc8-a82f-8b8a6fa40f05",
+      "name": "Contexto WhatsApp"
+    },
+    {
+      "parameters": {
+        "jsCode": "function getMonthStartEnd() {\n  const now = new Date();\n  const start = new Date(now.getFullYear(), now.getMonth(), 1);\n  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);\n  const format = (d) => d.toISOString().split(\"T\")[0];\n  return { startDate: format(start), endDate: format(end) };\n}\n\nconst dates = getMonthStartEnd();\n\n// Guardar en variables globales\n\n\n\nreturn [{ json: dates }];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        -1408
+      ],
+      "id": "95c7a3f7-075a-4645-8e1a-fb230dc71983",
+      "name": "Fechas1"
+    },
+    {
+      "id": "9b51d3a0-4c14-4205-bebd-b29a444c4871",
+      "name": "Datos whtas1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return [{json:$('Contexto WhatsApp').first().json}];"
+      },
+      "position": [
+        -624,
+        -784
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "category_budgets",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Datos whtas1').all()[0].json.id_usuario }}"
+            },
+            {
+              "keyName": "category_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Confirmation transacciones gastos').all()[0].json.category_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        768,
+        -1408
+      ],
+      "id": "ccac36ee-6cd4-481f-974b-83c745c275ea",
+      "name": "Obtener presupuesto",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "user_month_category_summary",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $('Datos whtas1').all()[0].json.id_usuario }}"
+            },
+            {
+              "keyName": "category_id",
+              "keyValue": "={{ $('Confirmation transacciones gastos').all()[0].json.category_id }}"
+            },
+            {
+              "keyName": "month",
+              "keyValue": "={{ $('Fechas1').all()[0].json.startDate }}"
+            },
+            {
+              "keyName": "direction",
+              "keyValue": "gasto"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        944,
+        -1408
+      ],
+      "id": "f0ea662e-ce26-4fc4-8287-8b7f1b409069",
+      "name": "Obtener Resultados",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "id": "db2e2771-b3fc-48ec-bc04-b01874901343",
+      "name": "Confirmation transacciones ingresos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const rows=$('Confirmar conjunto pendiente').first().json.ingreso;return (rows.length?rows:[{}]).map(json=>({json}));"
+      },
+      "position": [
+        -272,
+        -1040
+      ]
+    },
+    {
+      "id": "884d1476-d0a4-4002-90f8-887d9ee5efa1",
+      "name": "Confirmation transacciones gastos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const rows=$('Confirmar conjunto pendiente').first().json.gasto;return (rows.length?rows:[{}]).map(json=>({json}));"
+      },
+      "position": [
+        -320,
+        -1344
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const resultado = $(\"Obtener Resultados\").first().json;\nconst presupuestos = $(\"Obtener presupuesto\").all().map(item => item.json);\n\n// Buscar el presupuesto de la misma categoría\nconst presupuesto = presupuestos.find(p => p.category_id === resultado.category_id);\n\n// 👇 Si no existe, dejamos null o 0 (elige lo que prefieras)\nconst presupuestoValor = presupuesto ? Number(presupuesto.amount) : null;\n\n// Gasto acumulado\nconst totalGastos = Number(resultado.total) || 0;\n\n// ---- Calcular % del mes ----\nconst fechaReferencia = new Date(resultado.month);\nconst anio = fechaReferencia.getFullYear();\nconst mes = fechaReferencia.getMonth();\nconst finMes = new Date(anio, mes + 1, 0);\nconst diasMes = finMes.getDate();\n\nconst hoy = new Date();\nlet diaActual;\n\nif (\n  hoy.getFullYear() === anio &&\n  hoy.getMonth() === mes\n) {\n  diaActual = hoy.getDate();\n} else {\n  diaActual = diasMes;\n}\n\nconst porcentajeMes = (diaActual / diasMes) * 100;\n\n// ---- % de gasto ----\n// 👇 Solo se calcula si hay presupuesto\nconst porcentajeGasto = presupuestoValor\n  ? (totalGastos / presupuestoValor) * 100\n  : null;\n\n// ---- diferencia ----\nconst diferencia = porcentajeGasto !== null\n  ? porcentajeGasto - porcentajeMes\n  : null;\n\n// ---- estado ----\n// 👇 Si no hay presupuesto, puedes definir estado especial\nlet estadoReal = null;\n\nif (diferencia !== null) {\n  if (diferencia < -10) {\n    estadoReal = 0;\n  } else if (diferencia <= 10) {\n    estadoReal = 1;\n  } else {\n    estadoReal = 2;\n  }\n}\n\n// ---- OUTPUT ----\nreturn [\n  {\n    json: {\n      user_id: resultado.user_id,\n      month: resultado.month,\n      category_id: resultado.category_id,\n      direction: resultado.direction,\n      presupuesto: presupuestoValor, // puede ser null\n      totalGastos,\n      porcentajeMes: Number(porcentajeMes.toFixed(2)),\n      porcentajeGasto: porcentajeGasto !== null\n        ? Number(porcentajeGasto.toFixed(2))\n        : null,\n      diferencia: diferencia !== null\n        ? Number(diferencia.toFixed(2))\n        : null,\n      estadoReal // puede ser null\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        -1408
+      ],
+      "id": "6302182c-070b-4d2b-ae7a-d5d4f0c9b8cb",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtener arrays de items\nconst presupuestoItems = $items(\"Confirmation transacciones gastos\");\nconst transaccionesItems = $items(\"Confirmation transacciones ingresos\");\n\n// Verificar si el primer item del presupuesto tiene un id\nconst tienegasto =\n  presupuestoItems.length > 0 &&\n  presupuestoItems[0].json &&\n  Object.keys(presupuestoItems[0].json).length > 0 &&\n  !!presupuestoItems[0].json.id;\n\n// Verificar si el primer item de transacciones tiene un id\nconst tieneingreso =\n  transaccionesItems.length > 0 &&\n  transaccionesItems[0].json &&\n  Object.keys(transaccionesItems[0].json).length > 0 &&\n  !!transaccionesItems[0].json.id;\n\n\nreturn {\n  tienegasto,\n  tieneingreso\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -1232
+      ],
+      "id": "89fa89ec-198e-421e-9d81-7e7a5da73310",
+      "name": "Code in JavaScript4"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -96,
+        -1232
+      ],
+      "id": "12019d7c-5313-4c91-b0ec-98057ca95f4b",
+      "name": "Merge5"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tienegasto + '-' + $json.tieneingreso }}",
+                    "rightValue": "true-true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "5ed8a01d-999a-4ab1-a796-13bd899364f2"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ambos"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e58336b4-586e-4c74-bdf4-77f45320c6c0",
+                    "leftValue": "={{ $json.tienegasto + '-' + $json.tieneingreso }}",
+                    "rightValue": "true-false",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "gastos"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "456b2661-2d09-4865-933a-00b64d65e942",
+                    "leftValue": "={{ $json.tienegasto + '-' + $json.tieneingreso }}",
+                    "rightValue": "false-true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ingresos"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e4caec84-86e6-4c26-9a5a-711a0e4cac5d",
+                    "leftValue": "={{ $json.tienegasto + '-' + $json.tieneingreso }}",
+                    "rightValue": "false-false",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ninguna"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        256,
+        -1264
+      ],
+      "id": "a3a48464-3d79-469e-9438-e2d63feaa4fb",
+      "name": "Switch3"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.estadoReal }}",
+                    "rightValue": 0,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    },
+                    "id": "9c8c6738-8dce-499a-9bf3-fb91cd2d6a4f"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "eb40bb23-4a24-4b3d-8568-50319fc0108e",
+                    "leftValue": "={{ $json.estadoReal }}",
+                    "rightValue": 1,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6acdf7ef-5d53-4137-8332-b39004b73cae",
+                    "leftValue": "={{ $json.estadoReal }}",
+                    "rightValue": 2,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2176,
+        -1424
+      ],
+      "id": "99e0aa12-f509-47dc-8711-1222f8085b7c",
+      "name": "Switch2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un asistente financiero con tono de amigo.\n\nUsa esta info:\n{\n\"categoria\": {{ $('Obtener nombre').all()[0].json.name }} ,\n\"total_gastos\": {{ $('Code in JavaScript2').all()[0].json.totalGastos }},\n\"presupuesto\": {{ $('Code in JavaScript2').all()[0].json.presupuesto }},\n\"progresoMes\": {{$now}}\n}\nGenera 1 sola línea, corta y natural.\n\nIncluye: monto total gastado, presupuesto y el dia del mes en el que vamos.\n\nTono: neutral, vas bien, sin exagerar.\nNo saludes ni uses listas ni lenguaje técnico.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2576,
+        -1552
+      ],
+      "id": "fa8f32fe-0495-4539-9bbd-acd19cd2ff36",
+      "name": "AI Agent5"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un asistente financiero con tono de amigo.\n\nUsa esta info:\n{\n\"categoria\": {{ $('Obtener nombre').all()[0].json.name }} ,\n\"total_gastos\": {{ $('Code in JavaScript2').item.json.totalGastos }},\n\"presupuesto\": {{ $('Code in JavaScript2').item.json.presupuesto }},\n\"progresoMes\": {{$now}}\n}\n\nGenera 1 sola línea, corta, con humor y ligera alerta.\n\nIncluye: monto total gastado, presupuesto y el dia del mes en el que vamos.\n\nTono: gracioso pero que haga notar que te estás pasando.\nNo saludes ni uses listas ni lenguaje técnico.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2576,
+        -1232
+      ],
+      "id": "4458411c-1122-4a83-89c4-86738a6d0408",
+      "name": "AI Agent6"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-nano"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2336,
+        -1072
+      ],
+      "id": "68ad4205-816e-42dd-a2a2-6cb72e93484f",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "3nzfNq9bjGil7fGH",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un asistente financiero con tono de amigo.\n\nUsa esta info:\n{\n\"categoria\": {{ $('Obtener nombre').all()[0].json.name }} ,\n\"total_gastos\": {{ $('Code in JavaScript2').all()[0].json.totalGastos }},\n\"presupuesto\": {{ $('Code in JavaScript2').all()[0].json.presupuesto }},\n\"progresoMes\": {{$now}}\n}\nGenera 1 sola línea, corta, con humor positivo.\n\nIncluye: monto total gastado, presupuesto y el dia del mes en el que vamos.\n\nTono: vas bien, controlado, como alguien disciplinado con su dinero.\nNo saludes ni uses listas ni lenguaje técnico.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2528,
+        -1904
+      ],
+      "id": "90ebaa00-cbaf-4830-8994-e9123b0d7682",
+      "name": "AI Agent7"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "604a2487-6254-4a3e-8fe7-fe866376f8dd",
+              "leftValue": "={{ $json.presupuesto }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1648,
+        -1408
+      ],
+      "id": "e026b803-6d39-4eb6-9009-2cdb40c0cd5c",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un asistente financiero con tono de amigo.\n\nUsa esta info:\n{\n\"categoria\": {{ $('Obtener nombre').all()[0].json.name }},\n\"total_gastos\": {{ $json.totalGastos }}\n}\n\nGenera 1 sola línea, corta, con humor ligero y tono cercano.\n\nIncluye: monto total gastado en la categoría.\n\nTono: útil y motivador, sugiere crear un presupuesto para mejorar el control.\n\nNo saludes ni uses listas ni lenguaje técnico.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1856,
+        -1168
+      ],
+      "id": "b05a0021-b35e-462d-bc37-d48e24591675",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "categories",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "keyValue": "={{ $json.category_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        -1408
+      ],
+      "id": "d0988357-d976-4356-a866-64421c7f3893",
+      "name": "Obtener nombre",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "id": "2974e062-303a-4a39-ae18-213363dcef94",
+      "name": "Send message and wait for response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "position": [
+        3424,
+        -1440
+      ]
+    },
+    {
+      "id": "e9c29b81-55b7-4dce-8116-635275292d8f",
+      "name": "Send message and wait for response1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "position": [
+        896,
+        -1168
+      ]
+    },
+    {
+      "id": "4f0116ef-4136-406a-a8ad-bd976f616ceb",
+      "name": "Confirmar conjunto pendiente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return [{json:$input.first().json.result}];"
+      },
+      "position": [
+        0,
+        800
+      ]
+    },
+    {
+      "id": "e541a348-caed-4746-af79-f494d68e94eb",
+      "name": "Confirmar conjunto pendiente · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/operation';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,kind:'confirm_all'});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        -420,
+        800
+      ]
+    },
+    {
+      "id": "7cec3401-4d61-4043-b90e-6b8bdbddb10f",
+      "name": "Confirmar conjunto pendiente · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        -210,
+        800
+      ]
+    },
+    {
+      "id": "e7f0167b-7fb2-48de-85b7-d4abb6d6096f",
+      "name": "Send message and wait for response · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response\",content:{type:'text',text:String(($json.output)??'')}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        3004,
+        -1440
+      ]
+    },
+    {
+      "id": "47334068-c6ab-4e1e-9e79-b1d01edee500",
+      "name": "Send message and wait for response · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        3214,
+        -1440
+      ]
+    },
+    {
+      "id": "80b6e1af-d226-4814-bba6-7fd6a4033ed8",
+      "name": "Send message and wait for response1 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response1\",content:{type:'text',text:\"💵 Ingreso registrado: \"+String(($('Confirmation transacciones ingresos').all()[0].json.amount)??'')}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        476,
+        -1168
+      ]
+    },
+    {
+      "id": "2e0fffa5-b383-4d86-80de-5165f2a99e08",
+      "name": "Send message and wait for response1 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        686,
+        -1168
+      ]
+    }
+  ],
+  "connections": {
+    "Fechas1": {
+      "main": [
+        [
+          {
+            "node": "Obtener presupuesto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos whtas1": {
+      "main": [
+        [
+          {
+            "node": "Confirmar conjunto pendiente · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener Resultados": {
+      "main": [
+        [
+          {
+            "node": "Obtener nombre",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmation transacciones gastos": {
+      "main": [
+        [
+          {
+            "node": "Merge5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener presupuesto": {
+      "main": [
+        [
+          {
+            "node": "Obtener Resultados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmation transacciones ingresos": {
+      "main": [
+        [
+          {
+            "node": "Merge5",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge5": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "Switch3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch3": {
+      "main": [
+        [
+          {
+            "node": "Fechas1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fechas1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message and wait for response1 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent7",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent5",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent6",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent5",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent7",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent7": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent5": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent6": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Switch2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener nombre": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Datos whtas1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar conjunto pendiente · firmar": {
+      "main": [
+        [
+          {
+            "node": "Confirmar conjunto pendiente · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar conjunto pendiente · API": {
+      "main": [
+        [
+          {
+            "node": "Confirmar conjunto pendiente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Confirmar conjunto pendiente": {
+      "main": [
+        [
+          {
+            "node": "Confirmation transacciones ingresos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Confirmation transacciones gastos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response1 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response1 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response1 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  }
+}

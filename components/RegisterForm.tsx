@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import CountryCodeSelector from './CountryCodeSelector'
+import { WhatsAppUsernameFields } from './WhatsAppUsernameFields'
 import { validateInternationalPhone, formatPhoneForDisplay } from '@/utils/phoneValidation'
 
 export const RegisterForm = () => {
@@ -16,6 +17,8 @@ export const RegisterForm = () => {
   const [countryCode, setCountryCode] = useState('+57') // Default to Colombia
   const [phoneNumber, setPhoneNumber] = useState('')
   const [phoneError, setPhoneError] = useState('')
+  const [hasUsername, setHasUsername] = useState<boolean | null>(null)
+  const [whatsappUsername, setWhatsappUsername] = useState('')
 
   // Validar teléfono en tiempo real
   const handlePhoneChange = useCallback((value: string) => {
@@ -52,7 +55,7 @@ export const RegisterForm = () => {
   }, [phoneNumber])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    console.log('🚀 FORM SUBMIT - Iniciando proceso de registro')
+
     e.preventDefault()
     setError('')
     setSuccess('')
@@ -65,13 +68,6 @@ export const RegisterForm = () => {
     const cleanPhoneNumber = phoneNumber.replace(/\D/g, '')
     const fullPhone = countryCode + cleanPhoneNumber
     
-    // LOGS CORREGIDOS PARA MOSTRAR VALORES REALES
-    console.log('📱 FORM SUBMIT - Teléfono:', JSON.stringify({ 
-      countryCode, 
-      phoneNumber, 
-      cleanPhoneNumber,
-      fullPhone
-    }))
     
     const form = e.currentTarget // Guardar referencia al formulario
     
@@ -82,18 +78,13 @@ export const RegisterForm = () => {
       phone: fullPhone, // El trigger quitará el '+' en la base de datos
       password: formData.get('password') as string,
       repeatPassword: formData.get('repeatPassword') as string,
-      promoCode: ((formData.get('promoCode') as string) || '').trim()
+      promoCode: ((formData.get('promoCode') as string) || '').trim(),
+      ...(process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED === 'true' ? { hasUsername, username: whatsappUsername } : {})
     }
     
-    // LOGS CORREGIDOS PARA MOSTRAR VALORES REALES
-    console.log('📋 FORM SUBMIT - Request data preparado:', JSON.stringify({
-      ...requestData,
-      password: '***',
-      repeatPassword: '***'
-    }))
     
     try {
-      console.log('🔄 FORM SUBMIT - Llamando a API route /api/auth/register...')
+
       
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -102,13 +93,10 @@ export const RegisterForm = () => {
         },
         body: JSON.stringify(requestData)
       })
-      
-      console.log('📤 FORM SUBMIT - Response status:', response.status)
+
       
       const result = await response.json()
-      
-      // LOGS CORREGIDOS PARA MOSTRAR VALORES REALES
-      console.log('✅ FORM SUBMIT - Resultado:', JSON.stringify(result))
+
       
       if (!response.ok) {
         setError(result.error || 'Error al crear la cuenta')
@@ -123,7 +111,7 @@ export const RegisterForm = () => {
       console.error('❌ FORM SUBMIT - Error catch:', error)
       setError('Error de conexión. Intenta nuevamente')
     } finally {
-      console.log('🏁 FORM SUBMIT - Finalizando proceso')
+
       setIsLoading(false)
     }
   }
@@ -248,6 +236,10 @@ export const RegisterForm = () => {
             )}
           </div>
 
+          {process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED === 'true' && <div className="text-white">
+            <WhatsAppUsernameFields hasUsername={hasUsername} username={whatsappUsername}
+              onChoice={setHasUsername} onUsername={setWhatsappUsername} disabled={isLoading} />
+          </div>}
           <div>
             <label
               htmlFor='promoCode'

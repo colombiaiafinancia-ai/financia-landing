@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { whatsappEnabled } from '@/lib/whatsapp/config';
+import { sendVerifiedWhatsApp } from '@/lib/whatsapp/send';
+import { waRpc } from '@/lib/whatsapp/server';
+import { whatsappConfig } from '@/lib/whatsapp/config';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -13,12 +17,12 @@ interface ResultItem {
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${CRON_SECRET}`) {
+  if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const { userIds, force = false } = await request.json();
+    const { userIds, force = false, linkVersions = {} } = await request.json();
     if (!Array.isArray(userIds) || userIds.length === 0) {
       return NextResponse.json({ error: 'Invalid user list' }, { status: 400 });
     }
@@ -27,6 +31,27 @@ export async function POST(request: NextRequest) {
     const results: ResultItem[] = [];
 
     for (const userId of userIds.filter(Boolean)) {
+      if (whatsappEnabled()) {
+        if (!Number.isInteger(linkVersions[userId])) {
+          results.push({ userId, status: 'skipped', reason: 'stale queue: verified link version required' });
+          continue;
+        }
+        const { data: eligibleV3, error: eligibleError } = await supabaseAdmin.rpc('get_users_eligible_for_reminder', { p_user_id: userId });
+        if (eligibleError) throw eligibleError;
+        if (!force && !eligibleV3?.length) { results.push({ userId, status: 'skipped', reason: 'not eligible' }); continue; }
+        // The outbox's atomic claim reserves the unique user/date before any network request.
+        const delivery = await sendVerifiedWhatsApp({ userId, reminderDate: colombiaDate, key: 'reminder', linkVersion: linkVersions[userId] });
+        if (delivery.status === 'cancelled') { results.push({ userId, status: 'skipped', reason: 'unlinked, changed identity or consent' }); continue; }
+        const { error: logError } = await supabaseAdmin.from('reminder_logs').upsert({
+          user_id: userId, date: colombiaDate, status: delivery.status, error: 'error' in delivery ? delivery.error : null,
+        }, { onConflict: 'user_id,date' });
+        if (logError) throw logError;
+        if ('messageId' in delivery && delivery.messageId) await waRpc('whatsapp_reconcile_delivery', {
+          p_business_id: whatsappConfig().businessId, p_message_id: delivery.messageId, p_status: null,
+        });
+        results.push({ userId, status: delivery.success ? 'sent' : 'failed', reason: delivery.status });
+        continue;
+      }
       let eligible = false;
       let eligError = null;
 

@@ -115,11 +115,17 @@ export function useOnboardingStatus(user: User | null) {
     if (!user?.id) {
       return { error: new Error('Sin usuario') as Error | null }
     }
+    if (process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED === 'true') {
+      try {
+        const response = await fetch('/api/whatsapp/onboarding', { method: 'POST' })
+        const result = await response.json()
+        if (!response.ok) return { error: new Error(result.error) }
+        setStatus(ONBOARDING_STATUS_COMPLETADO)
+        return { error: null }
+      } catch { return { error: new Error('No se pudo comprobar la vinculación.') } }
+    }
     const supabase = createSupabaseClient()
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({ onboarding: ONBOARDING_STATUS_COMPLETADO })
-      .eq('user_id', user.id)
+    const { error } = await supabase.from('user_profiles').update({ onboarding: ONBOARDING_STATUS_COMPLETADO }).eq('user_id', user.id)
 
     if (!error) {
       setStatus(ONBOARDING_STATUS_COMPLETADO)

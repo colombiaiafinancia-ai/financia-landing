@@ -268,8 +268,13 @@ export default function DashboardPage() {
   }, [user?.id, setOnboardingStepAndPersist])
 
   const handleWelcomeSkip = useCallback(async () => {
+    if (process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED === 'true') {
+      setWelcomeDone(true)
+      setOnboardingStepAndPersist(null)
+      return
+    }
     await completeOnboarding()
-  }, [completeOnboarding])
+  }, [completeOnboarding, setOnboardingStepAndPersist])
 
   const handleBudgetCreatedForTour = useCallback(() => {
     if (onboardingStep === 'budgets') {
@@ -330,6 +335,10 @@ export default function DashboardPage() {
     }
 
     if (onboardingStep === 'whatsapp') {
+      if (process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED === 'true') {
+        setOnboardingStepAndPersist(null)
+        return
+      }
       await completeOnboarding()
       return
     }
@@ -1037,7 +1046,7 @@ export default function DashboardPage() {
         </div>
 
         <div
-          data-onboarding-section="whatsapp"
+          id="whatsapp-section" data-onboarding-section="whatsapp"
           {...onboardingSpotlightSectionProps(
             tourSpotlightActive && onboardingStep === 'whatsapp',
             'mb-6 sm:mb-8'

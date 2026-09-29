@@ -9,6 +9,7 @@ import {
 } from '@/services/supabase/client-middleware'
 import { hasPlatformAccess } from '@/lib/trial'
 import { isRefreshTokenError } from '@/services/supabase/types'
+import { safeLoginDestination } from '@/lib/whatsapp/identity'
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -71,7 +72,7 @@ function handleAuthRedirects(
     (isAuthRoute(pathname) || pathname === '/') &&
     pathname !== '/reset-password'
   ) {
-    const dashboardUrl = new URL('/dashboard', request.url)
+    const dashboardUrl = new URL(safeLoginDestination(request.nextUrl.searchParams.get('next')), request.url)
     const redirect = NextResponse.redirect(dashboardUrl)
     return addSecurityHeaders(withCookies(response, redirect))
   }

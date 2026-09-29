@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { logIn } from '@/actions/auth'
+import { safeLoginDestination } from '@/lib/whatsapp/identity'
 
 export const LoginForm = () => {
   const [error, setError] = useState<string>('')
@@ -17,15 +18,15 @@ export const LoginForm = () => {
     setIsLoading(true)
 
     const formData = new FormData(e.currentTarget)
-    
+
     try {
       const result = await logIn(formData)
-      
+
       if (result?.error) {
         setError(result.error)
       } else if (result?.success) {
         // Redirigir al dashboard después del login exitoso
-        router.push('/dashboard')
+        router.push(safeLoginDestination(new URLSearchParams(window.location.search).get('next')))
         router.refresh() // Forzar actualización para que el middleware detecte la sesión
       }
     } catch (error) {
@@ -46,8 +47,8 @@ export const LoginForm = () => {
 
         <div className='space-y-4'>
           <div>
-            <label 
-              htmlFor='email' 
+            <label
+              htmlFor='email'
               className='block text-white font-medium mb-2'
             >
               Email
@@ -64,8 +65,8 @@ export const LoginForm = () => {
           </div>
 
           <div>
-            <label 
-              htmlFor='password' 
+            <label
+              htmlFor='password'
               className='block text-white font-medium mb-2'
             >
               Contraseña
@@ -117,4 +118,4 @@ export const LoginForm = () => {
       </form>
     </div>
   )
-} 
+}

@@ -1,0 +1,3182 @@
+{
+  "name": "Financia-original mejora - WhatsApp identidad v3",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1120,
+        32
+      ],
+      "id": "53ed18ee-fb80-474a-aad2-ff67ea1a745a",
+      "name": "HTTP Request",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "wDFVb5rZURmTTAH3",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $('Contexto WhatsApp').first().json.audio.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        -1312,
+        32
+      ],
+      "id": "9dea695f-ee9e-4ef9-8b26-7cc4c75e6f9b",
+      "name": "Get_audio",
+      "webhookId": "35fa148f-7ed2-4f86-8762-07342a17e1df",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "wDFVb5rZURmTTAH3",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -896,
+        32
+      ],
+      "id": "410c6377-9f5e-4584-8b54-5fa6fc0b362b",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "3nzfNq9bjGil7fGH",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $('Datos whtas').item.json.image.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        -1296,
+        368
+      ],
+      "id": "a586954b-08a8-4f07-9e81-54dbc9676310",
+      "name": "Get_image",
+      "webhookId": "f898f190-5b4c-4ec0-894f-c7986485a2b8",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "wDFVb5rZURmTTAH3",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1088,
+        368
+      ],
+      "id": "447070b1-9014-445f-bcd4-16043ac3d3e3",
+      "name": "HTTP Request1",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "wDFVb5rZURmTTAH3",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "text": "Analiza esta imagen que contiene información financiera (como una factura, recibo, o captura de transacción bancaria).\n\n1. Determina si la imagen representa un **ingreso** o un **gasto**.\n2. Extrae el **valor monetario más relevante** de la imagen. Si hay varios valores, prioriza el más destacado o el que parezca el total.\n3. Describe brevemente de qué se trata (por ejemplo: “Pago en supermercado”, “Transferencia bancaria recibida”, “Factura de restaurante”).\n4. Devuelve tu respuesta en el siguiente formato JSON:\n\n{\n  \"tipo\": \"ingreso\" o \"gasto\",\n  \"valor\": valor_en_pesos_o_dólares,\n  \"descripcion\": \"texto breve\"\n}\n\nNo incluyas texto adicional, solo el JSON limpio.",
+        "inputType": "base64",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -896,
+        368
+      ],
+      "id": "ac17fc60-50f7-4a78-a4c2-b7f49167d23f",
+      "name": "OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "3nzfNq9bjGil7fGH",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analiza el mensaje:\n\n{{ $('Datos_final').all()[0].json.User_text || $('Datos_final').all()[0].json.text || $('Datos_final').all()[0].json.content}}\n\nCategorías disponibles:\n{{ $json.categoriesText }}\n\nResponde ÚNICAMENTE con un JSON válido con esta estructura exacta:\n\n{\"output\":{\"items\":[{\"tipo\":\"\",\"valor\":\"\",\"categoria\":\"\",\"descripcion\":\"\"}]}}\n\nTipos permitidos:\ningreso | gasto | presupuesto | balance | saludo | basura\n\nREGLAS\n\n1. Divide el mensaje en items si contiene varios movimientos.\n2. Cada item debe representar un solo ingreso, gasto o presupuesto.\n3. Si el mensaje solo consulta estado financiero, devuelve un solo item tipo balance.\n4. Si el mensaje solo es cortesía, devuelve un solo item tipo saludo.\n5. Si no se puede extraer ningún movimiento o intención válida, devuelve un solo item tipo basura.\n\nCLASIFICACIÓN\n- ingreso: entra dinero\n- gasto: sale dinero\n- presupuesto: define o cambia un límite por categoría\n- balance: consulta estado financiero\n- saludo: cortesía o confirmación simple\n- basura: cualquier otro caso\n\nVALOR\n- usar número sin comillas\n- si no existe, usar \"\"\n- ingreso, gasto y presupuesto requieren valor\n- si un supuesto ingreso, gasto o presupuesto no tiene valor claro, no lo incluyas como movimiento válido\n\nCATEGORÍA\n- usar solo una categoría exacta de la lista\n- ingreso, gasto y presupuesto siempre deben tener categoría\n- si no hay coincidencia exacta o no se puede identificar, usar \"Otros\"\n- balance, saludo y basura llevan categoria: \"\"\n\nDESCRIPCIÓN\n- ingreso, gasto y presupuesto: 1 a 4 palabras\n- balance: \"Consulta balance\"\n- saludo: \"Saludo\"\n- basura: \"\"\n\nPRIORIDAD\n- si registra movimientos o presupuestos, no clasificar como balance\n- si solo consulta cómo va, clasificar como balance\n- si solo es cortesía, clasificar como saludo\n\nSALIDA\n- responder solo JSON válido\n- sin texto extra\n- sin markdown\n- no usar null\n- no omitir campos\n- no inventar categorías fuera de la lista, excepto \"Otros\"\n\nCASOS FIJOS\n\nSALUDO:\n{\"output\":{\"items\":[{\"tipo\":\"saludo\",\"valor\":\"\",\"categoria\":\"\",\"descripcion\":\"Saludo\"}]}}\n\nBALANCE:\n{\"output\":{\"items\":[{\"tipo\":\"balance\",\"valor\":\"\",\"categoria\":\"\",\"descripcion\":\"Consulta balance\"}]}}\n\nBASURA:\n{\"output\":{\"items\":[{\"tipo\":\"basura\",\"valor\":\"\",\"categoria\":\"\",\"descripcion\":\"\"}]}}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        112,
+        464
+      ],
+      "id": "6acc6e9e-46b9-47c1-85d5-47b7f4d8c523",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c380083a-9b35-45a5-be3a-7f13f33f791b",
+              "name": "content",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "5d45f2b3-d483-4182-9095-60890b5ca447",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "599063ba-96d5-4f52-973b-6faf6eeb9764",
+              "name": "User_text",
+              "value": "={{ $json.mensaje_normalizado }}",
+              "type": "string"
+            },
+            {
+              "id": "3c1adbd8-9cfb-4146-9382-c399d233abe3",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -544,
+        464
+      ],
+      "id": "b85b8322-2e96-4673-b3e0-f98a7004f546",
+      "name": "Datos_final"
+    },
+    {
+      "id": "ccdfc6ed-0943-4597-9cdc-89a7d662012f",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all().flatMap((item,i)=>{const r=item.json.result;return (Array.isArray(r)?(r.length?r:[{}]):[r]).map(json=>({json,pairedItem:{item:i}}));});"
+      },
+      "position": [
+        512,
+        464
+      ]
+    },
+    {
+      "id": "901c94bf-76e7-4a82-9d87-17523913b615",
+      "name": "Create a row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all().flatMap((item,i)=>{const r=item.json.result;return (Array.isArray(r)?(r.length?r:[{}]):[r]).map(json=>({json,pairedItem:{item:i}}));});"
+      },
+      "position": [
+        2048,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Obtener output (puede venir como string o como objeto)\nlet raw = $json.output ?? $json;\n\n// 2. Parseo si es string\nif (typeof raw === \"string\") {\n  const jsonRegex = /(\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\])/;\n  const match = raw.match(jsonRegex);\n\n  if (!match) throw new Error(\"No se encontró JSON válido\");\n\n  raw = JSON.parse(match[0]);\n}\n\n// 3. Detectar items\nlet items;\n\nif (raw.output && Array.isArray(raw.output.items)) {\n  items = raw.output.items;\n} else if (Array.isArray(raw)) {\n  items = raw;\n} else if (typeof raw === \"object\" && raw !== null) {\n  items = [raw];\n} else {\n  throw new Error(\"Formato no reconocido\");\n}\n\n// 4. Traer categorías desde otro nodo\nconst categoriesMatch = $('Code in JavaScript').first().json.categoriesMatch || [];\n\n// 5. IDs fallback\nconst DEFAULT_INCOME_CATEGORY_ID = \"d9bb895c-add2-44d7-861f-5b4109d69c41\";\nconst DEFAULT_EXPENSE_CATEGORY_ID = \"b8ace44f-42bf-44cf-998f-6c4c7f9159e9\";\n\n// 6. Normalizador\nfunction normalize(text) {\n  return (text || \"\")\n    .toString()\n    .toLowerCase()\n    .normalize(\"NFD\")\n    .replace(/[\\u0300-\\u036f]/g, \"\")\n    .trim();\n}\n\n// 7. Dirección esperada según tipo\nfunction getExpectedDirection(tipo) {\n  const t = normalize(tipo);\n\n  if (t === \"gasto\") return \"gasto\";\n  if (t === \"ingreso\") return \"ingreso\";\n  if (t === \"presupuesto\") return \"gasto\";\n\n  return null;\n}\n\n// 8. Normalizar dirección de categoría\nfunction normalizeDirection(direction) {\n  const d = normalize(direction);\n\n  if (d === \"gasto\") return \"gasto\";\n  if (d === \"ingreso\") return \"ingreso\";\n\n  return null;\n}\n\n// 9. Fallback según tipo\nfunction getFallbackCategoryId(tipo) {\n  const t = normalize(tipo);\n\n  if (t === \"ingreso\") return DEFAULT_INCOME_CATEGORY_ID;\n  if (t === \"gasto\") return DEFAULT_EXPENSE_CATEGORY_ID;\n  if (t === \"presupuesto\") return DEFAULT_EXPENSE_CATEGORY_ID;\n\n  return null;\n}\n\n// 10. Crear mapas\nconst categoryMap = {};\nconst categoryMapByName = {};\n\nfor (const cat of categoriesMatch) {\n  const nameKey = normalize(cat.name);\n  const directionKey = normalizeDirection(cat.direction);\n\n  if (!nameKey || !directionKey) continue;\n\n  categoryMap[`${nameKey}__${directionKey}`] = {\n    id: cat.id,\n    name: cat.name,\n    direction: directionKey\n  };\n\n  if (!categoryMapByName[nameKey]) {\n    categoryMapByName[nameKey] = [];\n  }\n\n  categoryMapByName[nameKey].push({\n    id: cat.id,\n    name: cat.name,\n    direction: directionKey\n  });\n}\n\n// 11. Match\nconst result = items.map((item, operation_index) => {\n  let categoryId = null;\n  let matchedBy = null;\n  let matchedCategoryDirection = null;\n\n  const tipo = normalize(item.tipo);\n  const categoria = normalize(item.categoria);\n  const expectedDirection = getExpectedDirection(tipo);\n\n  if (categoria && ![\"saludo\", \"basura\", \"balance\"].includes(tipo)) {\n    // Match exacto por nombre + dirección\n    if (expectedDirection) {\n      const exactMatch = categoryMap[`${categoria}__${expectedDirection}`];\n\n      if (exactMatch) {\n        categoryId = exactMatch.id;\n        matchedBy = \"name+direction\";\n        matchedCategoryDirection = exactMatch.direction;\n      }\n    }\n\n    // Fallback por nombre solo si existe una única categoría\n    // y además coincide con la dirección esperada\n    if (!categoryId) {\n      const candidates = categoryMapByName[categoria] || [];\n\n      if (\n        candidates.length === 1 &&\n        candidates[0].direction === expectedDirection\n      ) {\n        categoryId = candidates[0].id;\n        matchedBy = \"name_only_unique_same_direction\";\n        matchedCategoryDirection = candidates[0].direction;\n      }\n    }\n  }\n\n  // Fallback final SOLO si no hubo match real\n  if (!categoryId) {\n    const fallbackCategoryId = getFallbackCategoryId(tipo);\n\n    if (fallbackCategoryId) {\n      categoryId = fallbackCategoryId;\n      matchedBy = \"default_fallback\";\n      matchedCategoryDirection = expectedDirection;\n    }\n  }\n\n  return {\n    json: {\n      ...item,\n      operation_index,\n      category_id: categoryId,\n      expected_direction: expectedDirection,\n      matched_category_direction: matchedCategoryDirection,\n      matched_by: matchedBy\n    }\n  };\n});\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        464
+      ],
+      "id": "d5695dc9-b90c-4abe-84f4-f0df9d955144",
+      "name": "Code"
+    },
+    {
+      "id": "cfa2359b-1024-4549-98b7-4c67a24b033a",
+      "name": "HTTP Request2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "throw new Error('Legacy phone lookup is disabled in identity v3');"
+      },
+      "position": [
+        -2896,
+        512
+      ],
+      "disabled": true
+    },
+    {
+      "id": "56b0c037-44d5-4b27-a8f3-71cae6bf8635",
+      "name": "Datos whtas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const c=$('Contexto WhatsApp').first().json;return [{json:{...c,instance:{name:c.name},message:{content_type:c.message_type},audio:c.audio??{},image:c.image??{},Número_telefono:c.phone,id_tel:c.phone,id_usuario:c.user_id,numero_usuario:c.phone}}];"
+      },
+      "position": [
+        -2432,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mensaje_normalizado }}",
+                    "rightValue": "=si",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ff0da4d2-5651-4bbf-b85b-16b41081004b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "si"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "60eebc2b-3687-46c6-9457-64159bde6136",
+                    "leftValue": "={{ $json.mensaje_normalizado }}",
+                    "rightValue": "no",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "no"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1c9aeb98-b559-401f-9f71-622be934e73d",
+                    "leftValue": "={{ $json.mensaje_normalizado }}",
+                    "rightValue": "hola financia, soy parte del combo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Mensaje_1"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1088,
+        960
+      ],
+      "id": "da8c66e9-e07b-4cf5-9cdc-d65e5b28a1a0",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f479b73c-c2c9-4b57-b5be-0d28d09dc9c1",
+              "leftValue": "={{ $json.process_financial === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2672,
+        496
+      ],
+      "id": "69e5970b-f3eb-41f9-8918-fa8291189e16",
+      "name": "If"
+    },
+    {
+      "id": "b67ec1a9-f02a-4279-a60e-f5ea1f7a74b9",
+      "name": "Send message and wait for response1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "position": [
+        -2320,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const mensaje = $('Contexto WhatsApp').first().json.message;\n\n  item.json.mensaje_normalizado = mensaje\n    .trim()                // elimina espacios al inicio/final\n    .toLowerCase()         // convierte a minúsculas\n    .normalize(\"NFD\")      // separa acentos\n    .replace(/[\\u0300-\\u036f]/g, ''); // elimina acentos\n\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1296,
+        784
+      ],
+      "id": "2d7741ed-06ae-4e7d-bebe-378153388302",
+      "name": "Normalizar txt si_no"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawOutput = $('Edit Fields1').first().json.output || \"\";\n\n/**\n * 1) Extraer el primer bloque JSON válido que encuentre en todo el texto.\n *    Soporta:\n *     - ```json ... ```\n *     - ``` ... ```\n *     - Texto que contenga un {...} u [...]\n */\nlet jsonText = null;\n\n// 1a. Buscar bloque ```json ... ```\nlet m = typeof rawOutput === \"string\"\n  ? rawOutput.match(/```json\\s*([\\s\\S]*?)\\s*```/i)\n  : null;\n\nif (m && m[1]) {\n  jsonText = m[1].trim();\n} else if (typeof rawOutput === \"string\") {\n  // 1b. Buscar cualquier bloque ``` ... ```\n  m = rawOutput.match(/```\\s*([\\s\\S]*?)\\s*```/);\n  if (m && m[1]) {\n    jsonText = m[1].trim();\n  } else {\n    // 1c. Buscar el primer {...} o [...] dentro del texto\n    m = rawOutput.match(/(\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\])/);\n    if (m && m[0]) {\n      jsonText = m[0].trim();\n    } else {\n      // 1d. Intentar limpiar encabezados tipo \"json\\n[...]\"\n      const cleaned = rawOutput\n        .replace(/^\\s*json\\s*/i, '')\n        .replace(/^[`]+|[`]+$/g, '')\n        .trim();\n\n      m = cleaned.match(/(\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\])/);\n      if (m && m[0]) {\n        jsonText = m[0].trim();\n      }\n    }\n  }\n}\n\n// Si ya viene como objeto, no hace falta extraer texto\nif (!jsonText && typeof rawOutput === \"object\" && rawOutput !== null) {\n  jsonText = JSON.stringify(rawOutput);\n}\n\nif (!jsonText) {\n  throw new Error(\"No se encontró ningún JSON en la salida del modelo.\");\n}\n\n// 2) Parsear JSON\nlet parsed;\ntry {\n  parsed = JSON.parse(jsonText);\n} catch (err) {\n  throw new Error(\n    \"Error al parsear el JSON extraído: \" +\n      err.message +\n      \"\\nContenido extraído:\\n\" +\n      jsonText\n  );\n}\n\n// 3) Normalizar estructura a array real de transacciones\nlet items;\n\nif (parsed?.output?.items && Array.isArray(parsed.output.items)) {\n  items = parsed.output.items;\n} else if (parsed?.items && Array.isArray(parsed.items)) {\n  items = parsed.items;\n} else if (Array.isArray(parsed)) {\n  items = parsed;\n} else if (parsed && typeof parsed === \"object\") {\n  items = [parsed];\n} else {\n  throw new Error(\"El JSON parseado no tiene un formato válido.\");\n}\n\n/** Utilidades **/\n\nfunction normalizarTexto(texto = \"\") {\n  return String(texto)\n    .toLowerCase()\n    .trim()\n    .normalize(\"NFD\")\n    .replace(/[\\u0300-\\u036f]/g, '');\n}\n\nfunction parseValorToNumber(v) {\n  if (v === null || v === undefined || v === \"\") return 0;\n  if (typeof v === \"number\") return v;\n\n  let s = String(v).trim();\n  s = s.replace(/[\\$\\€\\£\\s]/g, '');\n\n  const lastComma = s.lastIndexOf(',');\n  const lastDot = s.lastIndexOf('.');\n\n  if (lastComma > -1 && lastDot > -1) {\n    if (lastComma > lastDot) {\n      s = s.replace(/\\./g, '').replace(/,/g, '.');\n    } else {\n      s = s.replace(/,/g, '');\n    }\n  } else if (s.indexOf(',') > -1 && s.indexOf('.') === -1) {\n    s = s.replace(/,/g, '.');\n  } else {\n    s = s.replace(/,/g, '');\n  }\n\n  const n = parseFloat(s);\n  return Number.isFinite(n) ? n : 0;\n}\n\nfunction formatNumber(n) {\n  try {\n    return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(n);\n  } catch (e) {\n    return String(n);\n  }\n}\n\nfunction emojiPorTipo(tipo = \"\") {\n  const t = normalizarTexto(tipo);\n  if (t === \"gasto\") return \"💸\";\n  if (t === \"ingreso\") return \"💰\";\n  if (t === \"presupuesto\") return \"📊\";\n  return \"🔄\";\n}\n\nfunction emojiPorCategoria(nombre = \"\") {\n  const c = normalizarTexto(nombre);\n  const mapa = {\n    salario: \"💼\",\n    bonificaciones: \"🎁\",\n    arriendo: \"🏠\",\n    extras: \"➕\",\n    regalos: \"🎉\",\n    vivienda: \"🏡\",\n    transporte: \"🚗\",\n    educacion: \"📚\",\n    \"entretenimiento y ocio\": \"🎮\",\n    entretenimiento: \"🎮\",\n    prestamos: \"💳\",\n    alimentacion: \"🍽️\",\n    \"compras personales\": \"🛍️\",\n    salud: \"💊\",\n    otros: \"📦\",\n    seguros: \"🛡️\"\n  };\n  return mapa[c] || \"📂\";\n}\n\n// Limpia saltos y caracteres problemáticos dentro de cada campo\nfunction cleanInlineText(value = \"\") {\n  return String(value)\n    .replace(/\\r/g, \"\")\n    .replace(/\\n/g, \" \")\n    .replace(/\\t/g, \" \")\n    .replace(/\\s+/g, \" \")\n    .trim();\n}\n\n/** 4) Construir bloques de texto */\nconst bloques = items.map((item) => {\n  const tipo = cleanInlineText(item.tipo || \"\");\n  const rawValor = item.valor ?? item.monto ?? item.amount ?? \"\";\n  const valorNum = parseValorToNumber(rawValor);\n  const categoria = cleanInlineText(item.categoria || item.category || \"\");\n  const descripcion = cleanInlineText(item.descripcion || item.description || \"\");\n\n  const tipoEmoji = emojiPorTipo(tipo);\n  const categoriaEmoji = emojiPorCategoria(categoria);\n\n  const valorTexto = rawValor === \"\" ? \"—\" : formatNumber(valorNum);\n\n  return `${tipoEmoji} Tipo: ${tipo || \"—\"}\\\\n💵 Valor: ${valorTexto}\\\\n${categoriaEmoji} Categoría: ${categoria || \"—\"}\\\\n📌 Descripción: ${descripcion || \"—\"}`;\n});\n\n// IMPORTANTE: usar \\\\n\\\\n, no \\n\\n\nconst resumenFinal = bloques.join(\"\\\\n\\\\n\");\n\n// 5) Devolver para n8n\nreturn [\n  {\n    json: {\n      resumen: resumenFinal,\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        1216
+      ],
+      "id": "6e58d347-8856-44cd-9034-ca078ad9f0ce",
+      "name": "Natural languague"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "=gasto",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "62a825cc-7512-4b3e-8064-6c0f173df064"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8511a5f2-5048-4b90-9a97-7a75b1ddc660",
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "ingreso",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "20139388-19c9-4597-a509-7ab2a68d67a9",
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "=presupuesto",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1520,
+        544
+      ],
+      "id": "7d174848-0c71-431e-8db8-4bce8c1c3df6",
+      "name": "Switch2"
+    },
+    {
+      "id": "e06732cb-ac98-442d-89ff-2c5ee5a68550",
+      "name": "Create a row2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all().flatMap((item,i)=>{const r=item.json.result;return (Array.isArray(r)?(r.length?r:[{}]):[r]).map(json=>({json,pairedItem:{item:i}}));});"
+      },
+      "position": [
+        1920,
+        720
+      ]
+    },
+    {
+      "id": "306f66db-2a2a-4954-8e17-fc4fd0ace1d4",
+      "name": "Send message and wait for response7",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "position": [
+        -1712,
+        -48
+      ]
+    },
+    {
+      "id": "a3dac5fe-7603-48dd-87a1-94f530fe4cd0",
+      "name": "Send message and wait for response8",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "position": [
+        -1632,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -3280,
+        528
+      ],
+      "id": "e0abc010-320c-4b41-bdc6-23ee310189ed",
+      "name": "WhatsApp Trigger",
+      "webhookId": "9a4d6239-5e45-4196-bd7b-36ad15b22357",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "wAJnjqhbeiNdLoG1",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "id": "5eed3b3e-f74b-4d50-a99d-85dd39273254",
+      "name": "If4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "throw new Error('Legacy phone lookup is disabled in identity v3');"
+      },
+      "position": [
+        -3088,
+        528
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "categories",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Datos whtas').item.json.id_usuario }}"
+            },
+            {
+              "keyName": "user_id",
+              "condition": "is",
+              "keyValue": "null"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        608,
+        672
+      ],
+      "id": "0f973538-f8d7-4432-805c-58ea7fe2c2bd",
+      "name": "Obtener categorias",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Contexto WhatsApp').first().json.interactive?.button_reply?.id }}",
+                    "rightValue": "Aceptar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ff0da4d2-5651-4bbf-b85b-16b41081004b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "si"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "60eebc2b-3687-46c6-9457-64159bde6136",
+                    "leftValue": "={{ $('Contexto WhatsApp').first().json.interactive?.button_reply?.id }}",
+                    "rightValue": "Rechazar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "no"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1088,
+        1328
+      ],
+      "id": "ca4329f3-6109-4112-b055-3dd6732e0c70",
+      "name": "Switch3"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__YES_WORKFLOW_ID__",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        1024
+      ],
+      "id": "249375da-adf1-4434-a1f8-c75763339bd6",
+      "name": "msj_si"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "__NO_WORKFLOW_ID__",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -592,
+        1328
+      ],
+      "id": "21097e86-953f-4789-86b9-c14a93bdd2be",
+      "name": "msj_no"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4cf32027-146e-4f5d-b7ff-ef0014f1bfb8",
+                    "leftValue": "={{ $('Contexto WhatsApp').first().json.message_type }}",
+                    "rightValue": "audio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Audio"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8fec9621-729c-42d4-bc8f-4737ad229bd9",
+                    "leftValue": "={{ $('Contexto WhatsApp').first().json.message_type }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Image"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Contexto WhatsApp').first().json.message_type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8c5092c3-b4aa-40ab-ac54-6b60de0bc54e"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b293914a-be37-4a63-9b12-269ede615b74",
+                    "leftValue": "={{ $('Contexto WhatsApp').first().json.message_type }}",
+                    "rightValue": "interactive",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reply"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2096,
+        432
+      ],
+      "id": "63ab960d-38e9-4e3a-9e4f-5e817dd17140",
+      "name": "switch"
+    },
+    {
+      "id": "04ae3a42-960b-48de-8d5b-e80430797a4c",
+      "name": "Send message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "position": [
+        -720,
+        1520
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bf431af3-0ade-4d61-afb2-12357ba17e59",
+              "leftValue": "={{ $json.valor }}",
+              "rightValue": "=null",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "1830747d-f860-49a8-bf86-0e48f876eda3",
+              "leftValue": "={{ $json.valor }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "4b20d878-368d-41f8-b522-f719724897ca",
+              "leftValue": "={{ $json.tipo }}",
+              "rightValue": "basura",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1104,
+        448
+      ],
+      "id": "08b85b77-0d15-41d0-80c6-d18e293ee308",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.resumen }}",
+                    "rightValue": "basura",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "9ecc6e7d-4936-4d62-adcf-ceb036163f9a"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f0e8de1c-80bb-40fd-aa84-8646fce99e2f",
+                    "leftValue": "={{ $json.parsed[0].valor }}",
+                    "rightValue": 0,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "24ca4656-da13-40dc-9d72-479a9f0daac9",
+                    "leftValue": "={{ $json.parsed[0].valor }}",
+                    "rightValue": "null",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notExists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2592,
+        384
+      ],
+      "id": "36d06933-68a4-4256-87f9-5989a3262c3b",
+      "name": "Switch"
+    },
+    {
+      "id": "29fb7de7-ebce-402a-9cb6-a3b482df11b9",
+      "name": "Send message and wait for response2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "position": [
+        1920,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "user_profiles",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $('Contexto WhatsApp').first().json.user_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1312,
+        256
+      ],
+      "id": "c2f39b11-b256-45ba-8f51-41d75ff15870",
+      "name": "Get a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        128,
+        720
+      ],
+      "id": "3a3f5b01-15e7-433c-86d3-1d5c2bfcfe65",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "3nzfNq9bjGil7fGH",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "id": "af938a60-40f1-4722-988a-ee26f28c03f7",
+      "name": "HTTP Request3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "position": [
+        2400,
+        1168
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1104,
+        912
+      ],
+      "id": "93c3a28d-208c-466b-956a-bad0f6ab7891",
+      "name": "Merge",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2336,
+        608
+      ],
+      "id": "684e78ec-5637-44ea-bb11-f6eebd249e51",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "id": "ad0441e0-7284-4763-af8a-06f9127ab35b",
+      "name": "Send message and wait for response3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "position": [
+        1920,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "categories",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "is",
+              "keyValue": "null"
+            },
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Datos whtas').item.json.id_usuario }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        464
+      ],
+      "id": "b389a1ce-9ddc-4298-a2c4-8aae1d18c017",
+      "name": "Get many rows",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const categories = $input.all().map(item => item.json);\n\n// 🔹 OUTPUT 1 → STRING PARA EL BOT\nconst categoriesText = categories\n  .map(c => `${c.name} (${c.direction})`)\n  .join(\", \");\n\n// 🔹 OUTPUT 2 → LISTA PARA MATCH\nconst categoriesMatch = categories.map(c => ({\n  name: c.name,\n  direction: c.direction,\n  id: c.id\n}));\n\nreturn [\n  {\n    json: {\n      categoriesText,\n      categoriesMatch\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        464
+      ],
+      "id": "6ab753db-31df-4fc5-b212-2540e8be5c89",
+      "name": "Code in JavaScript"
+    },
+    {
+      "id": "394c41a6-09cc-4bd6-96fe-eaaa1d47ad6f",
+      "name": "Update a row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all().flatMap((item,i)=>{const r=item.json.result;return (Array.isArray(r)?(r.length?r:[{}]):[r]).map(json=>({json,pairedItem:{item:i}}));});"
+      },
+      "position": [
+        2128,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8511a5f2-5048-4b90-9a97-7a75b1ddc660",
+                    "leftValue": "={{ $('Code').item.json.tipo }}",
+                    "rightValue": "balance",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Code').item.json.tipo }}",
+                    "rightValue": "=saludo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "62a825cc-7512-4b3e-8064-6c0f173df064"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1520,
+        208
+      ],
+      "id": "20588e90-ee94-465a-b916-7ec9e0af6ccb",
+      "name": "Switch4"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "user_month_summary",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $('Datos whtas').all()[0].json.id_usuario }}"
+            },
+            {
+              "keyName": "month",
+              "keyValue": "={{ $json.startDate }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1968,
+        -80
+      ],
+      "id": "146cc5ae-c07c-44b6-bb9d-b0e30a6597cb",
+      "name": "Get a row1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function getMonthStartEnd() {\n  const now = new Date();\n  const start = new Date(now.getFullYear(), now.getMonth(), 1);\n  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);\n  const format = (d) => d.toISOString().split(\"T\")[0];\n  return { startDate: format(start), endDate: format(end) };\n}\n\nconst dates = getMonthStartEnd();\n\n// Guardar en variables globales\n\n\n\nreturn [{ json: dates }];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        16
+      ],
+      "id": "b7ed813e-68a4-49ac-8692-2891ebf22521",
+      "name": "Fechas1"
+    },
+    {
+      "id": "0db75f14-9b8d-43fb-998b-8e1cbf4202a1",
+      "name": "Send message and wait for response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "position": [
+        2416,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const formatNumber = (value) => {\n  const num = Number(value || 0);\n  const abs = Math.abs(num).toLocaleString('es-CO');\n  return num < 0 ? `- $ ${abs}` : `$ ${abs}`;\n};\n\nconst incomeTotal = Number($json.income_total || 0);\nconst expenseTotal = Number($json.expense_total || 0);\nconst netTotal = Number($json.net_total || 0);\n\nconst isPositiveBalance = netTotal > 0;\nconst isNegativeBalance = netTotal < 0;\nconst isZeroBalance = netTotal === 0;\n\nlet balanceIcon = '📈';\nlet balanceText = '🟰 *Vas en equilibrio, mantén el control*';\n\nif (isPositiveBalance) {\n  balanceIcon = '📈';\n  balanceText = '🔥 *Vas muy bien, sigue así*';\n} else if (isNegativeBalance) {\n  balanceIcon = '📉';\n  balanceText = '⚠️ *Ojo: este mes vas gastando más de lo que entra*';\n} else if (isZeroBalance) {\n  balanceIcon = '➖';\n  balanceText = '🟰 *Vas justo, toca cuidar los próximos gastos*';\n}\n\nconst message = `📊 *Así va tu mes*\n━━━━━━━━━━━━━━\n💰 Ingresos: *${formatNumber(incomeTotal)}*\n💸 Gastos: *${formatNumber(expenseTotal)}*\n${balanceIcon} Balance: *${formatNumber(netTotal)}*\n━━━━━━━━━━━━━━\n${balanceText}`;\n\nreturn [\n  {\n    json: {\n      income_total_formatted: formatNumber(incomeTotal),\n      expense_total_formatted: formatNumber(expenseTotal),\n      net_total_formatted: formatNumber(netTotal),\n      is_positive_balance: isPositiveBalance,\n      is_negative_balance: isNegativeBalance,\n      is_zero_balance: isZeroBalance,\n      message\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        -80
+      ],
+      "id": "fcf39c5b-df02-4c05-b57f-c4bab9a6d925",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "24cf4cf9-95dc-4572-87bd-01cfc34c3183",
+              "leftValue": "={{ $json.category_id }}",
+              "rightValue": "null",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1712,
+        736
+      ],
+      "id": "b3d8299e-a748-4747-9f8f-d00085499228",
+      "name": "If2"
+    },
+    {
+      "id": "d443fdbe-aef2-46e8-b318-df81081022eb",
+      "name": "Send message and wait for response4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "position": [
+        1952,
+        928
+      ]
+    },
+    {
+      "id": "a5126dd3-dacc-4df3-b6e5-de7c09ec6650",
+      "name": "HTTP Request4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "throw new Error('Legacy phone lookup is disabled in identity v3');"
+      },
+      "position": [
+        -2848,
+        704
+      ],
+      "disabled": true
+    },
+    {
+      "id": "bc02b346-d39e-4001-8b36-0ca8641dd1c8",
+      "name": "Contexto WhatsApp",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "position": [
+        -300,
+        1400
+      ]
+    },
+    {
+      "id": "92563f5f-715c-44d1-9bbf-73cd19383e45",
+      "name": "Normalizar y resolver",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all().flatMap((item,i)=>(item.json.items??[]).map(json=>({json,pairedItem:{item:i}})));"
+      },
+      "position": [
+        -400,
+        900
+      ]
+    },
+    {
+      "id": "7d0ce8bd-f28c-46cf-bb6f-8d1bd2b030ec",
+      "name": "Normalizar y resolver · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/resolve';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({payload:$json});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        -820,
+        900
+      ]
+    },
+    {
+      "id": "73ba18d9-d822-4a2c-9fb9-f8128099c355",
+      "name": "Normalizar y resolver · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        -610,
+        900
+      ]
+    },
+    {
+      "id": "45cfc84f-97f1-4c55-b178-b58ffdb2434a",
+      "name": "Procesar cada mensaje",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $workflow.id }}",
+          "mode": "id"
+        },
+        "mode": "each",
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "position": [
+        0,
+        900
+      ]
+    },
+    {
+      "id": "e7624df5-147e-4aa3-85f1-5134fd031c77",
+      "name": "Edit Fields1 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/operation';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,kind:\"interpretation\",index:$json.operation_index??0,payload:({output:$json.output})});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        92,
+        464
+      ]
+    },
+    {
+      "id": "1e5fd7ac-d88b-4b18-b179-98dba1c333b9",
+      "name": "Edit Fields1 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        302,
+        464
+      ]
+    },
+    {
+      "id": "a56551b6-d64a-4b51-82b2-525982dd3fef",
+      "name": "Guardar movimientos del mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.first().json.result.map((json,i)=>({json,pairedItem:{item:0}}));"
+      },
+      "position": [
+        1600,
+        900
+      ]
+    },
+    {
+      "id": "ba2265de-98db-48ba-a9d3-018f9773a235",
+      "name": "Guardar movimientos del mensaje · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/operation';\nreturn $input.all().slice(0,1).map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,kind:'stage',payload:$input.all().map(i=>i.json)});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        1180,
+        900
+      ]
+    },
+    {
+      "id": "3a42c16f-af97-4570-9177-1e3c944b00c3",
+      "name": "Guardar movimientos del mensaje · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        1390,
+        900
+      ]
+    },
+    {
+      "id": "4c65850c-2bd6-42c8-a4fe-6a5e043ac128",
+      "name": "Create a row · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/operation';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,kind:\"transaction\",index:$json.operation_index??0,payload:$json});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        1628,
+        544
+      ]
+    },
+    {
+      "id": "5ab1904a-4d41-40bb-b1e9-2e67cde487da",
+      "name": "Create a row · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        1838,
+        544
+      ]
+    },
+    {
+      "id": "cd8791f0-b153-4496-9fa9-35388a10f534",
+      "name": "Create a row2 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/operation';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,kind:\"budget\",index:$json.operation_index??0,payload:$json});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        1500,
+        720
+      ]
+    },
+    {
+      "id": "bb565b7e-fa7b-4b87-af41-961825532f78",
+      "name": "Create a row2 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        1710,
+        720
+      ]
+    },
+    {
+      "id": "a2525ca4-b131-4e0b-b841-9ecb052685df",
+      "name": "Update a row · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/operation';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,kind:\"budget\",index:$json.operation_index??0,payload:$json});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        1708,
+        816
+      ]
+    },
+    {
+      "id": "2158e827-1728-499a-a522-18b588b86cb1",
+      "name": "Update a row · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        1918,
+        816
+      ]
+    },
+    {
+      "id": "a937c5c0-cce5-4f91-9ad9-cc53d1e5b3ed",
+      "name": "HTTP Request3 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:'confirmation-summary',content:{type:'interactive',interactive:{type:'button',body:{text:$('Natural languague').first().json.resumen},action:{buttons:[{type:'reply',reply:{id:'Aceptar',title:'Si'}},{type:'reply',reply:{id:'Rechazar',title:'No'}}]}}}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        1980,
+        1168
+      ]
+    },
+    {
+      "id": "2b4f326c-e275-4f36-9968-97a6a444a5ec",
+      "name": "HTTP Request3 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        2190,
+        1168
+      ]
+    },
+    {
+      "id": "e176405f-10dc-45a7-a155-71029ebb354f",
+      "name": "Contexto para msj_si",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return [{json:$('Contexto WhatsApp').first().json}];"
+      },
+      "position": [
+        -860,
+        1024
+      ]
+    },
+    {
+      "id": "1a2c482a-ea3c-4033-9b0f-cf41d4d0c898",
+      "name": "Contexto para msj_no",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return [{json:$('Contexto WhatsApp').first().json}];"
+      },
+      "position": [
+        -812,
+        1328
+      ]
+    },
+    {
+      "id": "4ee3cef6-a1a6-47fc-baee-18463bd68c73",
+      "name": "Send message and wait for response1 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response1\",content:{type:'text',text:\"🔒 ¡Hola! Para continuar necesitamos identificarte. Parece que tu número aún no está registrado en Financia 📱  📝 Por favor, completa tu registro para poder ayudarte mejor y tener acceso completo a nuestros servicios financieros personalizados 💼📊  👉 https://financiaia.com  Si ya te registraste, asegúrate de estar usando el mismo número o contáctanos para verificar tu información. ¡Estamos aquí para ayudarte! 🤝✨\"}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        -2740,
+        880
+      ]
+    },
+    {
+      "id": "039d57bc-e735-4732-9600-230e92204873",
+      "name": "Send message and wait for response1 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        -2530,
+        880
+      ]
+    },
+    {
+      "id": "8375fcde-f9c3-4275-9264-e867a0fcab00",
+      "name": "Send message and wait for response7 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response7\",content:{type:'text',text:\"🔊 ¡Servicio de audios no disponible por el momento!. Muy pronto podrás compartirlos con nosotros. ¡Estamos en ello! 🚀\"}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        -2132,
+        -48
+      ]
+    },
+    {
+      "id": "0abbd279-2251-471f-a6e1-b644f42bc526",
+      "name": "Send message and wait for response7 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        -1922,
+        -48
+      ]
+    },
+    {
+      "id": "14d0b427-911a-436a-9fba-f5311371df9f",
+      "name": "Send message and wait for response8 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response8\",content:{type:'text',text:\"🖼️ El envío de imágenes aún no está disponible. Muy pronto podrás compartirlas con nosotros. ¡Estamos en ello! 🚀\"}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        -2052,
+        432
+      ]
+    },
+    {
+      "id": "cb1b32b8-695d-4bdb-b574-7305b0dc2339",
+      "name": "Send message and wait for response8 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        -1842,
+        432
+      ]
+    },
+    {
+      "id": "4105e2e8-2803-4698-b776-0877afc851a4",
+      "name": "Send message · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message\",content:{type:'text',text:\"👋 ¡Hola! Gestionar tus finanzas nunca había sido tan fácil: \\n\\n1️⃣ Envíame un gasto, ingreso o presupuesto. \\n2️⃣ Te mostraré un resumen claro y sencillo. \\n3️⃣ Confirma con “sí” o “no” ¡y listo! 💪  \\n\\nAsí tendrás el control total de tus finanzas 💼💵\"}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        -1140,
+        1520
+      ]
+    },
+    {
+      "id": "ac298002-4e42-4c60-b596-aa2a31201bd9",
+      "name": "Send message · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        -930,
+        1520
+      ]
+    },
+    {
+      "id": "e5672641-6a9d-4ea1-bdae-16a469a0eeb1",
+      "name": "Send message and wait for response2 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response2\",content:{type:'text',text:\"👋 ¡Hola, \"+String(($('Get a row').item.json.name)??'')+\"!\\n\\nEstoy aquí para ayudarte a registrar tus finanzas 💰  \\nPuedes escribirme cosas como:\\n\\n\\\"Gasté 25.000 en almuerzo\\\"  \\n\\\"Me pagaron 1.200.000 de salario\\\"\\n\\nCuando quieras, empezamos 🚀\"}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        1500,
+        336
+      ]
+    },
+    {
+      "id": "a67ba218-1017-4390-bf44-4e85645b4bb7",
+      "name": "Send message and wait for response2 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        1710,
+        336
+      ]
+    },
+    {
+      "id": "ba0e0335-ba42-4e64-be73-fe42ec3fe6b0",
+      "name": "Send message and wait for response3 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response3\",content:{type:'text',text:\"👋 ¡Hola, \"+String(($('Get a row').item.json.name)??'')+\"!\\n\\nEstoy aquí para ayudarte a registrar tus finanzas 💰 \\n\\nRecuerda, pequeños gastos bien controlados hoy, construyen grandes resultados mañana 📈\"}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        1500,
+        176
+      ]
+    },
+    {
+      "id": "a614e262-ed0b-4488-b677-6c1453113ea6",
+      "name": "Send message and wait for response3 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        1710,
+        176
+      ]
+    },
+    {
+      "id": "afbad213-d92f-48c4-86be-7f311fabbbd1",
+      "name": "Send message and wait for response · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response\",content:{type:'text',text:String(($json.message)??'')}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        1996,
+        -80
+      ]
+    },
+    {
+      "id": "dc19df60-6d18-48bf-a728-2eb7f0138c0b",
+      "name": "Send message and wait for response · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        2206,
+        -80
+      ]
+    },
+    {
+      "id": "fccb6283-811f-4acd-80f8-30497abcd09d",
+      "name": "Send message and wait for response4 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response4\",content:{type:'text',text:\"⚠️ Lo siento, no pude identificar la categoría para ese presupuesto. Porfa repite el mensaje para intentarlo de nuevo, siendo más claro con la categoría, por ejemplo: “presupuesto de Alimentación 300 mil”.\"}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+      },
+      "position": [
+        1532,
+        928
+      ]
+    },
+    {
+      "id": "5af4213a-533d-44c8-976d-17c612c767e0",
+      "name": "Send message and wait for response4 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-financia-timestamp",
+              "value": "={{ $json.timestamp }}"
+            },
+            {
+              "name": "x-financia-nonce",
+              "value": "={{ $json.nonce }}"
+            },
+            {
+              "name": "x-financia-signature",
+              "value": "={{ $json.signature }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 55000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          }
+        }
+      },
+      "position": [
+        1742,
+        928
+      ]
+    }
+  ],
+  "connections": {
+    "Get_audio": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get_image": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "OpenAI1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos_final": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Guardar movimientos del mensaje · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos whtas": {
+      "main": [
+        [
+          {
+            "node": "switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Contexto para msj_si",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Contexto para msj_no",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Datos_final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Datos whtas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message and wait for response1 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar txt si_no": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Natural languague": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch2": {
+      "main": [
+        [
+          {
+            "node": "Create a row · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a row · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalizar y resolver · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener categorias": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Switch3": {
+      "main": [
+        [
+          {
+            "node": "Contexto para msj_si",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Contexto para msj_no",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "switch": {
+      "main": [
+        [
+          {
+            "node": "Get_audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message and wait for response8 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalizar txt si_no",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Get a row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Natural languague",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "Get a row": {
+      "main": [
+        [
+          {
+            "node": "Switch4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row2": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        []
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        []
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch4": {
+      "main": [
+        [
+          {
+            "node": "Fechas1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message and wait for response3 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message and wait for response2 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fechas1": {
+      "main": [
+        [
+          {
+            "node": "Get a row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Create a row2 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message and wait for response4 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response7": {
+      "main": [
+        []
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Datos_final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar y resolver · firmar": {
+      "main": [
+        [
+          {
+            "node": "Normalizar y resolver · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar y resolver · API": {
+      "main": [
+        [
+          {
+            "node": "Normalizar y resolver",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar y resolver": {
+      "main": [
+        [
+          {
+            "node": "Procesar cada mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1 · API": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar movimientos del mensaje · firmar": {
+      "main": [
+        [
+          {
+            "node": "Guardar movimientos del mensaje · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar movimientos del mensaje · API": {
+      "main": [
+        [
+          {
+            "node": "Guardar movimientos del mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar movimientos del mensaje": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row · firmar": {
+      "main": [
+        [
+          {
+            "node": "Create a row · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row · API": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row2 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Create a row2 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row2 · API": {
+      "main": [
+        [
+          {
+            "node": "Create a row2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row · firmar": {
+      "main": [
+        [
+          {
+            "node": "Update a row · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row · API": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3 · firmar": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3 · API": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto para msj_si": {
+      "main": [
+        [
+          {
+            "node": "msj_si",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto para msj_no": {
+      "main": [
+        [
+          {
+            "node": "msj_no",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response1 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response1 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response1 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response7 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response7 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response7 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response8 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response8 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response8 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message · API": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response2 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response2 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response2 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response3 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response3 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response3 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response4 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response4 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response4 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false
+  }
+}

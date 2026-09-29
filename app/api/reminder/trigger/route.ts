@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { Client } from '@upstash/qstash';
+import { whatsappEnabled } from '@/lib/whatsapp/config';
 
 const BATCH_SIZE = 50;
 const BATCH_DELAY_SECONDS = 5;
@@ -36,9 +37,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ message: 'No eligible users', count: 0 });
     }
 
-    const userIds = users
+    let userIds = users
       .map((u: any) => (typeof u === 'string' ? u : u.user_id ?? u.id))
       .filter(Boolean);
+    const linkVersions: Record<string, number> = {};
+    if (whatsappEnabled()) {
+      const { data: linked, error: linkedError } = await supabaseAdmin.from('user_profiles')
+        .select('user_id,whatsapp_link_version').in('user_id', userIds)
+        .not('whatsapp_verified_at', 'is', null).eq('reminder_opt_in', true);
+      if (linkedError) throw linkedError;
+      userIds = (linked || []).map(p => { linkVersions[p.user_id] = p.whatsapp_link_version; return p.user_id; });
+    }
     const totalUsers = userIds.length;
 
     if (totalUsers === 0) {
@@ -68,7 +77,7 @@ export async function GET(request: NextRequest) {
       const delaySeconds = index * BATCH_DELAY_SECONDS;
       return qstash.publishJSON({
         url: `${baseUrl}/api/reminder/batch`,
-        body: { userIds: batch },
+        body: { userIds: batch, ...(whatsappEnabled() ? { linkVersions } : {}) },
         delay: delaySeconds,
         headers: {
           'Content-Type': 'application/json',
