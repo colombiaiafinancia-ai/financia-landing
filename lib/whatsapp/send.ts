@@ -33,12 +33,12 @@ export async function sendVerifiedWhatsApp(input: SendInput) {
     if (r.status !== 'linked' || r.linked_now || !r.can_operate) {
       if (r.reply === false) return { status: 'skipped', success: false }
       const link = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://financiaia.com'}/login?next=${encodeURIComponent('/dashboard#whatsapp')}`
-      const text = r.status === 'maintenance' ? 'Estamos actualizando FinancIA. Intenta de nuevo más tarde; este mensaje no registró movimientos.'
-        : r.status === 'conflict' ? `No pudimos vincular este WhatsApp porque hay una asociación en conflicto. Entra a tu cuenta para revisarla: ${link}`
-        : r.linked_now ? '✅ Tu WhatsApp ya está vinculado a FinancIA. Puedes volver a la página para continuar.'
-        : r.status === 'linked' ? 'Tu cuenta necesita un plan o acceso vigente para continuar. Revisa tu cuenta en https://financiaia.com.'
-        : r.reason === 'invalid_code' ? `El código venció o ya no es válido. Genera otro desde tu cuenta: ${link}`
-        : `Para continuar usando FinancIA por WhatsApp, entra a tu cuenta y completa “Vincular mi WhatsApp”. Indica tu @usuario o selecciona “No tengo @usuario” y envía el código desde el botón. ${link}`
+      const text = r.status === 'maintenance' ? '🛠️ Estamos actualizando FinancIA. Escríbenos de nuevo en unos minutos.\n\nEste mensaje *no* registró ningún movimiento.'
+        : r.status === 'conflict' ? `⚠️ Este WhatsApp ya está conectado a *otra cuenta* de FinancIA, así que no hicimos ningún cambio.\n\nEntra con la cuenta correcta desde este enlace y revisa la sección *“Vincula tu WhatsApp”*:\n👉 ${link}\n\nSi necesitas ayuda, respóndenos aquí.`
+        : r.linked_now ? '✅ ¡Listo! Tu WhatsApp quedó conectado a tu cuenta de FinancIA.\n\nYa puedes escribirme tus gastos e ingresos. Por ejemplo: *“Gasté 20.000 en almuerzo”* o *“¿Cuál es mi balance?”*'
+        : r.status === 'linked' ? `Tu WhatsApp está conectado, pero tu cuenta no tiene un plan activo.\n\nActiva tu plan aquí para seguir usando el bot:\n👉 ${link}`
+        : r.reason === 'invalid_code' ? `⌛ Ese código ya venció o no es válido.\n\nPide uno nuevo así:\n1️⃣ Entra aquí: ${link}\n2️⃣ Toca *“Generar otro código”*.\n3️⃣ Envía el mensaje que se abre en WhatsApp, sin cambiarlo.`
+        : `👋 ¡Hola! Para usar FinancIA por WhatsApp primero debes conectar este número con tu cuenta. Es un paso de seguridad y solo se hace una vez (toma 1 minuto).\n\n1️⃣ Entra a tu cuenta desde este enlace:\n👉 ${link}\n\n2️⃣ En la sección *“Vincula tu WhatsApp”*, elige si tienes @usuario de WhatsApp. Si no sabes qué es, elige *“No tengo @usuario”*.\n\n3️⃣ Toca el botón *“Vincular mi WhatsApp”*. Se abrirá este chat con un mensaje que empieza por *VINCULAR*.\n\n4️⃣ Envía ese mensaje *tal como aparece*, sin cambiarlo.\n\nTe confirmaremos aquí cuando quede listo ✅\n\n¿Aún no tienes cuenta? Créala en https://financiaia.com`
       content = { type: 'text', text: { body: text } }
       key = `${input.eventKey}:notice`
     } else {

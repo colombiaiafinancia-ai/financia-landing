@@ -62,7 +62,12 @@ export function WhatsAppLinkCard({ onVerified, onContinueWeb }: { onVerified?: (
   const linked = !!profile?.whatsapp_verified_at
   return <section id="whatsapp" className="rounded-xl border border-green-700/40 bg-green-950 p-6 text-white" data-onboarding-target="whatsapp-chat">
     <h3 className="text-xl font-semibold">{linked ? 'Tu WhatsApp en FinancIA' : 'Vincula tu WhatsApp'}</h3>
-    <p className="my-2 text-sm text-white/80">{linked ? 'Tu cuenta está vinculada.' : 'Paso obligatorio para usar el bot y los recordatorios. Puedes seguir usando la web mientras lo completas.'}</p>
+    <p className="my-2 text-sm text-white/80">{linked ? 'Tu cuenta está vinculada.' : 'Para usar el bot de WhatsApp y recibir recordatorios, conecta tu número. Solo se hace una vez.'}</p>
+    {!linked && <ol className="my-3 list-decimal space-y-1 pl-5 text-sm text-white/90">
+      <li>Elige si tienes @usuario de WhatsApp. Si no sabes qué es, elige <strong>“No tengo @usuario”</strong>.</li>
+      <li>Toca <strong>“Vincular mi WhatsApp”</strong>. Se abrirá WhatsApp con un mensaje que empieza por <strong>VINCULAR</strong>.</li>
+      <li>Envía ese mensaje <strong>sin cambiarlo</strong>. Te confirmaremos en el chat cuando quede listo.</li>
+    </ol>}
     {state === 'loading' ? <p>Cargando…</p> : <>
       {profile && <div className="my-3 space-y-1 text-sm">
         <p>Teléfono de contacto: {profile.phone || 'Sin dato'}</p>
@@ -87,9 +92,9 @@ export function WhatsAppLinkCard({ onVerified, onContinueWeb }: { onVerified?: (
           </button>
         </>}
       </form>
-      {state === 'waiting' && <p className="mt-3" role="status">Esperando tu mensaje. Envía el código al bot para completar la vinculación.</p>}
-      {state === 'expired' && <p className="mt-3" role="status">El código venció. Genera otro para continuar.</p>}
-      {state === 'conflict' && <p className="mt-3" role="alert">Este WhatsApp ya tiene una asociación. No se cambió ninguna cuenta. Revisa la cuenta con la que iniciaste sesión.</p>}
+      {state === 'waiting' && <p className="mt-3" role="status">Falta un paso: envía en WhatsApp el mensaje que empieza por VINCULAR, sin cambiarlo. Si WhatsApp no se abrió, toca “Abrir WhatsApp con el código”. Esta página se actualizará sola.</p>}
+      {state === 'expired' && <p className="mt-3" role="status">El código venció. Toca “Generar otro código” y envíalo en WhatsApp.</p>}
+      {state === 'conflict' && <p className="mt-3" role="alert">Este WhatsApp ya está conectado a otra cuenta de FinancIA, así que no cambiamos nada. Revisa que hayas iniciado sesión con la cuenta correcta.</p>}
       {code && state === 'waiting' && <div className="mt-3 space-y-2 break-all">
         <code className="block rounded bg-black/20 p-2 text-sm">VINCULAR {code.code}</code>
         <p className="text-xs">Vence a las {new Date(code.expiresAt).toLocaleTimeString()}. No compartas este código.</p>

@@ -17,7 +17,7 @@ export function WhatsAppUsernameFields({ hasUsername, username, onChoice, onUser
         autoCapitalize="none" autoCorrect="off" placeholder="@tuusuario" value={username}
         onChange={e => onUsername(e.target.value)} className="mt-1 w-full rounded-md border border-current/30 bg-transparent px-3 py-2" />
     </label>}
-    {hasUsername === false && <p className="text-sm opacity-85">Puedes vincular WhatsApp con tu número. Cuando tengas un @usuario, actualízalo aquí.</p>}
-    <p className="text-xs opacity-75">Tu @usuario nos ayuda a mantener tu perfil actualizado. La vinculación se confirma enviando un código desde WhatsApp.</p>
+    {hasUsername === false && <p className="text-sm opacity-85">No hay problema: conectamos WhatsApp con tu número. Si más adelante creas un @usuario, puedes agregarlo aquí.</p>}
+    <p className="text-xs opacity-75">El @usuario es un nombre opcional que puedes crear en tu perfil de WhatsApp. Si no lo has creado, elige “No tengo @usuario”.</p>
   </fieldset>
 }

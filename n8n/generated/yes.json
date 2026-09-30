@@ -385,7 +385,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Eres un asistente financiero con tono de amigo.\n\nUsa esta info:\n{\n\"categoria\": {{ $('Obtener nombre').all()[0].json.name }} ,\n\"total_gastos\": {{ $('Code in JavaScript2').all()[0].json.totalGastos }},\n\"presupuesto\": {{ $('Code in JavaScript2').all()[0].json.presupuesto }},\n\"progresoMes\": {{$now}}\n}\nGenera 1 sola línea, corta y natural.\n\nIncluye: monto total gastado, presupuesto y el dia del mes en el que vamos.\n\nTono: neutral, vas bien, sin exagerar.\nNo saludes ni uses listas ni lenguaje técnico.",
+        "text": "=Eres un asistente financiero con tono de amigo.\n\nUsa esta info:\n{\n\"categoria\": {{ $('Obtener nombre').all()[0].json.name }} ,\n\"total_gastos\": {{ $('Code in JavaScript2').all()[0].json.totalGastos }},\n\"presupuesto\": {{ $('Code in JavaScript2').all()[0].json.presupuesto }},\n\"progresoMes\": {{$now}}\n}\nGenera 1 sola línea, corta y natural.\n\nIncluye: monto total gastado, presupuesto y el dia del mes en el que vamos.\n\nTono: neutral, vas bien, sin exagerar.\nNo saludes ni uses listas ni lenguaje técnico.\nEscribe los montos en pesos colombianos, con punto como separador de miles y sin decimales (ejemplo: $416.800).",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -400,7 +400,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Eres un asistente financiero con tono de amigo.\n\nUsa esta info:\n{\n\"categoria\": {{ $('Obtener nombre').all()[0].json.name }} ,\n\"total_gastos\": {{ $('Code in JavaScript2').item.json.totalGastos }},\n\"presupuesto\": {{ $('Code in JavaScript2').item.json.presupuesto }},\n\"progresoMes\": {{$now}}\n}\n\nGenera 1 sola línea, corta, con humor y ligera alerta.\n\nIncluye: monto total gastado, presupuesto y el dia del mes en el que vamos.\n\nTono: gracioso pero que haga notar que te estás pasando.\nNo saludes ni uses listas ni lenguaje técnico.",
+        "text": "=Eres un asistente financiero con tono de amigo.\n\nUsa esta info:\n{\n\"categoria\": {{ $('Obtener nombre').all()[0].json.name }} ,\n\"total_gastos\": {{ $('Code in JavaScript2').item.json.totalGastos }},\n\"presupuesto\": {{ $('Code in JavaScript2').item.json.presupuesto }},\n\"progresoMes\": {{$now}}\n}\n\nGenera 1 sola línea, corta, con humor y ligera alerta.\n\nIncluye: monto total gastado, presupuesto y el dia del mes en el que vamos.\n\nTono: gracioso pero que haga notar que te estás pasando.\nNo saludes ni uses listas ni lenguaje técnico.\nEscribe los montos en pesos colombianos, con punto como separador de miles y sin decimales (ejemplo: $416.800).",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -440,7 +440,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Eres un asistente financiero con tono de amigo.\n\nUsa esta info:\n{\n\"categoria\": {{ $('Obtener nombre').all()[0].json.name }} ,\n\"total_gastos\": {{ $('Code in JavaScript2').all()[0].json.totalGastos }},\n\"presupuesto\": {{ $('Code in JavaScript2').all()[0].json.presupuesto }},\n\"progresoMes\": {{$now}}\n}\nGenera 1 sola línea, corta, con humor positivo.\n\nIncluye: monto total gastado, presupuesto y el dia del mes en el que vamos.\n\nTono: vas bien, controlado, como alguien disciplinado con su dinero.\nNo saludes ni uses listas ni lenguaje técnico.",
+        "text": "=Eres un asistente financiero con tono de amigo.\n\nUsa esta info:\n{\n\"categoria\": {{ $('Obtener nombre').all()[0].json.name }} ,\n\"total_gastos\": {{ $('Code in JavaScript2').all()[0].json.totalGastos }},\n\"presupuesto\": {{ $('Code in JavaScript2').all()[0].json.presupuesto }},\n\"progresoMes\": {{$now}}\n}\nGenera 1 sola línea, corta, con humor positivo.\n\nIncluye: monto total gastado, presupuesto y el dia del mes en el que vamos.\n\nTono: vas bien, controlado, como alguien disciplinado con su dinero.\nNo saludes ni uses listas ni lenguaje técnico.\nEscribe los montos en pesos colombianos, con punto como separador de miles y sin decimales (ejemplo: $416.800).",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -489,7 +489,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Eres un asistente financiero con tono de amigo.\n\nUsa esta info:\n{\n\"categoria\": {{ $('Obtener nombre').all()[0].json.name }},\n\"total_gastos\": {{ $json.totalGastos }}\n}\n\nGenera 1 sola línea, corta, con humor ligero y tono cercano.\n\nIncluye: monto total gastado en la categoría.\n\nTono: útil y motivador, sugiere crear un presupuesto para mejorar el control.\n\nNo saludes ni uses listas ni lenguaje técnico.",
+        "text": "=Eres un asistente financiero con tono de amigo.\n\nUsa esta info:\n{\n\"categoria\": {{ $('Obtener nombre').all()[0].json.name }},\n\"total_gastos\": {{ $json.totalGastos }}\n}\n\nGenera 1 sola línea, corta, con humor ligero y tono cercano.\n\nIncluye: monto total gastado en la categoría.\n\nTono: útil y motivador, sugiere crear un presupuesto para mejorar el control.\n\nNo saludes ni uses listas ni lenguaje técnico.\nEscribe los montos en pesos colombianos, con punto como separador de miles y sin decimales (ejemplo: $416.800).",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -687,7 +687,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response1\",content:{type:'text',text:\"💵 Ingreso registrado: \"+String(($('Confirmation transacciones ingresos').all()[0].json.amount)??'')}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
+        "jsCode": "const crypto = require('crypto');\nconst secret = $env.WHATSAPP_INTERNAL_SECRET;\nconst base = $env.FINANCIA_BACKEND_URL;\nif (!secret || !base || !base.startsWith('https://')) throw new Error('Configure verified WhatsApp backend first');\nconst path = '/api/internal/whatsapp/send';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response1\",content:{type:'text',text:\"💵 Ingreso registrado: $\"+new Intl.NumberFormat('es-CO',{maximumFractionDigits:0}).format(Number($('Confirmation transacciones ingresos').all()[0].json.amount)||0)}});\n  const body = JSON.stringify(payload), timestamp = String(Date.now()), nonce = crypto.randomBytes(16).toString('hex');\n  const signature = crypto.createHmac('sha256', secret).update(timestamp+'\\n'+nonce+'\\nPOST\\n'+path+'\\n'+body).digest('hex');\n  return {json:{url:base.replace(/\\/$/,'')+path,body,timestamp,nonce,signature},pairedItem:{item:index}};\n});"
       },
       "position": [
         476,
