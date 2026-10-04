@@ -1,6 +1,6 @@
 import { transactionRepository, TransactionEntity, CreateTransactionData } from '../infrastructure/transactionRepository'
 import { monthSummaryRepository } from '../infrastructure/monthSummaryRepository'
-import { categoryRepository } from '@/features/categories/infrastructure/categoryRepository'
+import { categoryRepository, type CategoryEntity } from '@/features/categories/infrastructure/categoryRepository'
 import { validateTransactionCreation } from '../domain/transactionLogic'
 import {
   addDaysToDateKey,
@@ -73,29 +73,32 @@ export interface TransactionSummaryDTO {
   weeklyTrend: Array<{ week: string; amount: number; date: string }>
 }
 
+const copFormatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 })
+const dateFormatter = new Intl.DateTimeFormat('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })
+
 export class TransactionUseCases {
   private async getCategoryMap(userId: string, categoryIds: string[]): Promise<Map<string, string>> {
-    if (categoryIds.length === 0) return new Map()
-    // Obtener todas las categorías de una sola vez
-    const categories = await Promise.all(categoryIds.map(id => categoryRepository.findById(id)))
-    const map = new Map()
-    categories.forEach(c => { if (c) map.set(c.id, c.name) })
-    return map
+    // Una sola consulta para todas las categorías
+    return categoryRepository.findNameMap(categoryIds)
   }
 
   private mapEntityToDTO = async (entity: TransactionEntity): Promise<TransactionDTO> => {
     const category = await categoryRepository.findById(entity.category_id)
+    return this.toDTO(entity, category?.name)
+  }
+
+  private toDTO(entity: TransactionEntity, categoryName: string | undefined): TransactionDTO {
     return {
       id: entity.id,
       userId: entity.user_id,
       amount: entity.amount,
       categoryId: entity.category_id,
-      categoryName: category?.name || 'Sin categoría',
+      categoryName: categoryName || 'Sin categoría',
       direction: entity.direction,
       description: entity.description,
       occurredAt: entity.occurred_at,
-      formattedAmount: new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(entity.amount),
-      formattedDate: new Date(entity.occurred_at).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' }),
+      formattedAmount: copFormatter.format(entity.amount),
+      formattedDate: dateFormatter.format(new Date(entity.occurred_at)),
       isRollover: entity.meta?.type === 'monthly_rollover',
       isRecurring: entity.meta?.type === 'recurring_expense'
     }
@@ -103,7 +106,12 @@ export class TransactionUseCases {
 
   async getAllTransactions(userId: string): Promise<TransactionDTO[]> {
     const entities = await transactionRepository.findAllByUser(userId)
-    return Promise.all(entities.map(e => this.mapEntityToDTO(e)))
+    return this.entitiesToDTOs(entities)
+  }
+
+  private async entitiesToDTOs(entities: TransactionEntity[]): Promise<TransactionDTO[]> {
+    const names = await categoryRepository.findNameMap(entities.map(e => e.category_id))
+    return entities.map(e => this.toDTO(e, names.get(e.category_id)))
   }
 
   async createTransaction(userId: string, data: TransactionCreationRequest): Promise<TransactionDTO> {
@@ -137,8 +145,7 @@ export class TransactionUseCases {
     transactionId: string,
     data: TransactionUpdateRequest
   ): Promise<TransactionDTO> {
-    const entities = await transactionRepository.findAllByUser(userId)
-    const current = entities.find((t) => t.id === transactionId)
+    const current = await transactionRepository.findById(transactionId, userId)
     if (!current) {
       throw new Error('Transacción no encontrada')
     }
@@ -172,25 +179,28 @@ export class TransactionUseCases {
 
  
   async getTransactionSummary(userId: string): Promise<TransactionSummaryDTO> {
-    const weeklyTrend = await this.calculateWeeklyTrend(userId)
-    return this.getTransactionSummaryFromTransactions(userId, weeklyTrend)
+    const { startUtc, endUtc } = this.getCurrentMonthUtcRange()
+    const [weeklyTrend, monthTransactions] = await Promise.all([
+      this.calculateWeeklyTrend(userId),
+      transactionRepository.findByUserAndPeriod(userId, startUtc, endUtc),
+    ])
+    return this.getTransactionSummaryFromTransactions(monthTransactions, weeklyTrend)
+  }
+
+  private getCurrentMonthUtcRange() {
+    const today = getBogotaDateKey()
+    const monthStart = `${today.slice(0, 7)}-01`
+    return {
+      startUtc: `${monthStart}T05:00:00.000Z`,
+      endUtc: `${addDaysToDateKey(today, 1)}T04:59:59.999Z`,
+    }
   }
 
   private async getTransactionSummaryFromTransactions(
-    userId: string,
-    weeklyTrend: Array<{ week: string; amount: number; date: string }>
+    monthTransactions: TransactionEntity[],
+    weeklyTrend: Array<{ week: string; amount: number; date: string }>,
+    knownCategoryNames?: Map<string, string>
   ): Promise<TransactionSummaryDTO> {
-    const today = getBogotaDateKey()
-    const monthStart = `${today.slice(0, 7)}-01`
-    const startUtc = `${monthStart}T05:00:00.000Z`
-    const endUtc = `${addDaysToDateKey(today, 1)}T04:59:59.999Z`
-
-    const monthTransactions = await transactionRepository.findByUserAndPeriod(
-      userId,
-      startUtc,
-      endUtc
-    )
-
     const realMonthTransactions = monthTransactions.filter((tx) => tx.meta?.type !== 'monthly_rollover')
     const initialBalance = monthTransactions
       .filter((tx) => tx.meta?.type === 'monthly_rollover')
@@ -218,7 +228,7 @@ export class TransactionUseCases {
     }, new Map<string, number>())
 
     const categoryIds = [...categoryTotals.keys(), ...incomeCategoryTotals.keys()]
-    const categoryMap = await this.getCategoryMap(userId, categoryIds)
+    const categoryMap = knownCategoryNames ?? await this.getCategoryMap('', categoryIds)
 
     const mapCategoryTotals = (
       totals: Map<string, number>,
@@ -255,7 +265,13 @@ export class TransactionUseCases {
     const endDate = weekWindows[weekWindows.length - 1].endKey
 
     const dailyExpenses = await monthSummaryRepository.getDailyExpenses(userId, startDate, endDate)
+    return this.buildWeeklyTrend(dailyExpenses)
+  }
 
+  private buildWeeklyTrend(
+    dailyExpenses: Array<{ day: string; total: number }>
+  ): Array<{ week: string; amount: number; date: string }> {
+    const weekWindows = getBogotaCurrentWeekWindows(4)
     return weekWindows.map((week) => {
       const weekTotal = dailyExpenses
         .filter(d => d.day >= week.startKey && d.day <= week.endKey)
@@ -269,11 +285,23 @@ export class TransactionUseCases {
     })
   }
 
+  private getDailyTrendRange(days: number) {
+    return {
+      startDate: new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+    }
+  }
+
   async getDailyTrend(userId: string, days: number = 7): Promise<Array<{ date: string; amount: number }>> {
-    const endDate = new Date().toISOString().split('T')[0]
-    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const { startDate, endDate } = this.getDailyTrendRange(days)
     const dailyExpenses = await monthSummaryRepository.getDailyExpenses(userId, startDate, endDate)
-    
+    return this.buildDailyTrend(dailyExpenses, days)
+  }
+
+  private buildDailyTrend(
+    dailyExpenses: Array<{ day: string; total: number }>,
+    days: number
+  ): Array<{ date: string; amount: number }> {
     const result: Array<{ date: string; amount: number }> = []
     const dateMap = new Map(dailyExpenses.map(d => [d.day, d.total]))
     
@@ -285,29 +313,66 @@ export class TransactionUseCases {
   }
 
   async getMonthlyTrend(userId: string, months: number = 12): Promise<Array<{ month: string; amount: number }>> {
-    const result: Array<{ month: string; amount: number }> = []
     const now = new Date()
-    const promises = []
-    
+    const first = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1)
+    const fromMonth = `${first.getFullYear()}-${String(first.getMonth() + 1).padStart(2, '0')}-01`
+    // Una sola consulta para todo el rango (antes: una por mes)
+    const summaries = await monthSummaryRepository.getMonthSummariesFrom(userId, fromMonth)
+    const totals = new Map(summaries.map(s => [String(s.month).slice(0, 7), Number(s.expense_total) || 0]))
+
+    const result: Array<{ month: string; amount: number }> = []
     for (let i = months - 1; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const monthStart = date.toISOString().split('T')[0]
-      promises.push(monthSummaryRepository.getMonthSummary(userId, monthStart).then(summary => ({
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      result.push({
         month: date.toLocaleDateString('es-CO', { year: 'numeric', month: 'long' }),
-        amount: summary?.expense_total || 0
-      })))
+        amount: totals.get(key) || 0
+      })
     }
-    return Promise.all(promises)
+    return result
   }
 
-  async getTransactionsWithCalculations(userId: string) {
-    // Ejecutar todas las consultas en paralelo
-    const [transactions, summary, dailyTrend, monthlyTrend] = await Promise.all([
-      this.getAllTransactions(userId),
-      this.getTransactionSummary(userId),
-      this.getDailyTrend(userId, 7),
-      this.getMonthlyTrend(userId, 12)
+  /**
+   * @param categories Categorías visibles ya solicitadas (p. ej. compartidas en el servidor).
+   * Si no se pasan, se piden en paralelo con las transacciones.
+   */
+  async getTransactionsWithCalculations(userId: string, categories?: Promise<CategoryEntity[]>) {
+    const weekWindows = getBogotaCurrentWeekWindows(4)
+    const dailyRange = this.getDailyTrendRange(7)
+    // Un solo rango diario cubre la tendencia semanal (4 semanas) y la diaria (7 días)
+    const dailyStart = [weekWindows[0].startKey, dailyRange.startDate].sort()[0]
+    const dailyEnd = [weekWindows[weekWindows.length - 1].endKey, dailyRange.endDate].sort().reverse()[0]
+
+    // Todas las consultas en paralelo: transacciones, gasto diario y resumen mensual
+    // Las categorías también van en paralelo (antes: después de las transacciones)
+    const [entities, dailyExpenses, monthlyTrend, visibleCategories] = await Promise.all([
+      transactionRepository.findAllByUser(userId),
+      monthSummaryRepository.getDailyExpenses(userId, dailyStart, dailyEnd),
+      this.getMonthlyTrend(userId, 12),
+      categories ?? categoryRepository.findAllVisibleForUser(userId),
     ])
+
+    // El resumen del mes se calcula sobre las transacciones ya cargadas (sin volver a consultar)
+    const categoryNames = new Map(visibleCategories.map(c => [c.id, c.name]))
+    const missingIds = entities.map(e => e.category_id).filter(id => id && !categoryNames.has(id))
+    if (missingIds.length > 0) {
+      // Caso raro: categoría fuera de las visibles; se completa en una sola consulta
+      for (const [id, name] of await categoryRepository.findNameMap(missingIds)) categoryNames.set(id, name)
+    }
+    const transactions = entities.map(e => this.toDTO(e, categoryNames.get(e.category_id)))
+    const { startUtc, endUtc } = this.getCurrentMonthUtcRange()
+    const startMs = Date.parse(startUtc)
+    const endMs = Date.parse(endUtc)
+    const monthEntities = entities.filter(e => {
+      const t = Date.parse(e.occurred_at)
+      return t >= startMs && t <= endMs
+    })
+    const summary = await this.getTransactionSummaryFromTransactions(
+      monthEntities,
+      this.buildWeeklyTrend(dailyExpenses),
+      categoryNames
+    )
+    const dailyTrend = this.buildDailyTrend(dailyExpenses, 7)
     const currentWeek = summary.weeklyTrend[summary.weeklyTrend.length - 1]
 
     return {

@@ -4,6 +4,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { categoryUseCases, type CategoryDTO } from '@/features/categories/application/categoryUseCases'
 import { getCurrentUser } from '@/services/supabase'
 import { dispatchCategoriesUpdated } from '@/utils/categorySyncEvents'
+import type { CategoriesBundle } from '@/lib/dashboard/types'
+import {
+  dashboardCacheKey,
+  isStale,
+  resolveInitial,
+  writeDashboardCache,
+} from '@/lib/dashboard/client-cache'
 
 type CategoryType = 'Gasto' | 'Ingreso'
 
@@ -26,36 +33,57 @@ interface CategoriesContextValue {
 
 const CategoriesContext = createContext<CategoriesContextValue | null>(null)
 
-export function CategoriesProvider({ children }: { children: React.ReactNode }) {
-  const [userId, setUserId] = useState<string | null>(null)
-  const [gastoCategories, setGastoCategories] = useState<CategoryDTO[]>([])
-  const [ingresoCategories, setIngresoCategories] = useState<CategoryDTO[]>([])
-  const [userOwnedCategories, setUserOwnedCategories] = useState<CategoryDTO[]>([])
-  const [loading, setLoading] = useState(true)
+export function CategoriesProvider({
+  children,
+  userId: initialUserId,
+  initialData,
+  initialFetchedAt,
+}: {
+  children: React.ReactNode
+  /** Usuario verificado en el servidor (evita otra llamada a Auth). */
+  userId?: string
+  initialData?: CategoriesBundle | null
+  initialFetchedAt?: number
+}) {
+  const cacheKey = initialUserId ? dashboardCacheKey('categories', initialUserId) : null
+  const [initial] = useState(() => resolveInitial<CategoriesBundle>(cacheKey, initialData, initialFetchedAt))
+  const [userId, setUserId] = useState<string | null>(initialUserId ?? null)
+  const [gastoCategories, setGastoCategories] = useState<CategoryDTO[]>(initial.data?.gastos ?? [])
+  const [ingresoCategories, setIngresoCategories] = useState<CategoryDTO[]>(initial.data?.ingresos ?? [])
+  const [userOwnedCategories, setUserOwnedCategories] = useState<CategoryDTO[]>(initial.data?.owned ?? [])
+  const [loading, setLoading] = useState(!initial.data)
   const [error, setError] = useState<string | null>(null)
 
   const loadAll = useCallback(async (uid?: string | null) => {
     const resolvedUserId = uid ?? userId
     if (!resolvedUserId) return
 
-    const { gastos, ingresos } = await categoryUseCases.getCategoriesByType(resolvedUserId)
-    setGastoCategories(gastos)
-    setIngresoCategories(ingresos)
-    const owned = await categoryUseCases.getUserOwnedCategories(resolvedUserId)
-    setUserOwnedCategories(owned)
+    // Una sola consulta para gastos, ingresos y categorías propias
+    const grouped = await categoryUseCases.getAllCategoriesGrouped(resolvedUserId)
+    writeDashboardCache(dashboardCacheKey('categories', resolvedUserId), grouped)
+    setGastoCategories(grouped.gastos)
+    setIngresoCategories(grouped.ingresos)
+    setUserOwnedCategories(grouped.owned)
   }, [userId])
 
+  const hasInitialData = initial.data != null
+  const initialIsStale = isStale(initial.at)
   useEffect(() => {
+    if (hasInitialData && !initialIsStale) return
     const run = async () => {
       try {
-        setLoading(true)
-        const user = await getCurrentUser()
-        if (!user?.id) {
-          setError('Usuario no autenticado')
-          return
+        if (!hasInitialData) setLoading(true)
+        let uid = initialUserId
+        if (!uid) {
+          const user = await getCurrentUser()
+          if (!user?.id) {
+            setError('Usuario no autenticado')
+            return
+          }
+          uid = user.id
+          setUserId(user.id)
         }
-        setUserId(user.id)
-        await loadAll(user.id)
+        await loadAll(uid)
         setError(null)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error al cargar categorías')
@@ -64,7 +92,9 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
       }
     }
     run()
-  }, [loadAll])
+    // Solo al montar: las mutaciones refrescan explícitamente con loadAll
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const refetch = useCallback(async () => {
     try {
@@ -114,9 +144,8 @@ export function CategoriesProvider({ children }: { children: React.ReactNode }) 
 
   const loadUserOwnedCategories = useCallback(async () => {
     if (!userId) return
-    const owned = await categoryUseCases.getUserOwnedCategories(userId)
-    setUserOwnedCategories(owned)
-  }, [userId])
+    await loadAll(userId)
+  }, [userId, loadAll])
 
   const value = useMemo<CategoriesContextValue>(() => ({
     gastoCategories,

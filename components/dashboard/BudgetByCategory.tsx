@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, memo } from 'react'
 import {
   Plus,
   Edit3,
@@ -38,15 +38,18 @@ interface BudgetByCategoryProps {
   /** Tras guardar un presupuesto nuevo (no al editar) */
   onFirstBudgetCreated?: () => void
   onBudgetSummaryChange?: (summary: CategoryBudgetSummaryItem[]) => void
+  /** Presupuestos precargados en el servidor */
+  initialBudgets?: Parameters<typeof useCategoryBudget>[2]
 }
 
-export const BudgetByCategory = ({
+const BudgetByCategoryInner = ({
   userId,
   refreshKey = 0,
   onboardingStep = null,
   onSkipOnboarding,
   onFirstBudgetCreated,
   onBudgetSummaryChange,
+  initialBudgets,
 }: BudgetByCategoryProps) => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingBudget, setEditingBudget] = useState<{
@@ -77,7 +80,7 @@ export const BudgetByCategory = ({
     error,
     saveCategoryBudget,
     deleteCategoryBudget
-  } = useCategoryBudget(userId, refreshKey)
+  } = useCategoryBudget(userId, refreshKey, initialBudgets)
 
   const loading = categoriesLoading || budgetsLoading
 
@@ -202,7 +205,7 @@ export const BudgetByCategory = ({
     rounded-2xl p-6
     bg-card border border-border text-card-foreground
     dark:bg-transparent dark:bg-gradient-to-br dark:from-white/10 dark:to-white/5
-    dark:backdrop-blur-lg dark:border-white/20 dark:text-white
+    dark:border-white/20 dark:text-white
   `
 
   if (loading) {
@@ -658,3 +661,6 @@ export const BudgetByCategory = ({
     </>
   )
 }
+
+/** Memoizado: no se re-renderiza cuando cambia estado del dashboard que no le afecta. */
+export const BudgetByCategory = memo(BudgetByCategoryInner)

@@ -42,7 +42,11 @@ export async function proxy(request: NextRequest) {
     return handleAuthRedirects(request, pathname, false, response)
   }
 
-  if (isAuthenticated && needsAuth) {
+  // /dashboard valida el acceso en su layout (con el perfil completo que luego usa la página),
+  // así que aquí no repetimos la consulta a user_profiles.
+  const accessCheckedInLayout = pathname === '/dashboard' || pathname.startsWith('/dashboard/')
+
+  if (isAuthenticated && needsAuth && !accessCheckedInLayout) {
     const supabase = getMiddlewareSupabaseClient(request, response)
     const { data: profile, error } = await supabase
       .from('user_profiles')
@@ -84,8 +88,9 @@ function handleAuthRedirects(
     return addSecurityHeaders(withCookies(response, redirect))
   }
 
-  // En cualquier otro caso, continuar usando el response compartido
-  return addSecurityHeaders(response)
+  // En cualquier otro caso, continuar reenviando el request (con cookies refrescadas)
+  // para que los Server Components no vuelvan a refrescar el token.
+  return addSecurityHeaders(withCookies(response, NextResponse.next({ request })))
 }
 
 function addSecurityHeaders(response: NextResponse): NextResponse {

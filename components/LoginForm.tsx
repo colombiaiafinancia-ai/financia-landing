@@ -18,6 +18,7 @@ export const LoginForm = () => {
     setIsLoading(true)
 
     const formData = new FormData(e.currentTarget)
+    formData.set('next', new URLSearchParams(window.location.search).get('next') ?? '')
 
     try {
       const result = await logIn(formData)
@@ -25,9 +26,8 @@ export const LoginForm = () => {
       if (result?.error) {
         setError(result.error)
       } else if (result?.success) {
-        // Redirigir al dashboard después del login exitoso
-        router.push(safeLoginDestination(new URLSearchParams(window.location.search).get('next')))
-        router.refresh() // Forzar actualización para que el middleware detecte la sesión
+        // Normalmente la acción redirige sola; esto solo cubre destinos con ancla (#)
+        router.push(safeLoginDestination(result.destination ?? null))
       }
     } catch (error) {
       setError('Error inesperado. Intenta nuevamente')

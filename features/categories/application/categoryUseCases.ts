@@ -62,6 +62,34 @@ export class CategoryUseCases {
     }
   }
 
+  /** Gastos, ingresos y propias del usuario con una sola consulta. */
+  async getAllCategoriesGrouped(userId: string): Promise<{
+    gastos: CategoryDTO[]
+    ingresos: CategoryDTO[]
+    owned: CategoryDTO[]
+  }> {
+    return this.groupCategories(await categoryRepository.findAllForUser(userId), userId)
+  }
+
+  /** Agrupa entidades ya cargadas (solo activas) en gastos, ingresos y propias. */
+  groupCategories(categories: CategoryEntity[], userId: string): {
+    gastos: CategoryDTO[]
+    ingresos: CategoryDTO[]
+    owned: CategoryDTO[]
+  } {
+    const gastos: CategoryDTO[] = []
+    const ingresos: CategoryDTO[] = []
+    const owned: CategoryDTO[] = []
+    for (const entity of categories) {
+      if (!entity.is_active) continue
+      const dto = this.mapEntityToDTO(entity)
+      if (entity.direction === 'gasto') gastos.push(dto)
+      else ingresos.push(dto)
+      if (entity.user_id === userId) owned.push(dto)
+    }
+    return { gastos, ingresos, owned }
+  }
+
   async createCategory(data: CategoryCreationData): Promise<CategoryDTO> {
     const nameValidation = validateCategoryName(data.nombre)
     if (!nameValidation.isValid) {

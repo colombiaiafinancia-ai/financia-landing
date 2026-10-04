@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, memo } from 'react'
 import { Plus, Wallet, TrendingUp, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,7 +28,7 @@ interface AddTransactionFormProps {
   onFirstTransactionCreated?: () => void
 }
 
-export const AddTransactionForm = ({
+const AddTransactionFormInner = ({
   createTransaction,
   onTransactionAdded,
   onboardingStep = null,
@@ -104,7 +104,7 @@ export const AddTransactionForm = ({
     w-full h-full rounded-2xl p-4 sm:p-6 border
     bg-card text-card-foreground border-border
     dark:bg-transparent dark:bg-gradient-to-br dark:from-white/10 dark:to-white/5
-    dark:backdrop-blur-lg dark:border-white/20 dark:text-white
+    dark:border-white/20 dark:text-white
   `
 
   return (
@@ -352,3 +352,6 @@ export const AddTransactionForm = ({
     </div>
   )
 }
+
+/** Memoizado: no se re-renderiza cuando cambia estado del dashboard que no le afecta. */
+export const AddTransactionForm = memo(AddTransactionFormInner)

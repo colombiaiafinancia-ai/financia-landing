@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, memo } from 'react'
 import { useTheme } from 'next-themes'
 import { useCategories } from '@/hooks/useCategories'
 import { CategoryGlyph } from './CategoryGlyph'
@@ -22,7 +22,7 @@ interface CategoryChartProps {
   onCategoryClick?: (category: string) => void
 }
 
-export const CategoryChart = ({
+const CategoryChartInner = ({
   expensesByCategory,
   variant = 'gasto',
   selectedCategory = null,
@@ -127,7 +127,7 @@ export const CategoryChart = ({
         className="
           rounded-lg p-6 h-[400px] flex items-center justify-center
           bg-card border border-border
-          dark:bg-white/10 dark:backdrop-blur-sm dark:border-white/20
+          dark:bg-white/10 dark:border-white/20
         "
       >
         <div className="text-center">
@@ -235,7 +235,7 @@ export const CategoryChart = ({
       className="
         rounded-lg p-4 sm:p-6
         bg-card border border-border text-card-foreground
-        dark:bg-white/10 dark:backdrop-blur-sm dark:border-white/20
+        dark:bg-white/10 dark:border-white/20
       "
     >
       <div className="text-center mb-4 sm:mb-6">
@@ -332,3 +332,6 @@ export const CategoryChart = ({
     </div>
   )
 }
+
+/** Memoizado: no se re-renderiza cuando cambia estado del dashboard que no le afecta. */
+export const CategoryChart = memo(CategoryChartInner)

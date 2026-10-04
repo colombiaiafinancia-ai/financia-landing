@@ -45,6 +45,11 @@ export function getMiddlewareSupabaseClient(
             return request.cookies.getAll()
           },
           setAll(cookiesToSet) {
+            // También en el request: así los Server Components de esta misma
+            // petición reciben el token ya refrescado y no intentan refrescarlo otra vez.
+            cookiesToSet.forEach(({ name, value }) => {
+              request.cookies.set(name, value)
+            })
             if (response) {
               cookiesToSet.forEach(({ name, value, options }) => {
                 response.cookies.set(name, value, options)
@@ -79,34 +84,27 @@ export async function verifyMiddlewareAuth(
   try {
     const client = getMiddlewareSupabaseClient(request, response)
 
-    const { data: { session }, error: sessionError } = await client.auth.getSession()
+    // getClaims refresca la sesión si hace falta y valida el JWT localmente con
+    // las llaves públicas del proyecto (solo cae a getUser() con llaves simétricas).
+    // Antes: getSession() + getUser() = siempre un viaje de red a Auth.
+    const { data, error } = await client.auth.getClaims()
 
-    if (sessionError) {
-      if (isRefreshTokenError(sessionError)) {
+    if (error) {
+      if (isRefreshTokenError(error)) {
         logDebug('Refresh token error in middleware, user not authenticated')
         return { user: null, session: null, error: null }
       }
-      logError('Auth error in middleware', sessionError)
-      return { user: null, session: null, error: sessionError }
+      logError('Auth error in middleware', error)
+      return { user: null, session: null, error }
     }
 
-    if (!session) {
+    const claims = data?.claims
+    if (!claims?.sub) {
       return { user: null, session: null, error: null }
     }
 
-    const { data: { user }, error: userError } = await client.auth.getUser()
-    
-    if (userError) {
-      if (isRefreshTokenError(userError)) {
-        logDebug('Refresh token error in middleware while fetching user')
-        return { user: null, session: null, error: null }
-      }
-      logError('Auth error in middleware (getUser)', userError)
-      return { user: null, session: null, error: userError }
-    }
-
-    logDebug('Auth verification completed', { hasUser: !!user, hasSession: !!session })
-    return { user: user ?? null, session, error: null }
+    logDebug('Auth verification completed', { hasUser: true })
+    return { user: { id: claims.sub, email: claims.email ?? null }, session: null, error: null }
 
   } catch (error) {
     logError('Unexpected error during auth verification', error)

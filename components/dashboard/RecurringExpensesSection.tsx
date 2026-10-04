@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, memo } from 'react'
 import {
   CalendarClock,
   CheckCircle2,
@@ -26,6 +26,10 @@ import { cn } from '@/lib/utils'
 interface RecurringExpensesSectionProps {
   onTransactionCreated?: () => Promise<void> | void
   monthlyIncome?: number
+  userId?: string
+  /** Gastos fijos precargados en el servidor */
+  initialItems?: RecurringExpenseDTO[] | null
+  initialFetchedAt?: number
 }
 
 type FilterStatus = 'all' | RecurringExpenseStatus
@@ -74,9 +78,12 @@ const formatCurrency = (value: number) =>
 
 const parseAmount = (value: string) => Number(value.replace(/[^\d]/g, ''))
 
-export const RecurringExpensesSection = ({
+const RecurringExpensesSectionInner = ({
   onTransactionCreated,
   monthlyIncome = 0,
+  userId,
+  initialItems,
+  initialFetchedAt,
 }: RecurringExpensesSectionProps) => {
   const {
     items,
@@ -90,7 +97,11 @@ export const RecurringExpensesSection = ({
     resume,
     remove,
     generateNow,
-  } = useRecurringExpenses(onTransactionCreated)
+  } = useRecurringExpenses(onTransactionCreated, {
+    userId,
+    initialData: initialItems,
+    initialFetchedAt,
+  })
   const { gastoCategories, ingresoCategories, loading: categoriesLoading } = useCategories()
 
   const [filter, setFilter] = useState<FilterStatus>('active')
@@ -234,7 +245,7 @@ export const RecurringExpensesSection = ({
       className="
         h-full rounded-2xl border border-border bg-card p-4 text-card-foreground
         dark:border-white/20 dark:bg-transparent dark:bg-gradient-to-br
-        dark:from-white/10 dark:to-white/5 dark:text-white dark:backdrop-blur-lg sm:p-6
+        dark:from-white/10 dark:to-white/5 dark:text-white sm:p-6
       "
     >
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -615,3 +626,6 @@ export const RecurringExpensesSection = ({
     </div>
   )
 }
+
+/** Memoizado: no se re-renderiza cuando cambia estado del dashboard que no le afecta. */
+export const RecurringExpensesSection = memo(RecurringExpensesSectionInner)

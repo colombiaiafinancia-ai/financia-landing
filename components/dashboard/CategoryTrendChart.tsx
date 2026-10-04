@@ -12,7 +12,7 @@ import {
 } from 'recharts'
 import { TrendingUp, TrendingDown, Minus, ArrowLeft } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, memo } from 'react'
 import { formatCurrency } from '@/utils/format'
 import type { TransactionDTO } from '@/features/transactions/dto/transactionDTO'
 import {
@@ -31,7 +31,7 @@ interface CategoryTrendChartProps {
   onClose: () => void
 }
 
-export const CategoryTrendChart = ({
+const CategoryTrendChartInner = ({
   categoryName,
   transactionType = 'gasto',
   transactions,
@@ -197,7 +197,7 @@ export const CategoryTrendChart = ({
   }
 
   return (
-    <div className="flex h-full min-h-[420px] flex-col rounded-lg border border-border bg-card p-4 text-card-foreground dark:border-white/20 dark:bg-white/10 dark:backdrop-blur-sm sm:p-6">
+    <div className="flex h-full min-h-[420px] flex-col rounded-lg border border-border bg-card p-4 text-card-foreground dark:border-white/20 dark:bg-white/10 sm:p-6">
       <div className="mb-3 shrink-0 space-y-2 sm:mb-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <button
@@ -328,3 +328,6 @@ export const CategoryTrendChart = ({
     </div>
   )
 }
+
+/** Memoizado: no se re-renderiza cuando cambia estado del dashboard que no le afecta. */
+export const CategoryTrendChart = memo(CategoryTrendChartInner)

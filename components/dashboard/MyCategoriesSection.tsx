@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, memo } from 'react'
 import { Plus, Pencil, Tags, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -145,7 +145,7 @@ function EmptyCategoryState({ type }: { type: CategoryType }) {
   )
 }
 
-export function MyCategoriesSection({ showOnboardingTip = false }: { showOnboardingTip?: boolean }) {
+function MyCategoriesSectionInner({ showOnboardingTip = false }: { showOnboardingTip?: boolean }) {
   const {
     gastoCategories,
     ingresoCategories,
@@ -211,7 +211,7 @@ export function MyCategoriesSection({ showOnboardingTip = false }: { showOnboard
       className={cn(
         'flex h-full min-h-0 w-full flex-col rounded-2xl border border-border bg-card text-card-foreground',
         'dark:border-white/20 dark:bg-transparent dark:bg-gradient-to-br dark:from-white/10 dark:to-white/5',
-        'dark:backdrop-blur-lg dark:text-white'
+        ' dark:text-white'
       )}
     >
       <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-3 pt-4 sm:px-6 sm:pb-3 sm:pt-6">
@@ -492,3 +492,6 @@ export function MyCategoriesSection({ showOnboardingTip = false }: { showOnboard
     </div>
   )
 }
+
+/** Memoizado: no se re-renderiza cuando cambia estado del dashboard que no le afecta. */
+export const MyCategoriesSection = memo(MyCategoriesSectionInner)

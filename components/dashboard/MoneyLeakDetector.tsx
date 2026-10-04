@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, memo } from 'react'
 import {
   AlertTriangle,
   FileText,
@@ -89,7 +89,7 @@ const getCategoryClasses = (status: MoneyLeakCategoryComparison['status']) => {
   }
 }
 
-export const MoneyLeakDetector = ({
+const MoneyLeakDetectorInner = ({
   transactions,
   expensesByCategory,
   weeklyTrend,
@@ -152,7 +152,7 @@ export const MoneyLeakDetector = ({
   )
 
   return (
-    <div className="h-full rounded-2xl border border-border bg-card p-4 text-card-foreground dark:border-white/10 dark:bg-transparent dark:bg-gradient-to-br dark:from-white/5 dark:to-white/2 dark:text-white dark:backdrop-blur-sm sm:p-6">
+    <div className="h-full rounded-2xl border border-border bg-card p-4 text-card-foreground dark:border-white/10 dark:bg-transparent dark:bg-gradient-to-br dark:from-white/5 dark:to-white/2 dark:text-white sm:p-6">
       <div className="mb-5 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="mb-2 flex items-center gap-2">
@@ -404,3 +404,6 @@ export const MoneyLeakDetector = ({
     </div>
   )
 }
+
+/** Memoizado: no se re-renderiza cuando cambia estado del dashboard que no le afecta. */
+export const MoneyLeakDetector = memo(MoneyLeakDetectorInner)

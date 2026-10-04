@@ -1,7 +1,8 @@
 'use client'
 
+import { memo } from 'react'
+
 import { TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
-import { motion } from 'framer-motion'
 
 interface BalanceMetricProps {
   totalIncome: number
@@ -10,7 +11,7 @@ interface BalanceMetricProps {
   availableBalance?: number
 }
 
-export const BalanceMetric = ({
+const BalanceMetricInner = ({
   totalIncome,
   spentAmount,
   initialBalance = 0,
@@ -29,9 +30,7 @@ export const BalanceMetric = ({
     }).format(value)
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+    <div
       className="
         relative overflow-hidden rounded-2xl p-4 sm:p-6 lg:p-8 
 
@@ -41,7 +40,7 @@ export const BalanceMetric = ({
         /* DARK (idéntico a tu versión original) */
         dark:bg-transparent
         dark:bg-gradient-to-br dark:from-white/10 dark:to-white/5
-        dark:backdrop-blur-lg
+       
         dark:border-white/20
         dark:text-white
       "
@@ -228,6 +227,9 @@ export const BalanceMetric = ({
           </div>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }
+
+/** Memoizado: no se re-renderiza cuando cambia estado del dashboard que no le afecta. */
+export const BalanceMetric = memo(BalanceMetricInner)

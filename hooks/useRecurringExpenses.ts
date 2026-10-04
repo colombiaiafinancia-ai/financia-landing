@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { recurringExpenseUseCases } from '@/features/recurring-expenses/application/recurringExpenseUseCases'
 import type {
   CreateRecurringExpenseDTO,
@@ -8,17 +8,32 @@ import type {
   UpdateRecurringExpenseDTO,
 } from '@/features/recurring-expenses/dto/recurringExpenseDTO'
 import { getCurrentUser } from '@/services/supabase'
-import type { User } from '@supabase/supabase-js'
+import {
+  dashboardCacheKey,
+  isStale,
+  resolveInitial,
+  writeDashboardCache,
+} from '@/lib/dashboard/client-cache'
 
-export function useRecurringExpenses(onTransactionCreated?: () => Promise<void> | void) {
-  const [user, setUser] = useState<User | null>(null)
-  const [items, setItems] = useState<RecurringExpenseDTO[]>([])
-  const [loading, setLoading] = useState(true)
+export function useRecurringExpenses(
+  onTransactionCreated?: () => Promise<void> | void,
+  options: { userId?: string; initialData?: RecurringExpenseDTO[] | null; initialFetchedAt?: number } = {}
+) {
+  const cacheKey = options.userId ? dashboardCacheKey('recurring', options.userId) : null
+  const [initial] = useState(() =>
+    resolveInitial<RecurringExpenseDTO[]>(cacheKey, options.initialData, options.initialFetchedAt)
+  )
+  const [user, setUser] = useState<{ id: string } | null>(options.userId ? { id: options.userId } : null)
+  const [items, setItems] = useState<RecurringExpenseDTO[]>(initial.data ?? [])
+  const [loading, setLoading] = useState(!initial.data)
   const [error, setError] = useState<string | null>(null)
+  const skipInitialFetch = useRef(initial.data != null && !isStale(initial.at))
+  const hasDataRef = useRef(initial.data != null)
 
   useEffect(() => {
+    if (options.userId) return
     getCurrentUser().then(setUser).catch(() => setUser(null))
-  }, [])
+  }, [options.userId])
 
   const fetchItems = useCallback(async () => {
     if (!user?.id) {
@@ -28,9 +43,12 @@ export function useRecurringExpenses(onTransactionCreated?: () => Promise<void> 
     }
 
     try {
-      setLoading(true)
+      if (!hasDataRef.current) setLoading(true)
       setError(null)
-      setItems(await recurringExpenseUseCases.getAll(user.id))
+      const data = await recurringExpenseUseCases.getAll(user.id)
+      writeDashboardCache(dashboardCacheKey('recurring', user.id), data)
+      hasDataRef.current = true
+      setItems(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudieron cargar los gastos fijos')
     } finally {
@@ -39,6 +57,10 @@ export function useRecurringExpenses(onTransactionCreated?: () => Promise<void> 
   }, [user?.id])
 
   useEffect(() => {
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false
+      return
+    }
     void fetchItems()
   }, [fetchItems])
 

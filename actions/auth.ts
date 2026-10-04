@@ -4,6 +4,7 @@ import { createSupabaseClient } from "@/utils/supabase/server";
 import { getSupabaseAdminClient } from "@/services/supabase/admin";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { safeLoginDestination } from "@/lib/whatsapp/identity";
 
 export async function logIn(formData: FormData) {
   const email = formData.get("email") as string;
@@ -51,14 +52,21 @@ export async function logIn(formData: FormData) {
       return { error: "Error al iniciar sesión. Verifica tus datos" };
     }
 
-    // ✅ Login exitoso - El middleware se encargará de la redirección
-    return { success: "Login exitoso" };
   } catch (error) {
     console.error('logIn catch error:', error)
     return {
       error: "Error del servidor. Intenta más tarde"
     };
   }
+
+  // ✅ Login exitoso: redirigir desde la acción para que el dashboard llegue
+  // en la misma respuesta (un solo viaje, sin push + refresh en el cliente).
+  // Los destinos con hash los resuelve el cliente para conservar el ancla.
+  const destination = safeLoginDestination(formData.get("next") as string | null);
+  if (destination.includes("#")) {
+    return { success: "Login exitoso", destination };
+  }
+  redirect(destination);
 }
 
 export async function signUp(formData: FormData) {

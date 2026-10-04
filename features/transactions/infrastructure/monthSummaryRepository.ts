@@ -44,6 +44,19 @@ export class MonthSummaryRepository {
     if (error) throw new Error(`Error fetching monthly summaries: ${error.message}`)
     return data || []
   }
+  /** Resúmenes de un rango de meses en una sola consulta (en vez de una por mes). */
+  async getMonthSummariesFrom(userId: string, fromMonth: string): Promise<{ month: string; expense_total: number }[]> {
+    const client = await this.getClient()
+    const { data, error } = await client
+      .from('user_month_summary')
+      .select('month, expense_total')
+      .eq('user_id', userId)
+      .gte('month', fromMonth)
+
+    if (error) throw new Error(`Error fetching monthly summaries: ${error.message}`)
+    return data || []
+  }
+
   async getMonthSummary(userId: string, monthDate: string): Promise<MonthSummary | null> {
     const client = await this.getClient()
     const { data, error } = await client

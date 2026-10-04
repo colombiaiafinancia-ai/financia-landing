@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, memo } from 'react'
 import { Trash2, Filter, Search, TrendingUp, TrendingDown, Pencil, Wallet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,7 +28,9 @@ interface TransactionsTableImprovedProps {
   loading?: boolean
 }
 
-export const TransactionsTableImproved = ({
+const PAGE_SIZE = 50
+
+const TransactionsTableImprovedInner = ({
   transactions,
   onTransactionDeleted,
   onDeleteTransaction,
@@ -130,6 +132,17 @@ export const TransactionsTableImproved = ({
 
     return filtered
   }, [localTransactions, searchTerm, typeFilter, categoryFilter, sortBy, sortOrder])
+
+  // Render incremental: con historiales largos pintar todo bloquea el hilo principal
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [searchTerm, typeFilter, categoryFilter, sortBy, sortOrder])
+  const visibleTransactions = useMemo(
+    () => filteredTransactions.slice(0, visibleCount),
+    [filteredTransactions, visibleCount]
+  )
+  const hiddenCount = filteredTransactions.length - visibleTransactions.length
 
   const handleDeleteClick = (transaction: TransactionDTO) => {
     setTransactionToDelete(transaction)
@@ -260,7 +273,7 @@ export const TransactionsTableImproved = ({
     bg-card text-card-foreground border-border
     dark:bg-transparent
     dark:bg-gradient-to-br dark:from-white/10 dark:to-white/5
-    dark:backdrop-blur-lg
+   
     dark:border-white/20
     dark:text-white
   `
@@ -423,7 +436,7 @@ export const TransactionsTableImproved = ({
           </div>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
-            {filteredTransactions.map((transaction) => (
+            {visibleTransactions.map((transaction) => (
               <div
                 key={transaction.id}
                 className="
@@ -513,6 +526,17 @@ export const TransactionsTableImproved = ({
                 </div>
               </div>
             ))}
+            {hiddenCount > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setVisibleCount((n) => n + PAGE_SIZE)}
+                className="w-full border-border text-foreground hover:bg-muted dark:border-white/20 dark:text-white dark:hover:bg-white/10"
+              >
+                Ver más ({hiddenCount} restantes)
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -742,3 +766,6 @@ export const TransactionsTableImproved = ({
     </>
   )
 }
+
+/** Memoizado: no se re-renderiza cuando cambia estado del dashboard que no le afecta. */
+export const TransactionsTableImproved = memo(TransactionsTableImprovedInner)

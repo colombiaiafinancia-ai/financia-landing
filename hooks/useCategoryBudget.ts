@@ -1,7 +1,13 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { categoryBudgetService, type CategoryBudgetWithSpent } from '@/features/budgets/application/categoryBudgetService'
+import {
+  dashboardCacheKey,
+  isStale,
+  resolveInitial,
+  writeDashboardCache,
+} from '@/lib/dashboard/client-cache'
 
 export type CategoryBudgetSummaryItem = {
   categoryId: string
@@ -30,14 +36,28 @@ interface UseCategoryBudgetResult {
   refetch: () => Promise<void>
 }
 
-export const useCategoryBudget = (userId: string, refreshKey: number = 0): UseCategoryBudgetResult => {
-  const [budgets, setBudgets] = useState<CategoryBudgetWithSpent[]>([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
+export const useCategoryBudget = (
+  userId: string,
+  refreshKey: number = 0,
+  initial?: { month: string; items: CategoryBudgetWithSpent[]; fetchedAt?: number } | null
+): UseCategoryBudgetResult => {
   const currentMonth =
     new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).slice(0, 7) + '-01'
+  const cacheKey = userId ? dashboardCacheKey('budgets', userId, currentMonth) : null
+
+  const [initialState] = useState(() =>
+    resolveInitial<CategoryBudgetWithSpent[]>(
+      cacheKey,
+      initial && initial.month === currentMonth ? initial.items : null,
+      initial?.fetchedAt
+    )
+  )
+  const [budgets, setBudgets] = useState<CategoryBudgetWithSpent[]>(initialState.data ?? [])
+  const [loading, setLoading] = useState(!initialState.data)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const hasDataRef = useRef(initialState.data != null)
+  const skipInitialFetch = useRef(initialState.data != null && !isStale(initialState.at))
 
   const fetchBudgets = useCallback(async (showLoading = true) => {
     if (!userId) {
@@ -51,6 +71,8 @@ export const useCategoryBudget = (userId: string, refreshKey: number = 0): UseCa
       else setRefreshing(true)
 
       const data = await categoryBudgetService.getUserBudgetsWithSpent(userId, currentMonth)
+      writeDashboardCache(dashboardCacheKey('budgets', userId, currentMonth), data)
+      hasDataRef.current = true
       setBudgets(data)
       setError(null)
     } catch (err) {
@@ -62,7 +84,13 @@ export const useCategoryBudget = (userId: string, refreshKey: number = 0): UseCa
   }, [userId, currentMonth])
 
   useEffect(() => {
-    fetchBudgets(true)
+    // Con datos precargados y frescos no hace falta la primera consulta
+    if (skipInitialFetch.current) {
+      skipInitialFetch.current = false
+      return
+    }
+    // Si ya hay datos (precarga o caché) se refresca sin loader
+    fetchBudgets(!hasDataRef.current)
   }, [fetchBudgets, refreshKey])
 
   const saveCategoryBudget = async (categoryId: string, amount: number) => {

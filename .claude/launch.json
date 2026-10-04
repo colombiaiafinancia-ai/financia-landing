@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "financia-prod",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "set -a; . ./.env; set +a; export SUPABASE_URL=${SUPABASE_URL:-$NEXT_PUBLIC_SUPABASE_URL} SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-$NEXT_PUBLIC_SUPABASE_ANON_KEY}; npx next start -p 3200"
+      ],
+      "port": 3200
+    }
+  ]
+}

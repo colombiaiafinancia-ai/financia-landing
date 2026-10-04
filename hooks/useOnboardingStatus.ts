@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { User } from '@supabase/supabase-js'
+import type { DashboardUser } from '@/lib/dashboard/types'
 import { createSupabaseClient } from '@/utils/supabase/client'
 import {
   type OnboardingStatus,
@@ -16,9 +16,18 @@ export const ONBOARDING_STATUS_COMPLETADO: OnboardingStatus = 'completado'
 /**
  * Onboarding desde `public.user_profiles.onboarding` (tipo enum `onboarding_status`).
  */
-export function useOnboardingStatus(user: User | null) {
-  const [status, setStatus] = useState<OnboardingStatus | null>(null)
-  const [profileLoading, setProfileLoading] = useState(true)
+type OnboardingUser = Pick<DashboardUser, 'id' | 'email' | 'user_metadata'>
+
+export function useOnboardingStatus(
+  user: OnboardingUser | null,
+  /** Valor de `user_profiles.onboarding` ya leído en el servidor. */
+  initialStatus?: string | null
+) {
+  const hasInitialStatus = initialStatus != null && isOnboardingStatus(String(initialStatus))
+  const [status, setStatus] = useState<OnboardingStatus | null>(
+    hasInitialStatus ? (initialStatus as OnboardingStatus) : null
+  )
+  const [profileLoading, setProfileLoading] = useState(!hasInitialStatus)
 
   useEffect(() => {
     if (!user?.id) {
@@ -26,6 +35,8 @@ export function useOnboardingStatus(user: User | null) {
       setProfileLoading(true)
       return
     }
+    // El perfil ya vino del servidor: no hace falta consultarlo otra vez
+    if (hasInitialStatus) return
 
     let cancelled = false
     const uid = user.id
@@ -98,6 +109,7 @@ export function useOnboardingStatus(user: User | null) {
       cancelled = true
     }
   }, [
+    hasInitialStatus,
     user?.id,
     user?.email,
     user?.user_metadata?.full_name,

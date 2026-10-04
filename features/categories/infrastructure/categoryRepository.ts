@@ -42,6 +42,19 @@ export class CategoryRepository {
     return data || []
   }
 
+  /** Globales + propias, incluidas las inactivas (para nombrar transacciones antiguas). */
+  async findAllVisibleForUser(userId: string): Promise<CategoryEntity[]> {
+    const client = await this.getClient()
+    const { data, error } = await client
+      .from('categories')
+      .select('*')
+      .or(`user_id.is.null,user_id.eq.${userId}`)
+      .order('name')
+
+    if (error) throw new Error(`Error fetching categories: ${error.message}`)
+    return data || []
+  }
+
   async findByDirection(userId: string, direction: 'gasto' | 'ingreso'): Promise<CategoryEntity[]> {
     const client = await this.getClient()
     const { data, error } = await client
@@ -66,6 +79,25 @@ export class CategoryRepository {
 
     if (error) throw new Error(`Error fetching category: ${error.message}`)
     return data
+  }
+
+  /** Una sola consulta para varias categorías (evita N+1 al mapear transacciones). */
+  async findByIds(ids: string[]): Promise<CategoryEntity[]> {
+    const uniqueIds = [...new Set(ids.filter(Boolean))]
+    if (uniqueIds.length === 0) return []
+    const client = await this.getClient()
+    const { data, error } = await client
+      .from('categories')
+      .select('*')
+      .in('id', uniqueIds)
+
+    if (error) throw new Error(`Error fetching categories: ${error.message}`)
+    return data || []
+  }
+
+  async findNameMap(ids: string[]): Promise<Map<string, string>> {
+    const categories = await this.findByIds(ids)
+    return new Map(categories.map((c) => [c.id, c.name]))
   }
 
   async create(data: CreateCategoryData): Promise<CategoryEntity> {

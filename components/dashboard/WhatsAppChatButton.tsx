@@ -1,7 +1,8 @@
 'use client'
 
+import { memo } from 'react'
+
 import { MessageCircle } from 'lucide-react'
-import { motion } from 'framer-motion'
 import {
   OnboardingVignette,
   OnboardingActionTarget,
@@ -31,10 +32,7 @@ const WhatsAppChatButton = ({
   const isTourStep = onboardingStep === 'whatsapp'
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+    <div
       className={cn(
         'rounded-xl border p-6 shadow-xl',
         isTourStep
@@ -73,41 +71,37 @@ const WhatsAppChatButton = ({
 
           {isTourStep ? (
             <OnboardingActionTarget active highContrast className="w-full">
-              <motion.a
+              <a
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 data-onboarding-target="whatsapp-chat"
                 onClick={() => onWhatsAppOpened?.()}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 className={cn(
-                  'inline-flex items-center rounded-lg border border-[#25D366]/40 bg-white px-4 py-2 text-sm font-medium text-[#14532d] transition-colors hover:bg-white/95',
+                  'inline-flex items-center rounded-lg transition hover:scale-[1.02] active:scale-[0.98] border border-[#25D366]/40 bg-white px-4 py-2 text-sm font-medium text-[#14532d] hover:bg-white/95',
                   onboardingTargetButtonClass('whatsapp')
                 )}
               >
                 <MessageCircle className="mr-2 h-4 w-4 text-[#25D366]" />
                 Iniciar Chat
-              </motion.a>
+              </a>
             </OnboardingActionTarget>
           ) : (
-            <motion.a
+            <a
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => onWhatsAppOpened?.()}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="inline-flex items-center rounded-lg border border-white/30 bg-white px-4 py-2 text-sm font-medium text-[#128C7E] transition-colors hover:bg-white/90"
+              className="inline-flex items-center rounded-lg transition hover:scale-[1.02] active:scale-[0.98] border border-white/30 bg-white px-4 py-2 text-sm font-medium text-[#128C7E] hover:bg-white/90"
             >
               <MessageCircle className="mr-2 h-4 w-4" />
               Iniciar Chat
-            </motion.a>
+            </a>
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
 
-export default WhatsAppChatButton
+export default memo(WhatsAppChatButton)

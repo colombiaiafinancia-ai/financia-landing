@@ -1,4 +1,4 @@
-import { categoryRepository } from '@/features/categories/infrastructure/categoryRepository'
+import { categoryRepository, type CategoryEntity } from '@/features/categories/infrastructure/categoryRepository'
 import { transactionRepository } from '@/features/transactions/infrastructure/transactionRepository'
 import {
   buildRecurringTransactionMeta,
@@ -17,9 +17,16 @@ import type {
 } from '../dto/recurringExpenseDTO'
 
 export class RecurringExpenseUseCases {
-  async getAll(userId: string): Promise<RecurringExpenseDTO[]> {
+  async getAll(userId: string, categories?: Promise<CategoryEntity[]>): Promise<RecurringExpenseDTO[]> {
+    if (categories) {
+      // Con categorías ya solicitadas, ambas consultas corren en paralelo
+      const [rows, all] = await Promise.all([recurringExpenseRepository.findAllByUser(userId), categories])
+      const names = new Map(all.map((c) => [c.id, c.name]))
+      return Promise.all(rows.map((row) => this.mapEntityToDTO(row, names)))
+    }
     const rows = await recurringExpenseRepository.findAllByUser(userId)
-    return Promise.all(rows.map((row) => this.mapEntityToDTO(row)))
+    const names = await categoryRepository.findNameMap(rows.map((row) => row.category_id))
+    return Promise.all(rows.map((row) => this.mapEntityToDTO(row, names)))
   }
 
   async create(userId: string, data: CreateRecurringExpenseDTO): Promise<RecurringExpenseDTO> {
@@ -149,8 +156,13 @@ export class RecurringExpenseUseCases {
     return this.mapEntityToDTO(row)
   }
 
-  private async mapEntityToDTO(row: RecurringExpenseEntity): Promise<RecurringExpenseDTO> {
-    const category = await categoryRepository.findById(row.category_id)
+  private async mapEntityToDTO(
+    row: RecurringExpenseEntity,
+    categoryNames?: Map<string, string>
+  ): Promise<RecurringExpenseDTO> {
+    const category = categoryNames
+      ? { name: categoryNames.get(row.category_id) }
+      : await categoryRepository.findById(row.category_id)
     return {
       id: row.id,
       userId: row.user_id,

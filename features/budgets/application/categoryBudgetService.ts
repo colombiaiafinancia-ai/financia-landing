@@ -1,6 +1,6 @@
 import { categoryBudgetRepository } from '../infrastructure/categoryBudgetRepository'
 import { monthSummaryRepository } from '@/features/transactions/infrastructure/monthSummaryRepository'
-import { categoryRepository } from '@/features/categories/infrastructure/categoryRepository'
+import { categoryRepository, type CategoryEntity } from '@/features/categories/infrastructure/categoryRepository'
 
 export interface CategoryBudgetWithSpent {
   categoryId: string
@@ -13,14 +13,18 @@ export interface CategoryBudgetWithSpent {
 }
 
 export class CategoryBudgetService {
-  async getUserBudgetsWithSpent(userId: string, monthDate: string): Promise<CategoryBudgetWithSpent[]> {
-    const budgets = await categoryBudgetRepository.findAllByUser(userId)
-    if (budgets.length === 0) return []
-
-    const [monthCategoryExpenses, allCategories] = await Promise.all([
+  async getUserBudgetsWithSpent(
+    userId: string,
+    monthDate: string,
+    categories?: Promise<CategoryEntity[]>
+  ): Promise<CategoryBudgetWithSpent[]> {
+    // Las tres consultas son independientes: se lanzan en paralelo
+    const [budgets, monthCategoryExpenses, allCategories] = await Promise.all([
+      categoryBudgetRepository.findAllByUser(userId),
       monthSummaryRepository.getMonthCategoryExpenses(userId, monthDate),
-      categoryRepository.findAllForUser(userId)
+      categories ?? categoryRepository.findAllForUser(userId)
     ])
+    if (budgets.length === 0) return []
 
     const expenseMap = monthCategoryExpenses.reduce((map, item) => {
       map.set(item.category_id, Number(item.total) || 0)

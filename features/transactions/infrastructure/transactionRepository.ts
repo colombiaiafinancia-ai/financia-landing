@@ -27,6 +27,10 @@ export interface CreateTransactionData {
   meta?: Record<string, any>
 }
 
+/** Columnas que usa la UI; evita traer campos que no se muestran. */
+const TRANSACTION_LIST_COLUMNS =
+  'id,user_id,occurred_at,direction,status,amount,category_id,description,merchant,meta,created_at,updated_at'
+
 export class TransactionRepository {
   private async getClient() {
     if (typeof window !== 'undefined') {
@@ -40,12 +44,25 @@ export class TransactionRepository {
     const client = await this.getClient()
     const { data, error } = await client
       .from('transactions')
-      .select('*')
+      .select(TRANSACTION_LIST_COLUMNS)
       .eq('user_id', userId)
       .order('occurred_at', { ascending: false })
 
     if (error) throw new Error(`Error fetching transactions: ${error.message}`)
     return data || []
+  }
+
+  async findById(id: string, userId: string): Promise<TransactionEntity | null> {
+    const client = await this.getClient()
+    const { data, error } = await client
+      .from('transactions')
+      .select(TRANSACTION_LIST_COLUMNS)
+      .eq('id', id)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (error) throw new Error(`Error fetching transaction: ${error.message}`)
+    return data
   }
 
   async findByUserAndPeriod(

@@ -12,7 +12,7 @@ import {
 } from 'recharts'
 import { TrendingUp, TrendingDown, Minus, Loader2 } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, memo } from 'react'
 import { formatCurrency } from '@/utils/format'
 
 interface WeeklyData {
@@ -45,7 +45,7 @@ interface WeeklyTrendChartProps {
   onMonthClick?: (month: string) => void
 }
 
-export const WeeklyTrendChart = ({ 
+const WeeklyTrendChartInner = ({ 
   title = 'Tendencia de Gastos',
   variant = 'gasto',
   weeklyData, 
@@ -198,7 +198,7 @@ export const WeeklyTrendChart = ({
   }
 
   return (
-    <div className="rounded-lg p-6 h-full bg-card border border-border text-card-foreground dark:bg-white/10 dark:backdrop-blur-sm dark:border-white/20">
+    <div className="rounded-lg p-6 h-full bg-card border border-border text-card-foreground dark:bg-white/10 dark:border-white/20">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
         <div>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-white">{title}</h3>
@@ -324,3 +324,6 @@ export const WeeklyTrendChart = ({
     </div>
   )
 }
+
+/** Memoizado: no se re-renderiza cuando cambia estado del dashboard que no le afecta. */
+export const WeeklyTrendChart = memo(WeeklyTrendChartInner)

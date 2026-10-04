@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, memo } from 'react'
 import { Inbox, MessageCircle, RefreshCw, Send, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,7 +29,7 @@ const wrapperClass = `
   bg-card text-card-foreground border-border
   dark:bg-transparent
   dark:bg-gradient-to-br dark:from-white/10 dark:to-white/5
-  dark:backdrop-blur-lg
+ 
   dark:border-white/20
   dark:text-white
 `
@@ -180,7 +180,7 @@ function AdminView({ userId, userEmail, userName }: { userId?: string; userEmail
   )
 }
 
-export function FeedbackForm({ userId, userEmail, userName, isSuperUser }: FeedbackFormProps) {
+function FeedbackFormInner({ userId, userEmail, userName, isSuperUser }: FeedbackFormProps) {
   const [topic, setTopic] = useState<'idea' | 'problema' | 'otro'>('idea')
   const [message, setMessage] = useState('')
   const [contactEmail, setContactEmail] = useState(userEmail || '')
@@ -350,3 +350,6 @@ export function FeedbackForm({ userId, userEmail, userName, isSuperUser }: Feedb
     </div>
   )
 }
+
+/** Memoizado: no se re-renderiza cuando cambia estado del dashboard que no le afecta. */
+export const FeedbackForm = memo(FeedbackFormInner)

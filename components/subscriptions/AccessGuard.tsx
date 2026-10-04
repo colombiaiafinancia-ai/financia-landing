@@ -17,7 +17,9 @@ export function AccessGuard({ userId, profile, children }: {
     const supabase = createSupabaseClient()
     let disposed = false
     let currentProfile = profile
+    let lastCheck = Date.now()
     const check = async () => {
+      lastCheck = Date.now()
       if (!hasPlatformAccess(currentProfile)) {
         setAllowed(false)
       }
@@ -30,17 +32,22 @@ export function AccessGuard({ userId, profile, children }: {
       setAllowed(access)
       if (!access) router.replace('/subscribe')
     }
-    const interval = window.setInterval(check, 30_000)
+    // El vencimiento del trial tiene su propio timeout exacto; esto cubre cambios externos (pagos, cancelaciones)
+    const interval = window.setInterval(check, 5 * 60_000)
     // Recheck at expiry, even when the dashboard stays open. Cap long timeouts.
     const remaining = profile.trial_ends_at ? Date.parse(profile.trial_ends_at) - Date.now() : 0
     const timeout = remaining > 0 && remaining < 2_147_483_647
       ? window.setTimeout(check, remaining + 1) : undefined
-    window.addEventListener('focus', check)
+    // Al volver a la pestaña: re-chequear como máximo cada 60s (antes: en cada focus)
+    const onFocus = () => {
+      if (Date.now() - lastCheck >= 60_000) void check()
+    }
+    window.addEventListener('focus', onFocus)
     return () => {
       disposed = true
       window.clearInterval(interval)
       window.clearTimeout(timeout)
-      window.removeEventListener('focus', check)
+      window.removeEventListener('focus', onFocus)
     }
   }, [profile, router, userId])
 
