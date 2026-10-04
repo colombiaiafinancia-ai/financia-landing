@@ -636,7 +636,8 @@ export default function DashboardClient({ initialData }: { initialData: Dashboar
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <Link
-                href="/"
+                href="/dashboard"
+                prefetch={false}
                 className="text-xl font-bold text-foreground transition-colors hover:text-primary sm:text-2xl"
               >
                 FinancIA
@@ -694,6 +695,7 @@ export default function DashboardClient({ initialData }: { initialData: Dashboar
                   >
                     <Link
                       href="/profile"
+                      prefetch={false}
                       onClick={() => setAccountMenuOpen(false)}
                       className="flex items-start gap-3 rounded-md p-1 transition-colors hover:bg-accent dark:hover:bg-white/10"
                     >
@@ -832,6 +834,7 @@ export default function DashboardClient({ initialData }: { initialData: Dashboar
                         </p>
                         <Link
                           href="/admin"
+                          prefetch={false}
                           onClick={() => setAccountMenuOpen(false)}
                           className="flex w-full items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
                         >
@@ -842,6 +845,7 @@ export default function DashboardClient({ initialData }: { initialData: Dashboar
                     ) : (
                       <Link
                         href="/subscribe"
+                        prefetch={false}
                         onClick={() => setAccountMenuOpen(false)}
                         className={cn(
                           'block w-full rounded-md bg-[#0D1D35] px-3 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-[#0D1D35]/90 dark:bg-[#5ce1e6] dark:text-[#0D1D35]',

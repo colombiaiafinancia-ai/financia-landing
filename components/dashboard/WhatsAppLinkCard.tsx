@@ -15,6 +15,8 @@ export function WhatsAppLinkCard({ onVerified, onContinueWeb }: { onVerified?: (
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const hydrated = useRef(false)
+  const sectionRef = useRef<HTMLElement | null>(null)
+  const [inView, setInView] = useState(false)
   const notifiedVersion = useRef<number | null>(null)
   const refresh = useCallback(async () => {
     const response = await fetch('/api/whatsapp/link/status', { cache: 'no-store' })
@@ -32,14 +34,46 @@ export function WhatsAppLinkCard({ onVerified, onContinueWeb }: { onVerified?: (
       notifiedVersion.current = profile.whatsapp_link_version; onVerified()
     }
   }, [onVerified, state, profile])
-  useEffect(() => { refresh().catch(e => { setError(e.message); setState('error') }) }, [refresh])
+  // La tarjeta está al final del dashboard: solo se consulta la API (una función de Vercel)
+  // cuando el usuario llega a verla, no en cada carga de la página.
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el || inView) return
+    if (typeof IntersectionObserver === 'undefined') { setInView(true); return }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some(e => e.isIntersecting)) { setInView(true); observer.disconnect() }
+    }, { rootMargin: '300px' })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [inView])
+  useEffect(() => {
+    if (!inView) return
+    refresh().catch(e => { setError(e.message); setState('error') })
+  }, [refresh, inView])
   useEffect(() => {
     if (state !== 'waiting' && state !== 'conflict') return
-    const poll = () => { if (!document.hidden) refresh().catch(e => setError(e.message)) }
-    const timer = setInterval(poll, 3000)
-    window.addEventListener('focus', poll)
-    return () => { clearInterval(timer); window.removeEventListener('focus', poll) }
-  }, [state, refresh])
+    // Sondeo con espera creciente (3s → 10s) y solo con la pestaña visible;
+    // se detiene cuando el código vence en vez de seguir consultando indefinidamente.
+    let attempt = 0
+    let timer: number | undefined
+    let stopped = false
+    const expiresAt = code ? Date.parse(code.expiresAt) : NaN
+    const schedule = () => {
+      if (stopped) return
+      const delay = Math.min(3000 + attempt * 1000, 10_000)
+      timer = window.setTimeout(tick, delay)
+    }
+    const tick = () => {
+      attempt += 1
+      const expired = Number.isFinite(expiresAt) && Date.now() > expiresAt
+      if (!document.hidden) refresh().catch(e => setError(e.message))
+      if (!expired) schedule()
+    }
+    const onFocus = () => { if (!document.hidden) refresh().catch(e => setError(e.message)) }
+    schedule()
+    window.addEventListener('focus', onFocus)
+    return () => { stopped = true; window.clearTimeout(timer); window.removeEventListener('focus', onFocus) }
+  }, [state, refresh, code])
   const save = async () => {
     const response = await fetch('/api/whatsapp/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ hasUsername, username }) })
@@ -60,7 +94,7 @@ export function WhatsAppLinkCard({ onVerified, onContinueWeb }: { onVerified?: (
     } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
   }
   const linked = !!profile?.whatsapp_verified_at
-  return <section id="whatsapp" className="rounded-xl border border-green-700/40 bg-green-950 p-6 text-white" data-onboarding-target="whatsapp-chat">
+  return <section ref={sectionRef} id="whatsapp" className="rounded-xl border border-green-700/40 bg-green-950 p-6 text-white" data-onboarding-target="whatsapp-chat">
     <h3 className="text-xl font-semibold">{linked ? 'Tu WhatsApp en FinancIA' : 'Vincula tu WhatsApp'}</h3>
     <p className="my-2 text-sm text-white/80">{linked ? 'Tu cuenta está vinculada.' : 'Para usar el bot de WhatsApp y recibir recordatorios, conecta tu número. Solo se hace una vez.'}</p>
     {!linked && <ol className="my-3 list-decimal space-y-1 pl-5 text-sm text-white/90">

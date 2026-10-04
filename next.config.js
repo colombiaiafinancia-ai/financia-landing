@@ -13,6 +13,22 @@ const nextConfig = {
     optimizePackageImports: ['lucide-react', 'recharts', 'framer-motion'],
   },
 
+  // Headers de seguridad para todas las rutas (antes los ponía el proxy en cada petición)
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'origin-when-cross-origin' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
+        ],
+      },
+    ]
+  },
+
   webpack: (config, { dev, isServer }) => {
     // Desactivar caché de Webpack en desarrollo para evitar errores de ENOENT
     if (dev) {

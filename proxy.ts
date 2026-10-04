@@ -18,16 +18,22 @@ export async function proxy(request: NextRequest) {
   const isAuthPage = isAuthRoute(pathname)
   const isLandingPage = pathname === '/'
 
-// Reset-password: dejar pasar sin verificar auth para permitir el flujo del link del correo.
+  // Reset-password: dejar pasar sin verificar auth para permitir el flujo del link del correo.
   if (pathname === '/reset-password') {
-    return addSecurityHeaders(NextResponse.next())
+    return NextResponse.next()
   }
 
- 
-
-  
   if (!needsAuth && !isAuthPage && !isLandingPage) {
-    return addSecurityHeaders(NextResponse.next())
+    return NextResponse.next()
+  }
+
+  // Sin cookie de sesión de Supabase no hay nada que verificar: respuesta inmediata
+  // (la mayoría de visitas a la landing/login), sin crear cliente ni tocar Auth.
+  const hasSessionCookie = request.cookies
+    .getAll()
+    .some((c) => c.name.startsWith('sb-') && c.name.includes('-auth-token'))
+  if (!hasSessionCookie) {
+    return needsAuth ? NextResponse.redirect(new URL('/login', request.url)) : NextResponse.next()
   }
 
   // Response compartido para que Supabase pueda setear cookies (refresh, etc.)
@@ -54,8 +60,8 @@ export async function proxy(request: NextRequest) {
       .eq('user_id', authResult.user!.id)
       .maybeSingle()
     if (error || !hasPlatformAccess(profile)) {
-      return addSecurityHeaders(withCookies(response,
-        NextResponse.redirect(new URL('/subscribe', request.url))))
+      return withCookies(response,
+        NextResponse.redirect(new URL('/subscribe', request.url)))
     }
   }
 
@@ -78,33 +84,23 @@ function handleAuthRedirects(
   ) {
     const dashboardUrl = new URL(safeLoginDestination(request.nextUrl.searchParams.get('next')), request.url)
     const redirect = NextResponse.redirect(dashboardUrl)
-    return addSecurityHeaders(withCookies(response, redirect))
+    return withCookies(response, redirect)
   }
 
   // Usuario NO autenticado en rutas protegidas → login
   if (!isAuthenticated && isProtectedRoute(pathname)) {
     const loginUrl = new URL('/login', request.url)
     const redirect = NextResponse.redirect(loginUrl)
-    return addSecurityHeaders(withCookies(response, redirect))
+    return withCookies(response, redirect)
   }
 
   // En cualquier otro caso, continuar reenviando el request (con cookies refrescadas)
   // para que los Server Components no vuelvan a refrescar el token.
-  return addSecurityHeaders(withCookies(response, NextResponse.next({ request })))
+  return withCookies(response, NextResponse.next({ request }))
 }
 
-function addSecurityHeaders(response: NextResponse): NextResponse {
-  // Headers de seguridad
-  response.headers.set('X-Frame-Options', 'DENY')
-  response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('Referrer-Policy', 'origin-when-cross-origin')
-  response.headers.set('X-XSS-Protection', '1; mode=block')
-
-  // Headers de rendimiento
-  response.headers.set('X-DNS-Prefetch-Control', 'on')
-
-  return response
-}
+// Los headers de seguridad se definen en next.config.js (`headers()`) para todas las rutas,
+// sin ejecutar este proxy en páginas que no necesitan verificar la sesión.
 
 function withCookies(from: NextResponse, to: NextResponse) {
   from.cookies.getAll().forEach((c) => {
@@ -113,6 +109,19 @@ function withCookies(from: NextResponse, to: NextResponse) {
   return to
 }
 
+// Solo las rutas que necesitan saber si hay sesión. Antes corría en TODAS las páginas
+// y archivos estáticos (robots.txt, sitemap, imágenes, /privacy, /terms...),
+// lo que contaba como una invocación en Vercel por cada petición.
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    '/',
+    '/dashboard/:path*',
+    '/profile',
+    '/settings',
+    '/login',
+    '/register',
+    '/forgot-password',
+    '/verify-email',
+    '/auth/:path*',
+  ],
 }

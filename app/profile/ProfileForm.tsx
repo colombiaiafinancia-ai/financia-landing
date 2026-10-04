@@ -91,7 +91,7 @@ export default function ProfileForm({ initial }: { initial: ProfileInitial }) {
     <main className="min-h-screen bg-background px-4 py-8 text-foreground">
       <div className="mx-auto max-w-xl">
         <Button asChild variant="ghost" className="mb-6 px-0">
-          <Link href="/dashboard">
+          <Link href="/dashboard" prefetch={false}>
             <ArrowLeft className="h-4 w-4" />
             Volver al dashboard
           </Link>
