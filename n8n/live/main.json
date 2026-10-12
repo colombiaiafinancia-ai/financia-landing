@@ -1431,8 +1431,7 @@
           "timeout": 30000,
           "response": {
             "response": {
-              "fullResponse": true,
-              "responseFormat": "text"
+              "fullResponse": true
             }
           }
         },
@@ -1495,7 +1494,8 @@
       "position": [
         0,
         912
-      ]
+      ],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -2618,8 +2618,7 @@
           "timeout": 30000,
           "response": {
             "response": {
-              "fullResponse": true,
-              "responseFormat": "text"
+              "fullResponse": true
             }
           }
         },
@@ -2668,6 +2667,61 @@
       "position": [
         2756,
         2108
+      ]
+    },
+    {
+      "id": "1dd7a773-1b9e-4a25-b6e6-07c42619029b",
+      "name": "Fallback · preparar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "// Red de seguridad: si el procesamiento del mensaje falló, avisar al usuario en vez de quedarse en silencio.\n// Usa el mismo envío seguro (outbox con control de duplicados). Si la falla fue antes de identificar\n// al remitente no hay a quién responder con seguridad, y se omite.\nconst resolved = $('Normalizar y resolver').all();\nconst idxOf = (p, i) => Array.isArray(p) ? (p[0]?.item ?? i) : (typeof p === 'number' ? p : (p?.item ?? i));\nreturn $input.all().flatMap((item, i) => {\n  const idx = idxOf(item.pairedItem, i);\n  const ctx = resolved[idx]?.json;\n  if (!ctx?.event_key) return [];\n  return [{ json: { __send: true, eventKey: ctx.event_key, key: 'fallback-error',\n    content: { type: 'text', text: '⚠️ Tuve un problema procesando tu mensaje. Por favor envíalo de nuevo en un momento.' }, ctx },\n    pairedItem: { item: idx } }];\n});"
+      },
+      "position": [
+        260,
+        1112
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "tl7gipoFs3eGkJEa",
+          "mode": "id"
+        },
+        "mode": "each",
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "2e86b3b4-abf0-4dc1-ad52-053028f11b0c",
+      "name": "Fallback · enviar",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        1112
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "f3a156d0-c47f-47b3-bc82-ae634dc0eaca",
+      "name": "Fallback · fin",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "parameters": {
+        "jsCode": "return $input.all().map((item, i) => ({ json: item.json, pairedItem: { item: i } }));"
+      },
+      "position": [
+        700,
+        1112
       ]
     }
   ],
@@ -3727,6 +3781,40 @@
         [
           {
             "node": "Envío · fin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar cada mensaje": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Fallback · preparar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback · preparar": {
+      "main": [
+        [
+          {
+            "node": "Fallback · enviar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallback · enviar": {
+      "main": [
+        [
+          {
+            "node": "Fallback · fin",
             "type": "main",
             "index": 0
           }
