@@ -42,3 +42,12 @@ google-credentials.json
 # Exclude nested projects
 finan/
 financia-whats-app-insight/ 
+
+# Configuración local del editor/asistente
+.claude/
+
+# Exportaciones de los workflows en vivo de n8n (lógica interna del bot; no versionar en repo público)
+n8n/live/
+
+# Entregables generados (presentaciones, afiches)
+output/
