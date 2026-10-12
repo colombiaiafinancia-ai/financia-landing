@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseClient } from '@/utils/supabase/server'
 import { getSupabaseAdminClient } from '@/services/supabase/admin'
 import { usernameChoice } from '@/lib/whatsapp/identity'
-import { whatsappEnabled } from '@/lib/whatsapp/config'
+import { whatsappLinkingEnabled } from '@/lib/whatsapp/config'
 
 function normalizePromoCode(value: unknown) {
   return String(value || '').replace(/\s+/g, '').toUpperCase()
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     const { name, email, phone, password, repeatPassword } = body
     const promoCode = normalizePromoCode(body.promoCode)
     let whatsappChoice: ReturnType<typeof usernameChoice> | null = null
-    if (whatsappEnabled()) {
+    if (whatsappLinkingEnabled()) {
       try { whatsappChoice = usernameChoice(body) } catch (error) {
         return NextResponse.json({ error: (error as Error).message }, { status: 400 })
       }

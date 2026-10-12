@@ -290,7 +290,7 @@ export default function DashboardClient({ initialData }: { initialData: Dashboar
   }, [user?.id, setOnboardingStepAndPersist])
 
   const handleWelcomeSkip = useCallback(async () => {
-    if (process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED === 'true') {
+    if (process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED !== 'false') {
       setWelcomeDone(true)
       setOnboardingStepAndPersist(null)
       return
@@ -357,7 +357,7 @@ export default function DashboardClient({ initialData }: { initialData: Dashboar
     }
 
     if (onboardingStep === 'whatsapp') {
-      if (process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED === 'true') {
+      if (process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED !== 'false') {
         setOnboardingStepAndPersist(null)
         return
       }

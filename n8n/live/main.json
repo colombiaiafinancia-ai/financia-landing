@@ -1,0 +1,3743 @@
+{
+  "id": "tl7gipoFs3eGkJEa",
+  "name": "Financia-original mejora - WhatsApp identidad v3",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1120,
+        32
+      ],
+      "id": "53ed18ee-fb80-474a-aad2-ff67ea1a745a",
+      "name": "HTTP Request",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "wDFVb5rZURmTTAH3",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $('Contexto WhatsApp').first().json.audio.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        -1312,
+        32
+      ],
+      "id": "9dea695f-ee9e-4ef9-8b26-7cc4c75e6f9b",
+      "name": "Get_audio",
+      "webhookId": "35fa148f-7ed2-4f86-8762-07342a17e1df",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "wDFVb5rZURmTTAH3",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -896,
+        32
+      ],
+      "id": "410c6377-9f5e-4584-8b54-5fa6fc0b362b",
+      "name": "OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "3nzfNq9bjGil7fGH",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $('Datos whtas').item.json.image.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        -1456,
+        480
+      ],
+      "id": "a586954b-08a8-4f07-9e81-54dbc9676310",
+      "name": "Get_image",
+      "webhookId": "f898f190-5b4c-4ec0-894f-c7986485a2b8",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "wDFVb5rZURmTTAH3",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1088,
+        368
+      ],
+      "id": "447070b1-9014-445f-bcd4-16043ac3d3e3",
+      "name": "HTTP Request1",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "wDFVb5rZURmTTAH3",
+          "name": "WhatsApp account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "text": "Analiza esta imagen que contiene información financiera (como una factura, recibo, o captura de transacción bancaria).\n\n1. Determina si la imagen representa un **ingreso** o un **gasto**.\n2. Extrae el **valor monetario más relevante** de la imagen. Si hay varios valores, prioriza el más destacado o el que parezca el total.\n3. Describe brevemente de qué se trata (por ejemplo: “Pago en supermercado”, “Transferencia bancaria recibida”, “Factura de restaurante”).\n4. Devuelve tu respuesta en el siguiente formato JSON:\n\n{\n  \"tipo\": \"ingreso\" o \"gasto\",\n  \"valor\": valor_en_pesos_o_dólares,\n  \"descripcion\": \"texto breve\"\n}\n\nNo incluyas texto adicional, solo el JSON limpio.",
+        "inputType": "base64",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -896,
+        368
+      ],
+      "id": "ac17fc60-50f7-4a78-a4c2-b7f49167d23f",
+      "name": "OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "3nzfNq9bjGil7fGH",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analiza el mensaje:\n\n{{ $('Datos_final').all()[0].json.User_text || $('Datos_final').all()[0].json.text || $('Datos_final').all()[0].json.content}}\n\nCategorías disponibles:\n{{ $json.categoriesText }}\n\nResponde ÚNICAMENTE con un JSON válido con esta estructura exacta:\n\n{\"output\":{\"items\":[{\"tipo\":\"\",\"valor\":\"\",\"categoria\":\"\",\"descripcion\":\"\"}]}}\n\nTipos permitidos:\ningreso | gasto | presupuesto | balance | saludo | basura\n\nREGLAS\n\n1. Divide el mensaje en items si contiene varios movimientos.\n2. Cada item debe representar un solo ingreso, gasto o presupuesto.\n3. Si el mensaje solo consulta estado financiero, devuelve un solo item tipo balance.\n4. Si el mensaje solo es cortesía, devuelve un solo item tipo saludo.\n5. Si no se puede extraer ningún movimiento o intención válida, devuelve un solo item tipo basura.\n\nCLASIFICACIÓN\n- ingreso: entra dinero\n- gasto: sale dinero\n- presupuesto: define o cambia un límite por categoría\n- balance: consulta estado financiero\n- saludo: cortesía o confirmación simple\n- basura: cualquier otro caso\n\nVALOR\n- usar número sin comillas\n- si no existe, usar \"\"\n- ingreso, gasto y presupuesto requieren valor\n- si un supuesto ingreso, gasto o presupuesto no tiene valor claro, no lo incluyas como movimiento válido\n\nCATEGORÍA\n- usar solo una categoría exacta de la lista\n- ingreso, gasto y presupuesto siempre deben tener categoría\n- si no hay coincidencia exacta o no se puede identificar, usar \"Otros\"\n- balance, saludo y basura llevan categoria: \"\"\n\nDESCRIPCIÓN\n- ingreso, gasto y presupuesto: 1 a 4 palabras\n- balance: \"Consulta balance\"\n- saludo: \"Saludo\"\n- basura: \"\"\n\nPRIORIDAD\n- si registra movimientos o presupuestos, no clasificar como balance\n- si solo consulta cómo va, clasificar como balance\n- si solo es cortesía, clasificar como saludo\n\nSALIDA\n- responder solo JSON válido\n- sin texto extra\n- sin markdown\n- no usar null\n- no omitir campos\n- no inventar categorías fuera de la lista, excepto \"Otros\"\n\nCASOS FIJOS\n\nSALUDO:\n{\"output\":{\"items\":[{\"tipo\":\"saludo\",\"valor\":\"\",\"categoria\":\"\",\"descripcion\":\"Saludo\"}]}}\n\nBALANCE:\n{\"output\":{\"items\":[{\"tipo\":\"balance\",\"valor\":\"\",\"categoria\":\"\",\"descripcion\":\"Consulta balance\"}]}}\n\nBASURA:\n{\"output\":{\"items\":[{\"tipo\":\"basura\",\"valor\":\"\",\"categoria\":\"\",\"descripcion\":\"\"}]}}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        112,
+        464
+      ],
+      "id": "6acc6e9e-46b9-47c1-85d5-47b7f4d8c523",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c380083a-9b35-45a5-be3a-7f13f33f791b",
+              "name": "content",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "5d45f2b3-d483-4182-9095-60890b5ca447",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "599063ba-96d5-4f52-973b-6faf6eeb9764",
+              "name": "User_text",
+              "value": "={{ $json.mensaje_normalizado }}",
+              "type": "string"
+            },
+            {
+              "id": "3c1adbd8-9cfb-4146-9382-c399d233abe3",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -544,
+        464
+      ],
+      "id": "b85b8322-2e96-4673-b3e0-f98a7004f546",
+      "name": "Datos_final"
+    },
+    {
+      "parameters": {
+        "jsCode": "const $parseRaw = (raw, empty) => { if (raw === undefined || raw === null || raw === '') return JSON.parse(empty); if (typeof raw === 'string') return JSON.parse(raw); if (typeof raw === 'object' && (raw.socket || raw._readableState)) throw new Error('Respuesta de Supabase no legible'); return raw; };\nreturn $input.all().flatMap((item,i)=>{const r=$parseRaw(item.json.body, 'null');return (Array.isArray(r)?(r.length?r:[{}]):[r]).map(json=>({json,pairedItem:{item:i}}));});"
+      },
+      "id": "ccdfc6ed-0943-4597-9cdc-89a7d662012f",
+      "name": "Edit Fields1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const $parseRaw = (raw, empty) => { if (raw === undefined || raw === null || raw === '') return JSON.parse(empty); if (typeof raw === 'string') return JSON.parse(raw); if (typeof raw === 'object' && (raw.socket || raw._readableState)) throw new Error('Respuesta de Supabase no legible'); return raw; };\nreturn $input.all().flatMap((item,i)=>{const r=$parseRaw(item.json.body, 'null');return (Array.isArray(r)?(r.length?r:[{}]):[r]).map(json=>({json,pairedItem:{item:i}}));});"
+      },
+      "id": "901c94bf-76e7-4a82-9d87-17523913b615",
+      "name": "Create a row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2048,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Obtener output (puede venir como string o como objeto)\nlet raw = $json.output ?? $json;\n\n// 2. Parseo si es string\nif (typeof raw === \"string\") {\n  const jsonRegex = /(\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\])/;\n  const match = raw.match(jsonRegex);\n\n  if (!match) throw new Error(\"No se encontró JSON válido\");\n\n  raw = JSON.parse(match[0]);\n}\n\n// 3. Detectar items\nlet items;\n\nif (raw.output && Array.isArray(raw.output.items)) {\n  items = raw.output.items;\n} else if (Array.isArray(raw)) {\n  items = raw;\n} else if (typeof raw === \"object\" && raw !== null) {\n  items = [raw];\n} else {\n  throw new Error(\"Formato no reconocido\");\n}\n\n// 4. Traer categorías desde otro nodo\nconst categoriesMatch = $('Code in JavaScript').first().json.categoriesMatch || [];\n\n// 5. IDs fallback\nconst DEFAULT_INCOME_CATEGORY_ID = \"d9bb895c-add2-44d7-861f-5b4109d69c41\";\nconst DEFAULT_EXPENSE_CATEGORY_ID = \"b8ace44f-42bf-44cf-998f-6c4c7f9159e9\";\n\n// 6. Normalizador\nfunction normalize(text) {\n  return (text || \"\")\n    .toString()\n    .toLowerCase()\n    .normalize(\"NFD\")\n    .replace(/[\\u0300-\\u036f]/g, \"\")\n    .trim();\n}\n\n// 7. Dirección esperada según tipo\nfunction getExpectedDirection(tipo) {\n  const t = normalize(tipo);\n\n  if (t === \"gasto\") return \"gasto\";\n  if (t === \"ingreso\") return \"ingreso\";\n  if (t === \"presupuesto\") return \"gasto\";\n\n  return null;\n}\n\n// 8. Normalizar dirección de categoría\nfunction normalizeDirection(direction) {\n  const d = normalize(direction);\n\n  if (d === \"gasto\") return \"gasto\";\n  if (d === \"ingreso\") return \"ingreso\";\n\n  return null;\n}\n\n// 9. Fallback según tipo\nfunction getFallbackCategoryId(tipo) {\n  const t = normalize(tipo);\n\n  if (t === \"ingreso\") return DEFAULT_INCOME_CATEGORY_ID;\n  if (t === \"gasto\") return DEFAULT_EXPENSE_CATEGORY_ID;\n  if (t === \"presupuesto\") return DEFAULT_EXPENSE_CATEGORY_ID;\n\n  return null;\n}\n\n// 10. Crear mapas\nconst categoryMap = {};\nconst categoryMapByName = {};\n\nfor (const cat of categoriesMatch) {\n  const nameKey = normalize(cat.name);\n  const directionKey = normalizeDirection(cat.direction);\n\n  if (!nameKey || !directionKey) continue;\n\n  categoryMap[`${nameKey}__${directionKey}`] = {\n    id: cat.id,\n    name: cat.name,\n    direction: directionKey\n  };\n\n  if (!categoryMapByName[nameKey]) {\n    categoryMapByName[nameKey] = [];\n  }\n\n  categoryMapByName[nameKey].push({\n    id: cat.id,\n    name: cat.name,\n    direction: directionKey\n  });\n}\n\n// 11. Match\nconst result = items.map((item, operation_index) => {\n  let categoryId = null;\n  let matchedBy = null;\n  let matchedCategoryDirection = null;\n\n  const tipo = normalize(item.tipo);\n  const categoria = normalize(item.categoria);\n  const expectedDirection = getExpectedDirection(tipo);\n\n  if (categoria && ![\"saludo\", \"basura\", \"balance\"].includes(tipo)) {\n    // Match exacto por nombre + dirección\n    if (expectedDirection) {\n      const exactMatch = categoryMap[`${categoria}__${expectedDirection}`];\n\n      if (exactMatch) {\n        categoryId = exactMatch.id;\n        matchedBy = \"name+direction\";\n        matchedCategoryDirection = exactMatch.direction;\n      }\n    }\n\n    // Fallback por nombre solo si existe una única categoría\n    // y además coincide con la dirección esperada\n    if (!categoryId) {\n      const candidates = categoryMapByName[categoria] || [];\n\n      if (\n        candidates.length === 1 &&\n        candidates[0].direction === expectedDirection\n      ) {\n        categoryId = candidates[0].id;\n        matchedBy = \"name_only_unique_same_direction\";\n        matchedCategoryDirection = candidates[0].direction;\n      }\n    }\n  }\n\n  // Fallback final SOLO si no hubo match real\n  if (!categoryId) {\n    const fallbackCategoryId = getFallbackCategoryId(tipo);\n\n    if (fallbackCategoryId) {\n      categoryId = fallbackCategoryId;\n      matchedBy = \"default_fallback\";\n      matchedCategoryDirection = expectedDirection;\n    }\n  }\n\n  return {\n    json: {\n      ...item,\n      operation_index,\n      category_id: categoryId,\n      expected_direction: expectedDirection,\n      matched_category_direction: matchedCategoryDirection,\n      matched_by: matchedBy\n    }\n  };\n});\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        464
+      ],
+      "id": "d5695dc9-b90c-4abe-84f4-f0df9d955144",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "jsCode": "throw new Error('Legacy phone lookup is disabled in identity v3');"
+      },
+      "id": "cfa2359b-1024-4549-98b7-4c67a24b033a",
+      "name": "HTTP Request2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2896,
+        272
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const c=$('Contexto WhatsApp').first().json;return [{json:{...c,instance:{name:c.name},message:{content_type:c.message_type},audio:c.audio??{},image:c.image??{},Número_telefono:c.phone,id_tel:c.phone,id_usuario:c.user_id,numero_usuario:c.phone}}];"
+      },
+      "id": "56b0c037-44d5-4b27-a8f3-71cae6bf8635",
+      "name": "Datos whtas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2432,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mensaje_normalizado }}",
+                    "rightValue": "=si",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ff0da4d2-5651-4bbf-b85b-16b41081004b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "si"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "60eebc2b-3687-46c6-9457-64159bde6136",
+                    "leftValue": "={{ $json.mensaje_normalizado }}",
+                    "rightValue": "no",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "no"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "1c9aeb98-b559-401f-9f71-622be934e73d",
+                    "leftValue": "={{ $json.mensaje_normalizado }}",
+                    "rightValue": "hola financia, soy parte del combo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Mensaje_1"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1088,
+        960
+      ],
+      "id": "da8c66e9-e07b-4cf5-9cdc-d65e5b28a1a0",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f479b73c-c2c9-4b57-b5be-0d28d09dc9c1",
+              "leftValue": "={{ $json.process_financial === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -2672,
+        496
+      ],
+      "id": "69e5970b-f3eb-41f9-8918-fa8291189e16",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Execute Workflow agrega metadata a cada item; se devuelve solo json para que n8n acepte la salida.\nreturn $input.all().map((item, i) => ({ json: item.json, pairedItem: { item: i } }));"
+      },
+      "id": "b67ec1a9-f02a-4279-a60e-f5ea1f7a74b9",
+      "name": "Send message and wait for response1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2320,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const mensaje = $('Contexto WhatsApp').first().json.message;\n\n  item.json.mensaje_normalizado = mensaje\n    .trim()                // elimina espacios al inicio/final\n    .toLowerCase()         // convierte a minúsculas\n    .normalize(\"NFD\")      // separa acentos\n    .replace(/[\\u0300-\\u036f]/g, ''); // elimina acentos\n\n  return item;\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1296,
+        784
+      ],
+      "id": "2d7741ed-06ae-4e7d-bebe-378153388302",
+      "name": "Normalizar txt si_no"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawOutput = $('Edit Fields1').first().json.output || \"\";\n\n/**\n * 1) Extraer el primer bloque JSON válido que encuentre en todo el texto.\n *    Soporta:\n *     - ```json ... ```\n *     - ``` ... ```\n *     - Texto que contenga un {...} u [...]\n */\nlet jsonText = null;\n\n// 1a. Buscar bloque ```json ... ```\nlet m = typeof rawOutput === \"string\"\n  ? rawOutput.match(/```json\\s*([\\s\\S]*?)\\s*```/i)\n  : null;\n\nif (m && m[1]) {\n  jsonText = m[1].trim();\n} else if (typeof rawOutput === \"string\") {\n  // 1b. Buscar cualquier bloque ``` ... ```\n  m = rawOutput.match(/```\\s*([\\s\\S]*?)\\s*```/);\n  if (m && m[1]) {\n    jsonText = m[1].trim();\n  } else {\n    // 1c. Buscar el primer {...} o [...] dentro del texto\n    m = rawOutput.match(/(\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\])/);\n    if (m && m[0]) {\n      jsonText = m[0].trim();\n    } else {\n      // 1d. Intentar limpiar encabezados tipo \"json\\n[...]\"\n      const cleaned = rawOutput\n        .replace(/^\\s*json\\s*/i, '')\n        .replace(/^[`]+|[`]+$/g, '')\n        .trim();\n\n      m = cleaned.match(/(\\{[\\s\\S]*\\}|\\[[\\s\\S]*\\])/);\n      if (m && m[0]) {\n        jsonText = m[0].trim();\n      }\n    }\n  }\n}\n\n// Si ya viene como objeto, no hace falta extraer texto\nif (!jsonText && typeof rawOutput === \"object\" && rawOutput !== null) {\n  jsonText = JSON.stringify(rawOutput);\n}\n\nif (!jsonText) {\n  throw new Error(\"No se encontró ningún JSON en la salida del modelo.\");\n}\n\n// 2) Parsear JSON\nlet parsed;\ntry {\n  parsed = JSON.parse(jsonText);\n} catch (err) {\n  throw new Error(\n    \"Error al parsear el JSON extraído: \" +\n      err.message +\n      \"\\nContenido extraído:\\n\" +\n      jsonText\n  );\n}\n\n// 3) Normalizar estructura a array real de transacciones\nlet items;\n\nif (parsed?.output?.items && Array.isArray(parsed.output.items)) {\n  items = parsed.output.items;\n} else if (parsed?.items && Array.isArray(parsed.items)) {\n  items = parsed.items;\n} else if (Array.isArray(parsed)) {\n  items = parsed;\n} else if (parsed && typeof parsed === \"object\") {\n  items = [parsed];\n} else {\n  throw new Error(\"El JSON parseado no tiene un formato válido.\");\n}\n\n/** Utilidades **/\n\nfunction normalizarTexto(texto = \"\") {\n  return String(texto)\n    .toLowerCase()\n    .trim()\n    .normalize(\"NFD\")\n    .replace(/[\\u0300-\\u036f]/g, '');\n}\n\nfunction parseValorToNumber(v) {\n  if (v === null || v === undefined || v === \"\") return 0;\n  if (typeof v === \"number\") return v;\n\n  let s = String(v).trim();\n  s = s.replace(/[\\$\\€\\£\\s]/g, '');\n\n  const lastComma = s.lastIndexOf(',');\n  const lastDot = s.lastIndexOf('.');\n\n  if (lastComma > -1 && lastDot > -1) {\n    if (lastComma > lastDot) {\n      s = s.replace(/\\./g, '').replace(/,/g, '.');\n    } else {\n      s = s.replace(/,/g, '');\n    }\n  } else if (s.indexOf(',') > -1 && s.indexOf('.') === -1) {\n    s = s.replace(/,/g, '.');\n  } else {\n    s = s.replace(/,/g, '');\n  }\n\n  const n = parseFloat(s);\n  return Number.isFinite(n) ? n : 0;\n}\n\nfunction formatNumber(n) {\n  try {\n    return new Intl.NumberFormat('es-ES', { maximumFractionDigits: 2 }).format(n);\n  } catch (e) {\n    return String(n);\n  }\n}\n\nfunction emojiPorTipo(tipo = \"\") {\n  const t = normalizarTexto(tipo);\n  if (t === \"gasto\") return \"💸\";\n  if (t === \"ingreso\") return \"💰\";\n  if (t === \"presupuesto\") return \"📊\";\n  return \"🔄\";\n}\n\nfunction emojiPorCategoria(nombre = \"\") {\n  const c = normalizarTexto(nombre);\n  const mapa = {\n    salario: \"💼\",\n    bonificaciones: \"🎁\",\n    arriendo: \"🏠\",\n    extras: \"➕\",\n    regalos: \"🎉\",\n    vivienda: \"🏡\",\n    transporte: \"🚗\",\n    educacion: \"📚\",\n    \"entretenimiento y ocio\": \"🎮\",\n    entretenimiento: \"🎮\",\n    prestamos: \"💳\",\n    alimentacion: \"🍽️\",\n    \"compras personales\": \"🛍️\",\n    salud: \"💊\",\n    otros: \"📦\",\n    seguros: \"🛡️\"\n  };\n  return mapa[c] || \"📂\";\n}\n\n// Limpia saltos y caracteres problemáticos dentro de cada campo\nfunction cleanInlineText(value = \"\") {\n  return String(value)\n    .replace(/\\r/g, \"\")\n    .replace(/\\n/g, \" \")\n    .replace(/\\t/g, \" \")\n    .replace(/\\s+/g, \" \")\n    .trim();\n}\n\n/** 4) Construir bloques de texto */\nconst bloques = items.map((item) => {\n  const tipo = cleanInlineText(item.tipo || \"\");\n  const rawValor = item.valor ?? item.monto ?? item.amount ?? \"\";\n  const valorNum = parseValorToNumber(rawValor);\n  const categoria = cleanInlineText(item.categoria || item.category || \"\");\n  const descripcion = cleanInlineText(item.descripcion || item.description || \"\");\n\n  const tipoEmoji = emojiPorTipo(tipo);\n  const categoriaEmoji = emojiPorCategoria(categoria);\n\n  const valorTexto = rawValor === \"\" ? \"—\" : formatNumber(valorNum);\n\n  return `${tipoEmoji} Tipo: ${tipo || \"—\"}\\n💵 Valor: ${valorTexto}\\n${categoriaEmoji} Categoría: ${categoria || \"—\"}\\n📌 Descripción: ${descripcion || \"—\"}`;\n});\n\n// IMPORTANTE: usar \\\\n\\\\n, no \\n\\n\nconst resumenFinal = bloques.join(\"\\\\n\\\\n\");\n\n// 5) Devolver para n8n\nreturn [\n  {\n    json: {\n      resumen: resumenFinal,\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        1216
+      ],
+      "id": "6e58d347-8856-44cd-9034-ca078ad9f0ce",
+      "name": "Natural languague"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "=gasto",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "62a825cc-7512-4b3e-8064-6c0f173df064"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8511a5f2-5048-4b90-9a97-7a75b1ddc660",
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "ingreso",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "20139388-19c9-4597-a509-7ab2a68d67a9",
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "=presupuesto",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1520,
+        544
+      ],
+      "id": "7d174848-0c71-431e-8db8-4bce8c1c3df6",
+      "name": "Switch2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const $parseRaw = (raw, empty) => { if (raw === undefined || raw === null || raw === '') return JSON.parse(empty); if (typeof raw === 'string') return JSON.parse(raw); if (typeof raw === 'object' && (raw.socket || raw._readableState)) throw new Error('Respuesta de Supabase no legible'); return raw; };\nreturn $input.all().flatMap((item,i)=>{const r=$parseRaw(item.json.body, 'null');return (Array.isArray(r)?(r.length?r:[{}]):[r]).map(json=>({json,pairedItem:{item:i}}));});"
+      },
+      "id": "e06732cb-ac98-442d-89ff-2c5ee5a68550",
+      "name": "Create a row2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Execute Workflow agrega metadata a cada item; se devuelve solo json para que n8n acepte la salida.\nreturn $input.all().map((item, i) => ({ json: item.json, pairedItem: { item: i } }));"
+      },
+      "id": "306f66db-2a2a-4954-8e17-fc4fd0ace1d4",
+      "name": "Send message and wait for response7",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1712,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Execute Workflow agrega metadata a cada item; se devuelve solo json para que n8n acepte la salida.\nreturn $input.all().map((item, i) => ({ json: item.json, pairedItem: { item: i } }));"
+      },
+      "id": "a3dac5fe-7603-48dd-87a1-94f530fe4cd0",
+      "name": "Send message and wait for response8",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1232,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -3296,
+        544
+      ],
+      "id": "e0abc010-320c-4b41-bdc6-23ee310189ed",
+      "name": "WhatsApp Trigger",
+      "webhookId": "9a4d6239-5e45-4196-bd7b-36ad15b22357",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "wAJnjqhbeiNdLoG1",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "throw new Error('Legacy phone lookup is disabled in identity v3');"
+      },
+      "id": "5eed3b3e-f74b-4d50-a99d-85dd39273254",
+      "name": "If4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3056,
+        288
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "categories",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Datos whtas').item.json.id_usuario }}"
+            },
+            {
+              "keyName": "user_id",
+              "condition": "is",
+              "keyValue": "null"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabaseTool",
+      "typeVersion": 1,
+      "position": [
+        608,
+        672
+      ],
+      "id": "0f973538-f8d7-4432-805c-58ea7fe2c2bd",
+      "name": "Obtener categorias",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Contexto WhatsApp').first().json.interactive?.button_reply?.id }}",
+                    "rightValue": "Aceptar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "ff0da4d2-5651-4bbf-b85b-16b41081004b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "si"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "60eebc2b-3687-46c6-9457-64159bde6136",
+                    "leftValue": "={{ $('Contexto WhatsApp').first().json.interactive?.button_reply?.id }}",
+                    "rightValue": "Rechazar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "no"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -1088,
+        1328
+      ],
+      "id": "ca4329f3-6109-4112-b055-3dd6732e0c70",
+      "name": "Switch3"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "lF5y8su5akPgOn37",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        1024
+      ],
+      "id": "249375da-adf1-4434-a1f8-c75763339bd6",
+      "name": "msj_si"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "AasUdqGn0EDb9IQw",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -592,
+        1328
+      ],
+      "id": "21097e86-953f-4789-86b9-c14a93bdd2be",
+      "name": "msj_no"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4cf32027-146e-4f5d-b7ff-ef0014f1bfb8",
+                    "leftValue": "={{ $('Contexto WhatsApp').first().json.message_type }}",
+                    "rightValue": "audio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Audio"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8fec9621-729c-42d4-bc8f-4737ad229bd9",
+                    "leftValue": "={{ $('Contexto WhatsApp').first().json.message_type }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Image"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Contexto WhatsApp').first().json.message_type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8c5092c3-b4aa-40ab-ac54-6b60de0bc54e"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "b293914a-be37-4a63-9b12-269ede615b74",
+                    "leftValue": "={{ $('Contexto WhatsApp').first().json.message_type }}",
+                    "rightValue": "interactive",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reply"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2096,
+        432
+      ],
+      "id": "63ab960d-38e9-4e3a-9e4f-5e817dd17140",
+      "name": "switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Execute Workflow agrega metadata a cada item; se devuelve solo json para que n8n acepte la salida.\nreturn $input.all().map((item, i) => ({ json: item.json, pairedItem: { item: i } }));"
+      },
+      "id": "04ae3a42-960b-48de-8d5b-e80430797a4c",
+      "name": "Send message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        1520
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bf431af3-0ade-4d61-afb2-12357ba17e59",
+              "leftValue": "={{ $json.valor }}",
+              "rightValue": "=null",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "1830747d-f860-49a8-bf86-0e48f876eda3",
+              "leftValue": "={{ $json.valor }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "4b20d878-368d-41f8-b522-f719724897ca",
+              "leftValue": "={{ $json.tipo }}",
+              "rightValue": "basura",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1104,
+        448
+      ],
+      "id": "08b85b77-0d15-41d0-80c6-d18e293ee308",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.resumen }}",
+                    "rightValue": "basura",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "9ecc6e7d-4936-4d62-adcf-ceb036163f9a"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f0e8de1c-80bb-40fd-aa84-8646fce99e2f",
+                    "leftValue": "={{ $json.parsed[0].valor }}",
+                    "rightValue": 0,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "24ca4656-da13-40dc-9d72-479a9f0daac9",
+                    "leftValue": "={{ $json.parsed[0].valor }}",
+                    "rightValue": "null",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notExists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2592,
+        384
+      ],
+      "id": "36d06933-68a4-4256-87f9-5989a3262c3b",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Execute Workflow agrega metadata a cada item; se devuelve solo json para que n8n acepte la salida.\nreturn $input.all().map((item, i) => ({ json: item.json, pairedItem: { item: i } }));"
+      },
+      "id": "29fb7de7-ebce-402a-9cb6-a3b482df11b9",
+      "name": "Send message and wait for response2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "user_profiles",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $('Contexto WhatsApp').first().json.user_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1312,
+        256
+      ],
+      "id": "c2f39b11-b256-45ba-8f51-41d75ff15870",
+      "name": "Get a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        128,
+        720
+      ],
+      "id": "3a3f5b01-15e7-433c-86d3-1d5c2bfcfe65",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "3nzfNq9bjGil7fGH",
+          "name": "OpenAi account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Execute Workflow agrega metadata a cada item; se devuelve solo json para que n8n acepte la salida.\nreturn $input.all().map((item, i) => ({ json: item.json, pairedItem: { item: i } }));"
+      },
+      "id": "af938a60-40f1-4722-988a-ee26f28c03f7",
+      "name": "HTTP Request3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        1168
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1104,
+        912
+      ],
+      "id": "93c3a28d-208c-466b-956a-bad0f6ab7891",
+      "name": "Merge",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2336,
+        608
+      ],
+      "id": "684e78ec-5637-44ea-bb11-f6eebd249e51",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Execute Workflow agrega metadata a cada item; se devuelve solo json para que n8n acepte la salida.\nreturn $input.all().map((item, i) => ({ json: item.json, pairedItem: { item: i } }));"
+      },
+      "id": "ad0441e0-7284-4763-af8a-06f9127ab35b",
+      "name": "Send message and wait for response3",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "categories",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "is",
+              "keyValue": "null"
+            },
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Datos whtas').item.json.id_usuario }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        464
+      ],
+      "id": "b389a1ce-9ddc-4298-a2c4-8aae1d18c017",
+      "name": "Get many rows",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const categories = $input.all().map(item => item.json);\n\n// 🔹 OUTPUT 1 → STRING PARA EL BOT\nconst categoriesText = categories\n  .map(c => `${c.name} (${c.direction})`)\n  .join(\", \");\n\n// 🔹 OUTPUT 2 → LISTA PARA MATCH\nconst categoriesMatch = categories.map(c => ({\n  name: c.name,\n  direction: c.direction,\n  id: c.id\n}));\n\nreturn [\n  {\n    json: {\n      categoriesText,\n      categoriesMatch\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        464
+      ],
+      "id": "6ab753db-31df-4fc5-b212-2540e8be5c89",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const $parseRaw = (raw, empty) => { if (raw === undefined || raw === null || raw === '') return JSON.parse(empty); if (typeof raw === 'string') return JSON.parse(raw); if (typeof raw === 'object' && (raw.socket || raw._readableState)) throw new Error('Respuesta de Supabase no legible'); return raw; };\nreturn $input.all().flatMap((item,i)=>{const r=$parseRaw(item.json.body, 'null');return (Array.isArray(r)?(r.length?r:[{}]):[r]).map(json=>({json,pairedItem:{item:i}}));});"
+      },
+      "id": "394c41a6-09cc-4bd6-96fe-eaaa1d47ad6f",
+      "name": "Update a row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8511a5f2-5048-4b90-9a97-7a75b1ddc660",
+                    "leftValue": "={{ $('Code').item.json.tipo }}",
+                    "rightValue": "balance",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Code').item.json.tipo }}",
+                    "rightValue": "=saludo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "62a825cc-7512-4b3e-8064-6c0f173df064"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1520,
+        208
+      ],
+      "id": "20588e90-ee94-465a-b916-7ec9e0af6ccb",
+      "name": "Switch4"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "user_month_summary",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "keyValue": "={{ $('Datos whtas').all()[0].json.id_usuario }}"
+            },
+            {
+              "keyName": "month",
+              "keyValue": "={{ $json.startDate }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1968,
+        -80
+      ],
+      "id": "146cc5ae-c07c-44b6-bb9d-b0e30a6597cb",
+      "name": "Get a row1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function getMonthStartEnd() {\n  const now = new Date();\n  const start = new Date(now.getFullYear(), now.getMonth(), 1);\n  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);\n  const format = (d) => d.toISOString().split(\"T\")[0];\n  return { startDate: format(start), endDate: format(end) };\n}\n\nconst dates = getMonthStartEnd();\n\n// Guardar en variables globales\n\n\n\nreturn [{ json: dates }];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        16
+      ],
+      "id": "b7ed813e-68a4-49ac-8692-2891ebf22521",
+      "name": "Fechas1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Execute Workflow agrega metadata a cada item; se devuelve solo json para que n8n acepte la salida.\nreturn $input.all().map((item, i) => ({ json: item.json, pairedItem: { item: i } }));"
+      },
+      "id": "0db75f14-9b8d-43fb-998b-8e1cbf4202a1",
+      "name": "Send message and wait for response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2416,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const formatNumber = (value) => {\n  const num = Number(value || 0);\n  const abs = Math.abs(num).toLocaleString('es-CO');\n  return num < 0 ? `- $ ${abs}` : `$ ${abs}`;\n};\n\nconst summary = $('Get a row1').first().json;\nconst incomeTotal = Number(summary.income_total || 0);\nconst expenseTotal = Number(summary.expense_total || 0);\nconst netTotal = Number(summary.net_total || 0);\n\n// Saldo inicial = arrastre del mes anterior (meta.type = 'monthly_rollover'), igual que en la web\nconst initialBalance = $('Saldo inicial').all()\n  .map((item) => item.json)\n  .filter((tx) => tx && tx.amount !== undefined)\n  .reduce((sum, tx) => sum + (tx.direction === 'ingreso' ? 1 : -1) * Number(tx.amount || 0), 0);\nconst availableBalance = initialBalance + netTotal;\n\nconst isPositiveBalance = netTotal > 0;\nconst isNegativeBalance = netTotal < 0;\nconst isZeroBalance = netTotal === 0;\n\nlet balanceIcon = '📈';\nlet balanceText = '🟰 *Vas en equilibrio, mantén el control*';\n\nif (isPositiveBalance) {\n  balanceIcon = '📈';\n  balanceText = '🔥 *Vas muy bien, sigue así*';\n} else if (isNegativeBalance) {\n  balanceIcon = '📉';\n  balanceText = '⚠️ *Ojo: este mes vas gastando más de lo que entra*';\n} else if (isZeroBalance) {\n  balanceIcon = '➖';\n  balanceText = '🟰 *Vas justo, toca cuidar los próximos gastos*';\n}\n\nconst message = `📊 *Así va tu mes*\n━━━━━━━━━━━━━━\n🏦 Saldo inicial: *${formatNumber(initialBalance)}*\n💰 Ingresos: *${formatNumber(incomeTotal)}*\n💸 Gastos: *${formatNumber(expenseTotal)}*\n${balanceIcon} Balance del mes: *${formatNumber(netTotal)}*\n💼 Disponible: *${formatNumber(availableBalance)}*\n━━━━━━━━━━━━━━\n${balanceText}`;\n\nreturn [\n  {\n    json: {\n      income_total_formatted: formatNumber(incomeTotal),\n      expense_total_formatted: formatNumber(expenseTotal),\n      net_total_formatted: formatNumber(netTotal),\n      initial_balance_formatted: formatNumber(initialBalance),\n      available_balance_formatted: formatNumber(availableBalance),\n      is_positive_balance: isPositiveBalance,\n      is_negative_balance: isNegativeBalance,\n      is_zero_balance: isZeroBalance,\n      message\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        -80
+      ],
+      "id": "fcf39c5b-df02-4c05-b57f-c4bab9a6d925",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "24cf4cf9-95dc-4572-87bd-01cfc34c3183",
+              "leftValue": "={{ $json.category_id }}",
+              "rightValue": "null",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1712,
+        736
+      ],
+      "id": "b3d8299e-a748-4747-9f8f-d00085499228",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Execute Workflow agrega metadata a cada item; se devuelve solo json para que n8n acepte la salida.\nreturn $input.all().map((item, i) => ({ json: item.json, pairedItem: { item: i } }));"
+      },
+      "id": "d443fdbe-aef2-46e8-b318-df81081022eb",
+      "name": "Send message and wait for response4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1952,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "throw new Error('Legacy phone lookup is disabled in identity v3');"
+      },
+      "id": "a5126dd3-dacc-4df3-b6e5-de7c09ec6650",
+      "name": "HTTP Request4",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3120,
+        720
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "bc02b346-d39e-4001-8b36-0ca8641dd1c8",
+      "name": "Contexto WhatsApp",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -304,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const $parseRaw = (raw, empty) => { if (raw === undefined || raw === null || raw === '') return JSON.parse(empty); if (typeof raw === 'string') return JSON.parse(raw); if (typeof raw === 'object' && (raw.socket || raw._readableState)) throw new Error('Respuesta de Supabase no legible'); return raw; };\nconst src = $('Normalizar y resolver · firmar').all();\nreturn $input.all().flatMap((item, i) => {\n  const s = src[i]?.json;\n  if (!s || s.kind !== 'message') return [];\n  if (item.json.error) throw new Error('No se pudo identificar al remitente: ' + (item.json.error.message || JSON.stringify(item.json.error)));\n  const result = $parseRaw(item.json.body, '{}'), event = s.event;\n  return [{ json: { ...event, ...result, id_usuario: result.user_id ?? null, numero_usuario: event.phone, id_tel: event.phone,\n    process_financial: result.status === 'linked' && result.can_operate === true && !result.linked_now }, pairedItem: { item: i } }];\n});"
+      },
+      "id": "92563f5f-715c-44d1-9bbf-73cd19383e45",
+      "name": "Normalizar y resolver",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\nconst SB = 'https://cslqdvufvgsxnpwenilc.supabase.co', BUSINESS_ID = '1782213389844237', PHONE_NUMBER_ID = '681184581749789';\n// Copia de lib/whatsapp/identity.ts: el cliente se identifica por from_user_id/user_id (BSUID) o from/wa_id (teléfono),\n// nunca por metadata.display_phone_number (número del negocio).\nconst clean = v => typeof v === 'string' && v.trim() ? v.trim() : null;\nconst phoneIdentity = v => { const raw = clean(v); if (!raw || !/^\\+?[0-9 ()-]+$/.test(raw)) return null; const d = raw.replace(/\\D/g, ''); return /^[1-9]\\d{6,14}$/.test(d) ? d : null; };\nconst bsuidIdentity = v => { const raw = clean(v); return raw && /^[A-Z]{2}\\.(?:ENT\\.)?[A-Za-z0-9]{1,128}$/.test(raw) ? raw : null; };\nconst linkCode = t => { const m = clean(t)?.match(/^VINCULAR\\s+([a-f0-9]{32})$/i); return m ? m[1].toLowerCase() : null; };\nfunction normalize(payload) {\n  const root = payload?.body ?? payload;\n  const values = Array.isArray(root?.entry) ? root.entry.flatMap(e => Array.isArray(e?.changes) ? e.changes.map(c => c?.value) : []) : [root];\n  const messages = [], statuses = [];\n  for (const value of values) {\n    if (!value || typeof value !== 'object') continue;\n    const business = clean(value.metadata?.phone_number_id);\n    if (!business) continue;\n    statuses.push(...(Array.isArray(value.statuses) ? value.statuses : []).filter(s => s && typeof s === 'object').map(s => ({ ...s, business_phone_number_id: business })));\n    const contacts = Array.isArray(value.contacts) ? value.contacts : [];\n    const inbound = Array.isArray(value.messages) ? value.messages : [];\n    for (const message of inbound) {\n      if (!message || typeof message !== 'object') continue;\n      let contact = contacts.find(c => (message.from_user_id && c?.user_id === message.from_user_id) || (message.from && c?.wa_id === message.from));\n      if (!contact && contacts.length === 1 && inbound.length === 1) contact = contacts[0];\n      if (message.from_user_id && contact?.user_id && message.from_user_id !== contact.user_id) continue;\n      if (message.from && contact?.wa_id && phoneIdentity(message.from) !== phoneIdentity(contact.wa_id)) continue;\n      const id = clean(message.id);\n      const bsuid = bsuidIdentity(clean(message.from_user_id) ?? contact?.user_id);\n      const phone = phoneIdentity(clean(message.from) ?? contact?.wa_id);\n      if (!id || (!bsuid && !phone)) continue;\n      messages.push({ whatsapp_user_id: bsuid, phone, whatsapp_username: clean(contact?.profile?.username), name: clean(contact?.profile?.name),\n        message: clean(message.text?.body), message_type: clean(message.type) ?? 'unknown', message_id: id, business_phone_number_id: business,\n        audio: message.audio ?? null, image: message.image ?? null, interactive: message.interactive ?? null });\n    }\n  }\n  return { messages, statuses };\n}\nconst out = [];\nfor (const item of $input.all()) {\n  const { messages, statuses } = normalize(item.json);\n  for (const s of statuses) {\n    // Recibos de Meta (entregado/leído/fallido) de nuestro número.\n    if (s.business_phone_number_id !== PHONE_NUMBER_ID || !['delivered','read','failed'].includes(s.status) || typeof s.id !== 'string') continue;\n    out.push({ json: { kind: 'status', url: SB + '/rest/v1/rpc/whatsapp_reconcile_delivery', body: JSON.stringify({ p_business_id: BUSINESS_ID, p_message_id: s.id, p_status: s.status }) } });\n  }\n  for (const ev of messages) {\n    if (ev.business_phone_number_id !== PHONE_NUMBER_ID) continue;\n    const c = linkCode(ev.message);\n    out.push({ json: { kind: 'message', event: ev, url: SB + '/rest/v1/rpc/whatsapp_resolve',\n      body: JSON.stringify({ p_business_id: BUSINESS_ID, p_event: ev, p_code_hash: c ? crypto.createHash('sha256').update(c).digest('hex') : null, p_maintenance: false }) } });\n  }\n}\nreturn out;"
+      },
+      "id": "7d0ce8bd-f28c-46cf-bb6f-8d1bd2b030ec",
+      "name": "Normalizar y resolver · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept-Encoding",
+              "value": "identity"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "73ba18d9-d822-4a2c-9fb9-f8128099c355",
+      "name": "Normalizar y resolver · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -608,
+        912
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $workflow.id }}",
+          "mode": "id"
+        },
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "45cfc84f-97f1-4c55-b178-b58ffdb2434a",
+      "name": "Procesar cada mensaje",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const SB = 'https://cslqdvufvgsxnpwenilc.supabase.co';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,kind:\"interpretation\",index:$json.operation_index??0,payload:({output:$json.output})});\n  const batch = ['stage','confirm_all'].includes(payload.kind);\n  const args = batch ? {p_event_key:payload.eventKey,p_kind:payload.kind,p_items:payload.payload ?? []}\n    : {p_event_key:payload.eventKey,p_kind:payload.kind,p_index:payload.index ?? 0,p_payload:payload.payload ?? {}};\n  return {json:{url:SB+'/rest/v1/rpc/'+(batch?'whatsapp_batch':'whatsapp_operation'),body:JSON.stringify(args)},pairedItem:{item:index}};\n});"
+      },
+      "id": "e7624df5-147e-4aa3-85f1-5134fd031c77",
+      "name": "Edit Fields1 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept-Encoding",
+              "value": "identity"
+            }
+          ]
+        }
+      },
+      "id": "1e5fd7ac-d88b-4b18-b179-98dba1c333b9",
+      "name": "Edit Fields1 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        304,
+        464
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const $parseRaw = (raw, empty) => { if (raw === undefined || raw === null || raw === '') return JSON.parse(empty); if (typeof raw === 'string') return JSON.parse(raw); if (typeof raw === 'object' && (raw.socket || raw._readableState)) throw new Error('Respuesta de Supabase no legible'); return raw; };\nreturn $parseRaw($input.first().json.body, 'null').map((json,i)=>({json,pairedItem:{item:0}}));"
+      },
+      "id": "a56551b6-d64a-4b51-82b2-525982dd3fef",
+      "name": "Guardar movimientos del mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const SB = 'https://cslqdvufvgsxnpwenilc.supabase.co';\nreturn $input.all().slice(0,1).map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,kind:'stage',payload:$input.all().map(i=>i.json)});\n  const batch = ['stage','confirm_all'].includes(payload.kind);\n  const args = batch ? {p_event_key:payload.eventKey,p_kind:payload.kind,p_items:payload.payload ?? []}\n    : {p_event_key:payload.eventKey,p_kind:payload.kind,p_index:payload.index ?? 0,p_payload:payload.payload ?? {}};\n  return {json:{url:SB+'/rest/v1/rpc/'+(batch?'whatsapp_batch':'whatsapp_operation'),body:JSON.stringify(args)},pairedItem:{item:index}};\n});"
+      },
+      "id": "ba2265de-98db-48ba-a9d3-018f9773a235",
+      "name": "Guardar movimientos del mensaje · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        912
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept-Encoding",
+              "value": "identity"
+            }
+          ]
+        }
+      },
+      "id": "3a42c16f-af97-4570-9177-1e3c944b00c3",
+      "name": "Guardar movimientos del mensaje · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1392,
+        912
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const SB = 'https://cslqdvufvgsxnpwenilc.supabase.co';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,kind:\"transaction\",index:$json.operation_index??0,payload:$json});\n  const batch = ['stage','confirm_all'].includes(payload.kind);\n  const args = batch ? {p_event_key:payload.eventKey,p_kind:payload.kind,p_items:payload.payload ?? []}\n    : {p_event_key:payload.eventKey,p_kind:payload.kind,p_index:payload.index ?? 0,p_payload:payload.payload ?? {}};\n  return {json:{url:SB+'/rest/v1/rpc/'+(batch?'whatsapp_batch':'whatsapp_operation'),body:JSON.stringify(args)},pairedItem:{item:index}};\n});"
+      },
+      "id": "4c65850c-2bd6-42c8-a4fe-6a5e043ac128",
+      "name": "Create a row · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept-Encoding",
+              "value": "identity"
+            }
+          ]
+        }
+      },
+      "id": "5ab1904a-4d41-40bb-b1e9-2e67cde487da",
+      "name": "Create a row · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1840,
+        544
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const SB = 'https://cslqdvufvgsxnpwenilc.supabase.co';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,kind:\"budget\",index:$json.operation_index??0,payload:$json});\n  const batch = ['stage','confirm_all'].includes(payload.kind);\n  const args = batch ? {p_event_key:payload.eventKey,p_kind:payload.kind,p_items:payload.payload ?? []}\n    : {p_event_key:payload.eventKey,p_kind:payload.kind,p_index:payload.index ?? 0,p_payload:payload.payload ?? {}};\n  return {json:{url:SB+'/rest/v1/rpc/'+(batch?'whatsapp_batch':'whatsapp_operation'),body:JSON.stringify(args)},pairedItem:{item:index}};\n});"
+      },
+      "id": "cd8791f0-b153-4496-9fa9-35388a10f534",
+      "name": "Create a row2 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept-Encoding",
+              "value": "identity"
+            }
+          ]
+        }
+      },
+      "id": "bb565b7e-fa7b-4b87-af41-961825532f78",
+      "name": "Create a row2 · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1712,
+        720
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const SB = 'https://cslqdvufvgsxnpwenilc.supabase.co';\nreturn $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,kind:\"budget\",index:$json.operation_index??0,payload:$json});\n  const batch = ['stage','confirm_all'].includes(payload.kind);\n  const args = batch ? {p_event_key:payload.eventKey,p_kind:payload.kind,p_items:payload.payload ?? []}\n    : {p_event_key:payload.eventKey,p_kind:payload.kind,p_index:payload.index ?? 0,p_payload:payload.payload ?? {}};\n  return {json:{url:SB+'/rest/v1/rpc/'+(batch?'whatsapp_batch':'whatsapp_operation'),body:JSON.stringify(args)},pairedItem:{item:index}};\n});"
+      },
+      "id": "a2525ca4-b131-4e0b-b841-9ecb052685df",
+      "name": "Update a row · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1712,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept-Encoding",
+              "value": "identity"
+            }
+          ]
+        }
+      },
+      "id": "2158e827-1728-499a-a522-18b588b86cb1",
+      "name": "Update a row · API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        816
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:'confirmation-summary',content:{type:'interactive',interactive:{type:'button',body:{text:$('Natural languague').first().json.resumen},action:{buttons:[{type:'reply',reply:{id:'Aceptar',title:'Si'}},{type:'reply',reply:{id:'Rechazar',title:'No'}}]}}}});\n  return {json:{__send:true,eventKey:payload.eventKey,key:payload.key,content:payload.content,ctx:$('Contexto WhatsApp').first().json},pairedItem:{item:index}};\n});"
+      },
+      "id": "a937c5c0-cce5-4f91-9ad9-cc53d1e5b3ed",
+      "name": "HTTP Request3 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1984,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "tl7gipoFs3eGkJEa",
+          "mode": "id"
+        },
+        "mode": "each",
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "2b4f326c-e275-4f36-9968-97a6a444a5ec",
+      "name": "HTTP Request3 · API",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2192,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:$('Contexto WhatsApp').first().json}];"
+      },
+      "id": "e176405f-10dc-45a7-a155-71029ebb354f",
+      "name": "Contexto para msj_si",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -864,
+        1024
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:$('Contexto WhatsApp').first().json}];"
+      },
+      "id": "1a2c482a-ea3c-4033-9b0f-cf41d4d0c898",
+      "name": "Contexto para msj_no",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        1328
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response1\",content:{type:'text',text:\"🔒 ¡Hola! Para continuar necesitamos identificarte. Parece que tu número aún no está registrado en Financia 📱  📝 Por favor, completa tu registro para poder ayudarte mejor y tener acceso completo a nuestros servicios financieros personalizados 💼📊  👉 https://financiaia.com  Si ya te registraste, asegúrate de estar usando el mismo número o contáctanos para verificar tu información. ¡Estamos aquí para ayudarte! 🤝✨\"}});\n  return {json:{__send:true,eventKey:payload.eventKey,key:payload.key,content:payload.content,ctx:$('Contexto WhatsApp').first().json},pairedItem:{item:index}};\n});"
+      },
+      "id": "4ee3cef6-a1a6-47fc-baee-18463bd68c73",
+      "name": "Send message and wait for response1 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2736,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "tl7gipoFs3eGkJEa",
+          "mode": "id"
+        },
+        "mode": "each",
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "039d57bc-e735-4732-9600-230e92204873",
+      "name": "Send message and wait for response1 · API",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -2528,
+        880
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response7\",content:{type:'text',text:\"🔊 ¡Servicio de audios no disponible por el momento!. Muy pronto podrás compartirlos con nosotros. ¡Estamos en ello! 🚀\"}});\n  return {json:{__send:true,eventKey:payload.eventKey,key:payload.key,content:payload.content,ctx:$('Contexto WhatsApp').first().json},pairedItem:{item:index}};\n});"
+      },
+      "id": "8375fcde-f9c3-4275-9264-e867a0fcab00",
+      "name": "Send message and wait for response7 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2128,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "tl7gipoFs3eGkJEa",
+          "mode": "id"
+        },
+        "mode": "each",
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "0abbd279-2251-471f-a6e1-b644f42bc526",
+      "name": "Send message and wait for response7 · API",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -1920,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response8\",content:{type:'text',text:\"🖼️ El envío de imágenes aún no está disponible. Muy pronto podrás compartirlas con nosotros. ¡Estamos en ello! 🚀\"}});\n  return {json:{__send:true,eventKey:payload.eventKey,key:payload.key,content:payload.content,ctx:$('Contexto WhatsApp').first().json},pairedItem:{item:index}};\n});"
+      },
+      "id": "14d0b427-911a-436a-9fba-f5311371df9f",
+      "name": "Send message and wait for response8 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1664,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "tl7gipoFs3eGkJEa",
+          "mode": "id"
+        },
+        "mode": "each",
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "cb1b32b8-695d-4bdb-b574-7305b0dc2339",
+      "name": "Send message and wait for response8 · API",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -1456,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message\",content:{type:'text',text:\"👋 ¡Hola! Gestionar tus finanzas nunca había sido tan fácil: \\n\\n1️⃣ Envíame un gasto, ingreso o presupuesto. \\n2️⃣ Te mostraré un resumen claro y sencillo. \\n3️⃣ Confirma con “sí” o “no” ¡y listo! 💪  \\n\\nAsí tendrás el control total de tus finanzas 💼💵\"}});\n  return {json:{__send:true,eventKey:payload.eventKey,key:payload.key,content:payload.content,ctx:$('Contexto WhatsApp').first().json},pairedItem:{item:index}};\n});"
+      },
+      "id": "4105e2e8-2803-4698-b776-0877afc851a4",
+      "name": "Send message · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1136,
+        1520
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "tl7gipoFs3eGkJEa",
+          "mode": "id"
+        },
+        "mode": "each",
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "ac298002-4e42-4c60-b596-aa2a31201bd9",
+      "name": "Send message · API",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -928,
+        1520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response2\",content:{type:'text',text:\"👋 ¡Hola, \"+String(($('Get a row').item.json.name)??'')+\"!\\n\\nEstoy aquí para ayudarte a registrar tus finanzas 💰  \\nPuedes escribirme cosas como:\\n\\n\\\"Gasté 25.000 en almuerzo\\\"  \\n\\\"Me pagaron 1.200.000 de salario\\\"\\n\\nCuando quieras, empezamos 🚀\"}});\n  return {json:{__send:true,eventKey:payload.eventKey,key:payload.key,content:payload.content,ctx:$('Contexto WhatsApp').first().json},pairedItem:{item:index}};\n});"
+      },
+      "id": "e5672641-6a9d-4ea1-bdae-16a469a0eeb1",
+      "name": "Send message and wait for response2 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "tl7gipoFs3eGkJEa",
+          "mode": "id"
+        },
+        "mode": "each",
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "a67ba218-1017-4390-bf44-4e85645b4bb7",
+      "name": "Send message and wait for response2 · API",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1712,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response3\",content:{type:'text',text:\"👋 ¡Hola, \"+String(($('Get a row').item.json.name)??'')+\"!\\n\\nEstoy aquí para ayudarte a registrar tus finanzas 💰 \\n\\nRecuerda, pequeños gastos bien controlados hoy, construyen grandes resultados mañana 📈\"}});\n  return {json:{__send:true,eventKey:payload.eventKey,key:payload.key,content:payload.content,ctx:$('Contexto WhatsApp').first().json},pairedItem:{item:index}};\n});"
+      },
+      "id": "ba0e0335-ba42-4e64-be73-fe42ec3fe6b0",
+      "name": "Send message and wait for response3 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "tl7gipoFs3eGkJEa",
+          "mode": "id"
+        },
+        "mode": "each",
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "a614e262-ed0b-4488-b677-6c1453113ea6",
+      "name": "Send message and wait for response3 · API",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1712,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response\",content:{type:'text',text:String(($json.message)??'')}});\n  return {json:{__send:true,eventKey:payload.eventKey,key:payload.key,content:payload.content,ctx:$('Contexto WhatsApp').first().json},pairedItem:{item:index}};\n});"
+      },
+      "id": "afbad213-d92f-48c4-86be-7f311fabbbd1",
+      "name": "Send message and wait for response · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "tl7gipoFs3eGkJEa",
+          "mode": "id"
+        },
+        "mode": "each",
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "dc19df60-6d18-48bf-a728-2eb7f0138c0b",
+      "name": "Send message and wait for response · API",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2208,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((item, index) => {\n  const $json = item.json;\n  const payload = ({eventKey:$('Contexto WhatsApp').first().json.event_key,key:\"Send message and wait for response4\",content:{type:'text',text:\"⚠️ Lo siento, no pude identificar la categoría para ese presupuesto. Porfa repite el mensaje para intentarlo de nuevo, siendo más claro con la categoría, por ejemplo: “presupuesto de Alimentación 300 mil”.\"}});\n  return {json:{__send:true,eventKey:payload.eventKey,key:payload.key,content:payload.content,ctx:$('Contexto WhatsApp').first().json},pairedItem:{item:index}};\n});"
+      },
+      "id": "fccb6283-811f-4acd-80f8-30497abcd09d",
+      "name": "Send message and wait for response4 · firmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "value": "tl7gipoFs3eGkJEa",
+          "mode": "id"
+        },
+        "mode": "each",
+        "workflowInputs": {
+          "mappingMode": "passthrough",
+          "value": {},
+          "schema": [],
+          "matchingColumns": []
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "5af4213a-533d-44c8-976d-17c612c767e0",
+      "name": "Send message and wait for response4 · API",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1744,
+        928
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "transactions",
+        "returnAll": true,
+        "filterType": "string",
+        "filterString": "=user_id=eq.{{ $('Datos whtas').all()[0].json.id_usuario }}&meta->>type=eq.monthly_rollover&meta->>target_month=eq.{{ $('Fechas1').first().json.startDate }}"
+      },
+      "name": "Saldo inicial",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        80
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      },
+      "id": "ab290714-abe2-4073-9a96-cee8116a845c",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b9996863-fcb8-46f9-8ec9-c5482ffcf76e",
+              "leftValue": "={{ $json.__send === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7397e9e4-332d-4bbc-a261-184e0a31264a",
+      "name": "¿Es envío?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -104,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const SB = 'https://cslqdvufvgsxnpwenilc.supabase.co', SITE = 'https://financiaia.com';\nconst j = $input.first().json, r = j.ctx || {};\nconst phone = typeof r.phone === 'string' && /^[1-9]\\d{6,14}$/.test(r.phone) ? r.phone : null;\nconst bsuid = typeof r.whatsapp_user_id === 'string' && /^[A-Z]{2}\\.(?:ENT\\.)?[A-Za-z0-9]{1,128}$/.test(r.whatsapp_user_id) ? r.whatsapp_user_id : null;\nif (!phone && !bsuid) throw new Error('No hay un destinatario de WhatsApp válido.');\n// Teléfono -> \"to\"; usuarios solo con BSUID -> \"recipient\".\nconst recipient = phone ? { to: phone } : { recipient: bsuid };\nlet content, key, operating = false;\nif (r.status !== 'linked' || r.linked_now || !r.can_operate) {\n  if (r.reply === false) return [{ json: { skip: true } }];\n  const link = `${SITE}/login?next=${encodeURIComponent('/dashboard#whatsapp')}`;\n  const text = r.status === 'maintenance' ? '🛠️ Estamos actualizando FinancIA. Escríbenos de nuevo en unos minutos.\\n\\nEste mensaje *no* registró ningún movimiento.'\n    : r.status === 'conflict' ? `⚠️ Este WhatsApp ya está conectado a *otra cuenta* de FinancIA, así que no hicimos ningún cambio.\\n\\nEntra con la cuenta correcta desde este enlace y revisa la sección *“Vincula tu WhatsApp”*:\\n👉 ${link}\\n\\nSi necesitas ayuda, respóndenos aquí.`\n    : r.linked_now ? '✅ ¡Listo! Tu WhatsApp quedó conectado a tu cuenta de FinancIA.\\n\\nYa puedes escribirme tus gastos e ingresos. Por ejemplo: *“Gasté 20.000 en almuerzo”* o *“¿Cuál es mi balance?”*'\n    : r.status === 'linked' ? `Tu WhatsApp está conectado, pero tu cuenta no tiene un plan activo.\\n\\nActiva tu plan aquí para seguir usando el bot:\\n👉 ${link}`\n    : r.reason === 'invalid_code' ? `⌛ Ese código ya venció o no es válido.\\n\\nPide uno nuevo así:\\n1️⃣ Entra aquí: ${link}\\n2️⃣ Toca *“Generar otro código”*.\\n3️⃣ Envía el mensaje que se abre en WhatsApp, sin cambiarlo.`\n    : `👋 ¡Hola! Para usar FinancIA por WhatsApp primero debes conectar este número con tu cuenta. Es un paso de seguridad y solo se hace una vez (toma 1 minuto).\\n\\n1️⃣ Entra a tu cuenta desde este enlace:\\n👉 ${link}\\n\\n2️⃣ En la sección *“Vincula tu WhatsApp”*, elige si tienes @usuario de WhatsApp. Si no sabes qué es, elige *“No tengo @usuario”*.\\n\\n3️⃣ Toca el botón *“Vincular mi WhatsApp”*. Se abrirá este chat con un mensaje que empieza por *VINCULAR*.\\n\\n4️⃣ Envía ese mensaje *tal como aparece*, sin cambiarlo.\\n\\nTe confirmaremos aquí cuando quede listo ✅\\n\\n¿Aún no tienes cuenta? Créala en ${SITE}`;\n  content = { type: 'text', text: { body: text } };\n  key = `${j.eventKey}:notice`;\n} else {\n  operating = true;\n  const c = j.content || {};\n  if (c.type === 'text' && typeof c.text === 'string' && c.text.length > 0 && c.text.length <= 4096) content = { type: 'text', text: { body: c.text } };\n  else if (c.type === 'interactive' && c.interactive) content = { type: 'interactive', interactive: c.interactive };\n  else throw new Error('Invalid message content');\n  if (!/^[\\w .-]{1,160}$/.test(j.key || '')) throw new Error('Invalid send key');\n  key = `${j.eventKey}:${j.key}`;\n}\nconst payload = { messaging_product: 'whatsapp', recipient_type: 'individual', ...recipient, ...content };\nconst userId = operating ? r.user_id : null;\nreturn [{ json: { skip: false, key, eventKey: j.eventKey, operating, userId, linkVersion: operating ? r.link_version : null, payload,\n  url: SB + '/rest/v1/user_profiles?select=user_id,whatsapp_verified_at,whatsapp_link_version,is_super_user,subscription_status,current_plan,trial_ends_at&user_id=eq.' + encodeURIComponent(userId || '00000000-0000-0000-0000-000000000000') } }];"
+      },
+      "id": "d058c1c7-391d-49ac-8467-817df2ef04db",
+      "name": "Envío · preparar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -104,
+        2108
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "83a2c9cc-451d-42ab-848f-159c7b77cf6a",
+              "leftValue": "={{ $json.skip === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3491f106-b77a-4c07-ae35-a9b23c7228ce",
+      "name": "Envío · ¿omitir?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        116,
+        2108
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { status: 'skipped', success: false } }];"
+      },
+      "id": "bf1a1684-c5a7-4e32-9cde-02698ca8f649",
+      "name": "Envío · omitido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        1948
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept-Encoding",
+              "value": "identity"
+            }
+          ]
+        }
+      },
+      "id": "00ca6352-e6d7-45db-ac0a-20084b3362a0",
+      "name": "Envío · perfil",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        336,
+        2108
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const $parseRaw = (raw, empty) => { if (raw === undefined || raw === null || raw === '') return JSON.parse(empty); if (typeof raw === 'string') return JSON.parse(raw); if (typeof raw === 'object' && (raw.socket || raw._readableState)) throw new Error('Respuesta de Supabase no legible'); return raw; };\nconst SB = 'https://cslqdvufvgsxnpwenilc.supabase.co', BUSINESS_ID = '1782213389844237', PHONE_NUMBER_ID = '681184581749789';\nconst p = $('Envío · preparar').first().json;\nif (p.operating) {\n  // Antes de responder con datos financieros: vínculo vigente, misma versión y acceso a la plataforma.\n  const profile = ($parseRaw($input.first().json.body, '[]') || [])[0];\n  const trial = profile?.trial_ends_at ? Date.parse(profile.trial_ends_at) : NaN;\n  const access = !!profile && (profile.is_super_user === true || (profile.subscription_status === 'active' && !!profile.current_plan && profile.current_plan !== 'free') || (Number.isFinite(trial) && trial > Date.now()));\n  if (!profile || !profile.whatsapp_verified_at || profile.whatsapp_link_version !== p.linkVersion || !access) throw new Error('Identity or access changed');\n}\nreturn [{ json: { url: SB + '/rest/v1/rpc/whatsapp_claim_send', body: JSON.stringify({ p_key: p.key, p_event_key: p.eventKey, p_user_id: p.userId,\n  p_business_id: BUSINESS_ID, p_phone_number_id: PHONE_NUMBER_ID, p_version: p.linkVersion, p_payload: p.payload }) } }];"
+      },
+      "id": "b462b70a-9c61-4517-bc51-3906f7a94eb6",
+      "name": "Envío · verificar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        556,
+        2108
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept-Encoding",
+              "value": "identity"
+            }
+          ]
+        }
+      },
+      "id": "b182d5a1-db0c-4c54-bf8f-dc9a97420219",
+      "name": "Envío · reservar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        776,
+        2108
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const $parseRaw = (raw, empty) => { if (raw === undefined || raw === null || raw === '') return JSON.parse(empty); if (typeof raw === 'string') return JSON.parse(raw); if (typeof raw === 'object' && (raw.socket || raw._readableState)) throw new Error('Respuesta de Supabase no legible'); return raw; };\nconst claim = $parseRaw($input.first().json.body, '{}');\nconst p = $('Envío · preparar').first().json;\n// claimed=false: ya enviado/en curso/cancelado -> nunca reenviar a ciegas.\nreturn [{ json: { claimed: claim.claimed === true, status: claim.status ?? null, messageId: claim.meta_message_id ?? null,\n  url: 'https://graph.facebook.com/v24.0/681184581749789/messages', body: JSON.stringify(p.payload) } }];"
+      },
+      "id": "286ed4f2-35bc-4ee3-a853-40b5df5e9415",
+      "name": "Envío · reserva",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        996,
+        2108
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2f6b3588-9517-4039-b0bd-aa430ac4dc13",
+              "leftValue": "={{ $json.claimed === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f25dbcd5-49f0-40ca-88b4-b7af6e656d48",
+      "name": "Envío · ¿enviar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        2108
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $input.first().json;\nreturn [{ json: { status: c.status, success: ['accepted','delivered','read'].includes(c.status), messageId: c.messageId } }];"
+      },
+      "id": "9bb74c2b-312d-4553-98e4-91132dec488f",
+      "name": "Envío · no reenviar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1436,
+        2268
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": 12000,
+          "redirect": {
+            "redirect": {
+              "followRedirects": false
+            }
+          },
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "aa3ebb77-a2a9-4e29-9f76-6d316f9f6be4",
+      "name": "Envío · Meta",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1436,
+        2108
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "wDFVb5rZURmTTAH3",
+          "name": "WhatsApp account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const SB = 'https://cslqdvufvgsxnpwenilc.supabase.co';\nconst m = $input.first().json, p = $('Envío · preparar').first().json;\nlet status = 'unknown', messageId = null, lastError = null;\nif (m && m.statusCode !== undefined) {\n  let body = m.body; if (typeof body === 'string') { try { body = JSON.parse(body); } catch {} }\n  const ok = m.statusCode >= 200 && m.statusCode < 300;\n  if (ok && typeof body?.messages?.[0]?.id === 'string') { status = 'accepted'; messageId = body.messages[0].id; }\n  else status = body?.error ? 'failed' : 'unknown';\n  lastError = body?.error ? `Meta ${body.error.code ?? m.statusCode}` : null;\n} else lastError = 'Delivery outcome unknown; do not retry blindly'; // timeout: no reenviar\nreturn [{ json: { status, messageId, lastError,\n  url: SB + '/rest/v1/whatsapp_outbox?send_key=eq.' + encodeURIComponent(p.key) + '&status=eq.sending',\n  body: JSON.stringify({ status, meta_message_id: messageId, last_error: lastError, next_attempt_at: null, updated_at: new Date().toISOString() }) } }];"
+      },
+      "id": "46fcc507-50e9-46e9-aacf-066f02a4bc1e",
+      "name": "Envío · resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1656,
+        2108
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept-Encoding",
+              "value": "identity"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        }
+      },
+      "id": "0efb3409-597e-4597-a169-8276da7106a2",
+      "name": "Envío · registrar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1876,
+        2108
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "edb492c5-8847-4bd3-92e4-78bcea29b75d",
+              "leftValue": "={{ !!$('Envío · resultado').first().json.messageId }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "095b1f2c-bfc0-4e66-a20c-02aa3117a088",
+      "name": "Envío · ¿conciliar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2096,
+        2108
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const SB = 'https://cslqdvufvgsxnpwenilc.supabase.co', BUSINESS_ID = '1782213389844237';\nconst o = $('Envío · resultado').first().json;\nreturn [{ json: { url: SB + '/rest/v1/rpc/whatsapp_reconcile_delivery', body: JSON.stringify({ p_business_id: BUSINESS_ID, p_message_id: o.messageId, p_status: null }) } }];"
+      },
+      "id": "538a4e0a-0738-495d-9673-4b6e459e5b53",
+      "name": "Envío · conciliar req",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2316,
+        1948
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          }
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept-Encoding",
+              "value": "identity"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "c8b6d022-cfe8-4683-b1a2-68061e36653b",
+      "name": "Envío · conciliar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2536,
+        1948
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "hnHhn23SmkBV45mj",
+          "name": "Supabase account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const $parseRaw = (raw, empty) => { if (raw === undefined || raw === null || raw === '') return JSON.parse(empty); if (typeof raw === 'string') return JSON.parse(raw); if (typeof raw === 'object' && (raw.socket || raw._readableState)) throw new Error('Respuesta de Supabase no legible'); return raw; };\nconst o = $('Envío · resultado').first().json;\nlet status = o.status;\ntry { const v = $parseRaw($('Envío · conciliar').first().json.body, 'null'); if (typeof v === 'string') status = v; } catch {}\nreturn [{ json: { status, success: ['accepted','delivered','read'].includes(status), messageId: o.messageId, error: o.lastError } }];"
+      },
+      "id": "35bf3a2c-bf05-4fc6-aa11-af1969c3edcc",
+      "name": "Envío · fin",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2756,
+        2108
+      ]
+    }
+  ],
+  "connections": {
+    "Get_audio": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get_image": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "OpenAI1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos_final": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Guardar movimientos del mensaje · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos whtas": {
+      "main": [
+        [
+          {
+            "node": "switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Contexto para msj_si",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Contexto para msj_no",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Datos_final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Datos whtas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message and wait for response1 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar txt si_no": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Natural languague": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch2": {
+      "main": [
+        [
+          {
+            "node": "Create a row · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create a row · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalizar y resolver · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener categorias": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Switch3": {
+      "main": [
+        [
+          {
+            "node": "Contexto para msj_si",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Contexto para msj_no",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "switch": {
+      "main": [
+        [
+          {
+            "node": "Get_audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get_image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalizar txt si_no",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Get a row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Natural languague",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [],
+        [],
+        [],
+        []
+      ]
+    },
+    "Get a row": {
+      "main": [
+        [
+          {
+            "node": "Switch4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row2": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        []
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        []
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch4": {
+      "main": [
+        [
+          {
+            "node": "Fechas1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message and wait for response3 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message and wait for response2 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fechas1": {
+      "main": [
+        [
+          {
+            "node": "Get a row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a row1": {
+      "main": [
+        [
+          {
+            "node": "Saldo inicial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Create a row2 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message and wait for response4 · firmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response7": {
+      "main": [
+        []
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Datos_final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar y resolver · firmar": {
+      "main": [
+        [
+          {
+            "node": "Normalizar y resolver · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar y resolver · API": {
+      "main": [
+        [
+          {
+            "node": "Normalizar y resolver",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar y resolver": {
+      "main": [
+        [
+          {
+            "node": "Procesar cada mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "¿Es envío?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1 · API": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar movimientos del mensaje · firmar": {
+      "main": [
+        [
+          {
+            "node": "Guardar movimientos del mensaje · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar movimientos del mensaje · API": {
+      "main": [
+        [
+          {
+            "node": "Guardar movimientos del mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar movimientos del mensaje": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row · firmar": {
+      "main": [
+        [
+          {
+            "node": "Create a row · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row · API": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row2 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Create a row2 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a row2 · API": {
+      "main": [
+        [
+          {
+            "node": "Create a row2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row · firmar": {
+      "main": [
+        [
+          {
+            "node": "Update a row · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row · API": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3 · firmar": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3 · API": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto para msj_si": {
+      "main": [
+        [
+          {
+            "node": "msj_si",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto para msj_no": {
+      "main": [
+        [
+          {
+            "node": "msj_no",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response1 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response1 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response1 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response7 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response7 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response7 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response8 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response8 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response8 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message · API": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response2 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response2 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response2 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response3 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response3 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response3 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response4 · firmar": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response4 · API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response4 · API": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI1": {
+      "main": [
+        [
+          {
+            "node": "Datos_final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Saldo inicial": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es envío?": {
+      "main": [
+        [
+          {
+            "node": "Envío · preparar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · preparar": {
+      "main": [
+        [
+          {
+            "node": "Envío · ¿omitir?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · ¿omitir?": {
+      "main": [
+        [
+          {
+            "node": "Envío · omitido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envío · perfil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · perfil": {
+      "main": [
+        [
+          {
+            "node": "Envío · verificar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · verificar": {
+      "main": [
+        [
+          {
+            "node": "Envío · reservar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · reservar": {
+      "main": [
+        [
+          {
+            "node": "Envío · reserva",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · reserva": {
+      "main": [
+        [
+          {
+            "node": "Envío · ¿enviar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · ¿enviar?": {
+      "main": [
+        [
+          {
+            "node": "Envío · Meta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envío · no reenviar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · Meta": {
+      "main": [
+        [
+          {
+            "node": "Envío · resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · resultado": {
+      "main": [
+        [
+          {
+            "node": "Envío · registrar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · registrar": {
+      "main": [
+        [
+          {
+            "node": "Envío · ¿conciliar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · ¿conciliar?": {
+      "main": [
+        [
+          {
+            "node": "Envío · conciliar req",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envío · fin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · conciliar req": {
+      "main": [
+        [
+          {
+            "node": "Envío · conciliar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envío · conciliar": {
+      "main": [
+        [
+          {
+            "node": "Envío · fin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true
+  }
+}

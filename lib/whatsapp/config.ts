@@ -9,3 +9,12 @@ export function whatsappConfig() {
   }
   return { businessId, phoneNumberId, businessPhone, version }
 }
+
+/**
+ * Vinculación desde la web (elegir @usuario y generar el código VINCULAR): activa salvo que se apague con 'false'.
+ * Es independiente de `whatsappEnabled`, que sigue controlando los recordatorios y las rutas internas.
+ */
+export const whatsappLinkingEnabled = () => process.env.WHATSAPP_IDENTITY_ENABLED !== 'false'
+
+/** Número del bot al que el usuario envía "VINCULAR <código>". */
+export const whatsappBusinessPhone = () => process.env.WHATSAPP_BUSINESS_PHONE || '573227031301'

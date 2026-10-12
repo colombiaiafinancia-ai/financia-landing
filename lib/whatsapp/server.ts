@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseClient } from '@/utils/supabase/server'
 import { getSupabaseAdminClient } from '@/services/supabase/admin'
 import { verifyInternal } from './security'
-import { whatsappEnabled } from './config'
+import { whatsappEnabled, whatsappLinkingEnabled } from './config'
 
 export class WhatsAppError extends Error {
   constructor(message: string, public status = 400) { super(message) }
@@ -19,7 +19,8 @@ export function assertEnabled() {
   if (!whatsappEnabled()) throw new WhatsAppError('La vinculación de WhatsApp aún no está habilitada.', 503)
 }
 export async function ownUser(request: NextRequest, mutate = false) {
-  assertEnabled()
+  // Rutas de la web para vincular WhatsApp (perfil @, código, estado, onboarding)
+  if (!whatsappLinkingEnabled()) throw new WhatsAppError('La vinculación de WhatsApp aún no está habilitada.', 503)
   if (mutate && request.headers.get('origin') !== request.nextUrl.origin) throw new WhatsAppError('Origen no permitido.', 403)
   const supabase = await createSupabaseClient()
   const { data: { user }, error } = await supabase.auth.getUser()

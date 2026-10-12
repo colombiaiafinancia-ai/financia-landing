@@ -79,7 +79,7 @@ export const RegisterForm = () => {
       password: formData.get('password') as string,
       repeatPassword: formData.get('repeatPassword') as string,
       promoCode: ((formData.get('promoCode') as string) || '').trim(),
-      ...(process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED === 'true' ? { hasUsername, username: whatsappUsername } : {})
+      ...(process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED !== 'false' ? { hasUsername, username: whatsappUsername } : {})
     }
     
     
@@ -236,7 +236,7 @@ export const RegisterForm = () => {
             )}
           </div>
 
-          {process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED === 'true' && <div className="text-white">
+          {process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED !== 'false' && <div className="text-white">
             <WhatsAppUsernameFields hasUsername={hasUsername} username={whatsappUsername}
               onChoice={setHasUsername} onUsername={setWhatsappUsername} disabled={isLoading} />
           </div>}

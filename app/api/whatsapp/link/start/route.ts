@@ -3,12 +3,11 @@ import { NextRequest } from 'next/server'
 import { getSupabaseAdminClient } from '@/services/supabase/admin'
 import { ownUser, waError, waJson, waRpc, WhatsAppError } from '@/lib/whatsapp/server'
 import { hashCode } from '@/lib/whatsapp/security'
-import { whatsappConfig } from '@/lib/whatsapp/config'
+import { whatsappBusinessPhone } from '@/lib/whatsapp/config'
 
 export async function POST(request: NextRequest) {
   try {
     const { user, supabase } = await ownUser(request, true)
-    const config = whatsappConfig()
     const { data: profile, error } = await getSupabaseAdminClient().from('user_profiles')
       .select('whatsapp_verified_at,whatsapp_has_username').eq('user_id', user.id).single()
     if (error) throw error
@@ -21,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
     const code = randomBytes(16).toString('hex')
     const result = await waRpc('whatsapp_start_link', { p_user_id: user.id, p_code_hash: hashCode(code) })
-    const url = `https://wa.me/${config.businessPhone}?text=${encodeURIComponent(`VINCULAR ${code}`)}`
+    const url = `https://wa.me/${whatsappBusinessPhone()}?text=${encodeURIComponent(`VINCULAR ${code}`)}`
     return waJson({ code, url, expiresAt: result.expiresAt })
   } catch (error) { return waError(error) }
 }

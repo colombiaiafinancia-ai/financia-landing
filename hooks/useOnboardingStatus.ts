@@ -127,7 +127,7 @@ export function useOnboardingStatus(
     if (!user?.id) {
       return { error: new Error('Sin usuario') as Error | null }
     }
-    if (process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED === 'true') {
+    if (process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED !== 'false') {
       try {
         const response = await fetch('/api/whatsapp/onboarding', { method: 'POST' })
         const result = await response.json()

@@ -23,7 +23,7 @@ const WhatsAppChatButton = ({
   onSkipOnboarding,
   onWhatsAppOpened,
 }: WhatsAppChatButtonProps) => {
-  if (process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED === 'true') {
+  if (process.env.NEXT_PUBLIC_WHATSAPP_IDENTITY_ENABLED !== 'false') {
     return <WhatsAppLinkCard onVerified={onboardingStep === 'whatsapp' ? onWhatsAppOpened : undefined} onContinueWeb={onSkipOnboarding} />
   }
   const whatsappUrl =
